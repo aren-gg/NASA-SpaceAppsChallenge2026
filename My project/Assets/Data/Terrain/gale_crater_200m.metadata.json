@@ -1,0 +1,46 @@
+{
+  "name": "gale_crater_200m",
+  "width": 1025,
+  "height": 1025,
+  "sampleFormat": "int16 little-endian, metres, row 0 = north, column 0 = west",
+  "elevationUnit": "metre",
+  "verticalReference": "Mars areoid (MOLA datum); checked against the published MOLA elevation of the Curiosity landing site",
+  "minElevationM": -4688,
+  "maxElevationM": 1464,
+  "latNorthDeg": -3.6740295606707605,
+  "latSouthDeg": -7.129129291247139,
+  "lonWestDeg": 136.072455870711,
+  "lonEastDeg": 139.52755560128736,
+  "metersPerSampleNorthSouth": 199.999991643332,
+  "metersPerSampleEastWest": 199.11186568400223,
+  "eastWestScaleErrorFraction": 0.0033050762386221955,
+  "sphereRadiusM": 3396190.0,
+  "sourceProjection": "Simple cylindrical (geographic degrees), GCS Name = GCS_Mars_2000_Sphere|Datum = Mars_2000_Sphere|Ellipsoid = Mars_2000_Sphere_IAU_IAG|Primem = Reference_Meridian",
+  "sourceProductId": "Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2",
+  "sourceUrl": "https://planetarymaps.usgs.gov/mosaic/Mars/HRSC_MOLA_Blend/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif",
+  "sourceInstruments": "MGS MOLA laser altimeter blended with Mars Express HRSC stereo DTMs",
+  "sourceGridSpacingM": 199.999991643332,
+  "sourceFileBytes": 11384463908,
+  "sourcePixelOrigin": {
+    "column": 93675,
+    "row": 27762
+  },
+  "noDataValue": -32768,
+  "noDataSamplesFilled": 0,
+  "resampling": "none (source pixels copied 1:1)",
+  "downloadedBytes": 2113750,
+  "downloadRequests": 1031,
+  "heightmapBytes": 2101250,
+  "heightmapSha256": "1175dd96f0eca689939543a7c150161912e8011282b2681a3df1575fcb88881a",
+  "retrievedUtc": "2026-11-14T18:54:47Z",
+  "verification": [
+    {
+      "label": "Curiosity landing site (Bradbury Landing)",
+      "latitude": -4.5895,
+      "longitude": 137.4417,
+      "datasetElevationM": -4503,
+      "publishedElevationM": -4501,
+      "note": "published MOLA elevation, approximate"
+    }
+  ]
+}

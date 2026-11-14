@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cc7528e33e0369c4093df0a733514d7e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  heightData: {fileID: 4900000, guid: 93151cabe23432c4d957887e43730975, type: 3}
+  metadata: {fileID: 4900000, guid: b81311f14de397e41b41746413ab9df0, type: 3}
+  realMetersPerUnityUnit: 1
+  verticalExaggeration: 1
+  renderDistanceMeters: 40000
+  unloadMarginMeters: 3000
+  maxPooledChunks: 48
+  syncFogAndFarClip: 1
+  fogStartFraction: 0.15
+  chunkCells: 64
+  lod0Stride: 1
+  lodDistancesMeters:
+  - 3000
+  - 8000
+  - 20000
+  lodHysteresis: 0.1
+  maxChunkBuildsPerFrame: 4
+  skirtDepthMeters: 600
+  generateColliders: 0
+  baseMaterial: {fileID: 2100000, guid: 5f857f75052ca8848aee38586a6dac29, type: 2}
+  steepSlopeDegrees: 11.5
+  steepMaterial: {fileID: 2100000, guid: f711b1e46d880f64a9591b6955ef883e, type: 2}
+  flatSlopeDegrees: 0.8
+  flatMaterial: {fileID: 2100000, guid: 3b3f8901d63902d44a2a85d8bbf91d0b, type: 2}
+  bandSmoothingSamples: 4
+  rocksEnabled: 1
+  rockSeed: 2026
+  rockTileSizeMeters: 64
+  rocksPerTile: 24
+  rockRadiusRangeMeters: {x: 0.15, y: 1.2}
+  rockMaxSlopeDegrees: 15
+  rockDrawDistanceMeters: 250
+  maxRockTilesPerFrame: 8
+  rockMaterial: {fileID: 2100000, guid: dcf2b7213766861449d8c08039813a7a, type: 2}
