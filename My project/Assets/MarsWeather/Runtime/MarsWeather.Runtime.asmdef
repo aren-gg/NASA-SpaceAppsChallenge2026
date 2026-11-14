@@ -1,0 +1,1 @@
+{"name":"MarsWeather.Runtime","rootNamespace":"MarsWeather","references":["Unity.RenderPipelines.Core.Runtime","Unity.RenderPipelines.Universal.Runtime","Unity.ugui"]}
