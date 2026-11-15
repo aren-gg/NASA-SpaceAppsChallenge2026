@@ -3,6 +3,7 @@
 Two modules in one Unity project (`My project/`, Unity 2022.3, URP 14):
 
 - **Terrain:** Gale Crater at life size (1:1) from real NASA/USGS elevation data, streamed in chunks around the camera. See [terrain data and setup](docs/data/terrain-data.md).
+- **Time and events:** real Mars time with a 20-minute day-night cycle, and solar events replayed from NASA's DONKI catalogue. The sol, local time and current event show in the top-right info tab. See [Mars clock and weather events](docs/data/weather-events.md).
 - **Weather:** Clear, Solar Flare, Dust Storm, Heat Storm and Cold Night visuals. See the [MarsWeather integration guide](My%20project/Assets/MarsWeather/README.md).
 
 ## Run both together
@@ -16,7 +17,8 @@ Open `My project/Assets/Scenes/Mars.unity`. If the scene has no weather yet, cho
 | Left Shift + W | Sprint (29 km/h) |
 | Space | Jump (Mars gravity) |
 | F2 | Switch between the astronaut and the free inspection camera (W A S D, Q / E, right mouse to look, Shift faster, scroll wheel changes speed) |
-| 1–5 | Clear, Solar Flare, Dust Storm, Heat Storm, Cold Night |
+| 1–5 | Clear, Solar Flare, Dust Storm, Heat Storm, Cold Night (the schedule takes over again after 45 s) |
+| ] / [ | Step the Mars clock one hour forward / back |
 | F3 | Terrain data panel |
 
 ## Weather on its own
