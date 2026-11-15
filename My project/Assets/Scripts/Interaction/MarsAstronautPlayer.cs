@@ -9,6 +9,9 @@ namespace MarsSurvival.Interaction
     /// with Mars gravity. The main camera is moved to the astronaut's eyes and a
     /// procedural suited body (<see cref="MarsAstronautBody"/>) is built underneath it.
     ///
+    /// Buildings and other solid objects with colliders (such as the outpost) block the
+    /// astronaut and can be stood on; the terrain itself still uses GetGroundY.
+    ///
     /// Controls: WASD move, mouse looks, Left Shift sprints, Space jumps, Esc frees the
     /// cursor (click to capture it again), F2 switches to the free inspection camera
     /// and back. All speeds and sizes are in real metres.
@@ -41,11 +44,21 @@ namespace MarsSurvival.Interaction
         [Tooltip("Eye height of the 1.8 m astronaut.")]
         public float eyeHeight = 1.68f;
 
+        [Header("Collision with buildings (real metres)")]
+        public float bodyRadius = 0.35f;
+        [Tooltip("Ledges up to this height above the feet are stepped onto rather than blocking.")]
+        public float stepUp = 0.45f;
+
         [Header("Stride length per full cycle (two steps), metres")]
         public float walkStride = 1.25f;
         public float sprintStride = 3.6f;
 
         public bool IsGrounded { get { return grounded; } }
+        /// <summary>True while the astronaut is aboard a vehicle and the vehicle owns the camera.</summary>
+        public bool IsDriving { get { return driving; } }
+        public Camera ViewCamera { get { return viewCamera; } }
+        /// <summary>True once the astronaut has been set down on the ground at the start.</summary>
+        public bool IsReady { get { return placed && neck != null; } }
         public bool IsSprinting { get { return sprinting; } }
         /// <summary>Horizontal speed in real metres per second.</summary>
         public float Speed { get { return new Vector2(velocity.x, velocity.z).magnitude; } }
@@ -58,10 +71,12 @@ namespace MarsSurvival.Interaction
         private MarsTerrainFlyCamera flyCamera;
         private Vector3 velocity;          // metres per second, world axes
         private float yaw, pitch;
-        private bool grounded, sprinting, placed, flying;
+        private bool grounded, sprinting, placed, flying, driving;
         private float jumpBuffer;
         private float phase, moveBlend, sprintBlend, airBlend;
         private float landDip, cameraDip;
+        private CapsuleCollider capsule;
+        private readonly Collider[] overlaps = new Collider[16];
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AddToTerrainScene()
@@ -88,6 +103,14 @@ namespace MarsSurvival.Interaction
             yaw = cam.eulerAngles.y;
             transform.rotation = Quaternion.Euler(0f, yaw, 0f);
             transform.localScale = Vector3.one * Units(1f);
+
+            // Trigger, so it never shoves anything; used only to measure overlaps with buildings.
+            capsule = gameObject.AddComponent<CapsuleCollider>();
+            capsule.isTrigger = true;
+            capsule.direction = 1;
+            capsule.radius = bodyRadius;
+            capsule.height = Mathf.Max(bodyRadius * 2f, 1.85f - stepUp);
+            capsule.center = new Vector3(0f, stepUp + capsule.height * 0.5f, 0f);
 
             neck = new GameObject("Neck").transform;
             neck.SetParent(transform, false);
@@ -124,9 +147,70 @@ namespace MarsSurvival.Interaction
 
         private bool TerrainReady { get { return terrain != null && terrain.IsReady; } }
 
+        /// <summary>
+        /// Highest walkable surface under the feet: the terrain, or the top of a building
+        /// collider no more than <see cref="stepUp"/> above the feet (ramps, floors, roofs).
+        /// </summary>
         private float GroundY(Vector3 position)
         {
-            return TerrainReady ? terrain.GetGroundY(position) : 0f;
+            float ground = TerrainReady ? terrain.GetGroundY(position) : 0f;
+            float top = position.y + Units(stepUp);
+            float reach = top - ground;
+            if (reach <= 0f) return ground;
+            RaycastHit hit;
+            if (Physics.Raycast(new Vector3(position.x, top, position.z), Vector3.down, out hit, reach,
+                                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+            {
+                ground = Mathf.Max(ground, hit.point.y);
+            }
+            return ground;
+        }
+
+        private bool IsBuilding(Collider other)
+        {
+            if (other == capsule || other.isTrigger) return false;
+            // Terrain chunk colliders (optional) are handled by GetGroundY, not pushed against.
+            return terrain == null || !other.transform.IsChildOf(terrain.transform);
+        }
+
+        /// <summary>True when a building is just above the head (the astronaut is 1.8 m tall).</summary>
+        private bool HitsCeiling(Vector3 position)
+        {
+            RaycastHit hit;
+            return Physics.Raycast(position + Vector3.up * Units(1.5f), Vector3.up, out hit, Units(0.45f),
+                       Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore) && IsBuilding(hit.collider);
+        }
+
+        /// <summary>Pushes the body sideways out of any building it overlaps.</summary>
+        private Vector3 ResolveWalls(Vector3 position)
+        {
+            if (capsule == null) return position;
+            for (int pass = 0; pass < 3; pass++)
+            {
+                transform.position = position;
+                float scale = transform.lossyScale.y;
+                float half = Mathf.Max(0f, capsule.height * 0.5f - capsule.radius) * scale;
+                Vector3 centre = transform.TransformPoint(capsule.center);
+                int count = Physics.OverlapCapsuleNonAlloc(centre + Vector3.down * half, centre + Vector3.up * half,
+                    capsule.radius * scale, overlaps, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                bool moved = false;
+                for (int i = 0; i < count; i++)
+                {
+                    Collider other = overlaps[i];
+                    if (!IsBuilding(other)) continue;
+                    Vector3 direction;
+                    float distance;
+                    if (!Physics.ComputePenetration(capsule, position, transform.rotation,
+                            other, other.transform.position, other.transform.rotation, out direction, out distance)) continue;
+                    direction.y = 0f;
+                    if (direction.sqrMagnitude < 1e-4f) continue;
+                    // Only the sideways part of the push; the height comes from GroundY.
+                    position += direction.normalized * (distance + Units(0.001f));
+                    moved = true;
+                }
+                if (!moved) break;
+            }
+            return position;
         }
 
         private static void LockCursor(bool locked)
@@ -151,6 +235,8 @@ namespace MarsSurvival.Interaction
                 grounded = true;
                 placed = true;
             }
+
+            if (driving) return;
 
             float forwardInput = 0f, sideInput = 0f;
             bool sprintHeld = false;
@@ -207,6 +293,13 @@ namespace MarsSurvival.Interaction
             else velocity.y = 0f;
 
             Vector3 position = transform.position + velocity * Units(1f) * dt;
+            position = ResolveWalls(position);
+            if (velocity.y > 0f && HitsCeiling(position))
+            {
+                // Head under a roof: stop rising instead of passing through it.
+                velocity.y = 0f;
+                position.y = transform.position.y;
+            }
             float ground = GroundY(position);
             if (grounded)
             {
@@ -251,6 +344,40 @@ namespace MarsSurvival.Interaction
             landDip *= Mathf.Exp(-6f * dt);
             cameraDip = Mathf.Lerp(cameraDip, landDip, 1f - Mathf.Exp(-25f * dt));
             neck.localPosition = new Vector3(bobX, NeckHeight + bobY - cameraDip, 0f);
+        }
+
+        /// <summary>
+        /// Boards a vehicle: the astronaut is hidden and stops responding to input, and the
+        /// camera is released for the vehicle to place. Returns false if that is not possible now.
+        /// </summary>
+        public bool BoardVehicle()
+        {
+            if (!IsReady || driving) return false;
+            if (flying) SetFlying(false);
+            driving = true;
+            velocity = Vector3.zero;
+            body.gameObject.SetActive(false);
+            if (capsule != null) capsule.enabled = false;
+            viewCamera.transform.SetParent(null, true);
+            return true;
+        }
+
+        /// <summary>Steps out of a vehicle at a world position, facing a heading in degrees.</summary>
+        public void LeaveVehicle(Vector3 position, float heading)
+        {
+            if (!driving) return;
+            driving = false;
+            position.y = GroundY(position);
+            transform.position = position;
+            yaw = heading;
+            pitch = 0f;
+            velocity = Vector3.zero;
+            grounded = true;
+            body.gameObject.SetActive(true);
+            if (capsule != null) capsule.enabled = true;
+            MountCamera();
+            viewCamera.fieldOfView = fieldOfView;
+            LockCursor(true);
         }
 
         /// <summary>F2: hand the camera to the free inspection camera, or take it back.</summary>

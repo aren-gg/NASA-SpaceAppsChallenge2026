@@ -1,0 +1,1175 @@
+using System;
+using System.Collections.Generic;
+using MarsSurvival.World;
+using UnityEngine;
+using static MarsSurvival.Base.OutpostGeometry;
+
+namespace MarsSurvival.Base
+{
+    /// <summary>
+    /// Builds the enterable outpost: the pressurised modules, the tunnels between them,
+    /// their furniture, and the tool models from Task_assets in the rooms that use them.
+    ///
+    /// Plan (outpost-local metres; +Z is the front, where the airlock and ramp are;
+    /// y = 0 is the floor):
+    ///
+    ///                          Greenhouse
+    ///                              |
+    ///   Storm shelter - Quarters - Medical - HUB - Energy - Life support
+    ///                              |
+    ///                       EVA prep and lab
+    ///                              |
+    ///                           Airlock - landing - ramp
+    ///
+    /// Each room stands for one or more survival systems in AGENT_IMPLEMENTATION_GUIDE.md.
+    /// The shells are white with dark red accents: the hub is a twelve-sided dome, the
+    /// other modules are capsules with vaulted roofs (two with rounded ends), and the
+    /// tunnels are tubes. Furniture keeps the eight palette colours of the tool kit.
+    /// Walls, floors and furniture get box colliders, which is what the astronaut's
+    /// movement collides with.
+    /// </summary>
+    public sealed class MarsOutpostBuilder
+    {
+        public sealed class Room
+        {
+            public string name;
+            /// <summary>What the room is for, in terms of the survival systems.</summary>
+            public string feature;
+            /// <summary>The tools kept here.</summary>
+            public string tools;
+            public FloorRect rect;
+            /// <summary>Above zero for a round room: its radius about the centre of <see cref="rect"/>.</summary>
+            public float radius;
+
+            public bool Contains(float x, float z)
+            {
+                if (!rect.Contains(x, z)) return false;
+                if (radius <= 0f) return true;
+                float dx = x - rect.CentreX, dz = z - rect.CentreZ;
+                return dx * dx + dz * dz <= radius * radius;
+            }
+        }
+
+        private struct Opening
+        {
+            public float centre, width, bottom, top;
+            public int kind; // 0 open archway, 1 sliding door, 2 window
+        }
+
+        public const float WallThickness = 0.25f;
+        private const float T = WallThickness;
+        private const float TunnelHalf = 0.9f, TunnelHeight = 2.3f;
+        private const int West = 0, East = 1, Back = 2, Front = 3;
+
+        // Interior floor rectangles. Neighbours are 2.5 m apart: two walls and a 2 m tunnel.
+        /// <summary>The hub is round: twelve flat wall facets this far from its centre.</summary>
+        public const float HubApothem = 5f;
+        public static readonly FloorRect Hub = new FloorRect(-HubApothem, -HubApothem, HubApothem, HubApothem);
+        public static readonly FloorRect Medical = new FloorRect(-12f, -2.5f, -7f, 2.5f);
+        public static readonly FloorRect Quarters = new FloorRect(-19.5f, -3f, -14.5f, 3f);
+        public static readonly FloorRect Shelter = new FloorRect(-26f, -2f, -22f, 2f);
+        public static readonly FloorRect Energy = new FloorRect(7f, -2.5f, 12f, 2.5f);
+        public static readonly FloorRect LifeSupport = new FloorRect(14.5f, -2.5f, 20.5f, 2.5f);
+        public static readonly FloorRect Greenhouse = new FloorRect(-3.5f, -18f, 3.5f, -7f);
+        public static readonly FloorRect Lab = new FloorRect(-3f, 7f, 3f, 13f);
+        public static readonly FloorRect Airlock = new FloorRect(-1.7f, 13.25f, 1.7f, 16.75f);
+        public static readonly FloorRect Landing = new FloorRect(-1.9f, 17f, 1.9f, 18.5f);
+
+        /// <summary>
+        /// The levelled regolith pad the whole outpost stands on, including the solar array and
+        /// the outdoor tank. Its top is <see cref="PadTop"/> below the floor.
+        /// </summary>
+        public static readonly FloorRect Pad = new FloorRect(-30.5f, -24f, 25.5f, 27f);
+        /// <summary>Where the rover is parked on the pad, and the way it faces (degrees about the vertical).</summary>
+        public static readonly Vector3 RoverParking = new Vector3(-9.5f, PadTop, 15f);
+        public const float RoverParkingYaw = 0f;
+        public const float PadTop = -0.25f;
+
+        /// <summary>Tool id (file name in Resources/MarsTools) to the lowest point of its model, metres.</summary>
+        private static readonly Dictionary<string, float> ToolLowestPoint = new Dictionary<string, float>
+        {
+            { "comm_radio", 0f }, { "core_drill", -0.080f }, { "dosimeter", -0.015f }, { "hydro_sprayer", 0f },
+            { "multimeter", -0.005f }, { "oxygen_canister", 0f }, { "panel_brush", -0.125f },
+            { "power_wrench", -0.212f }, { "regolith_shovel", -0.340f }, { "rock_hammer", -0.100f },
+            { "sample_canisters", 0f }, { "sample_scoop", -0.087f }, { "survey_camera", 0f },
+            { "survey_flag", -0.007f }, { "work_lamp", -0.020f },
+        };
+
+        public readonly List<Room> rooms = new List<Room>();
+        public readonly List<UnityEngine.Object> owned = new List<UnityEngine.Object>();
+        public int toolsPlaced, toolsMissing;
+
+        private readonly Transform root;
+        private const float depth = 0.3f; // module foundations reach just into the pad
+        private readonly float padDepth;
+        private readonly Func<float, float, float> groundAt;
+        private readonly Material[] materials;
+        private readonly float lightIntensity;
+
+        private OutpostGeometry g;
+        private GameObject current;
+        private Mesh doorLeafX, doorLeafZ, panelMesh;
+        private Material[] doorLeafMaterials, panelMaterials;
+
+        /// <param name="padDepth">How far the pad reaches below the floor to meet the lowest ground, metres.</param>
+        /// <param name="groundAt">Terrain height at an outpost-local x, z, as a local y (0 = floor).</param>
+        public MarsOutpostBuilder(Transform root, float padDepth, Func<float, float, float> groundAt,
+            float interiorLightIntensity)
+        {
+            this.root = root;
+            this.padDepth = Mathf.Max(0.6f, padDepth);
+            this.groundAt = groundAt;
+            lightIntensity = interiorLightIntensity;
+            materials = CreateMaterials();
+        }
+
+        public void Build()
+        {
+            BuildHub();
+            BuildMedical();
+            BuildQuarters();
+            BuildShelter();
+            BuildEnergy();
+            BuildLifeSupport();
+            BuildGreenhouse();
+            BuildLab();
+            BuildAirlock();
+            BuildTunnels();
+            BuildExterior();
+        }
+
+        // ------------------------------------------------------------------ materials
+
+        private Material[] CreateMaterials()
+        {
+            Material[] all = OutpostMaterials.Create();
+            owned.AddRange(all);
+            return all;
+        }
+
+        // ------------------------------------------------------------------ building blocks
+
+        private void Begin(string objectName)
+        {
+            current = new GameObject(objectName);
+            current.transform.SetParent(root, false);
+            g = new OutpostGeometry();
+        }
+
+        private Room BeginRoom(string roomName, FloorRect rect, string feature, string tools)
+        {
+            Begin(roomName);
+            Room room = new Room { name = roomName, rect = rect, feature = feature, tools = tools };
+            rooms.Add(room);
+            return room;
+        }
+
+        private void End()
+        {
+            if (!g.IsEmpty)
+            {
+                Material[] used;
+                Mesh mesh = g.ToMesh(current.name, materials, out used);
+                owned.Add(mesh);
+                current.AddComponent<MeshFilter>().sharedMesh = mesh;
+                current.AddComponent<MeshRenderer>().sharedMaterials = used;
+            }
+            g = null;
+            current = null;
+        }
+
+        /// <summary>A box that is drawn and also blocks the astronaut.</summary>
+        private void Solid(int material, float x0, float y0, float z0, float x1, float y1, float z1)
+        {
+            g.Box(material, x0, y0, z0, x1, y1, z1);
+            AddCollider(x0, y0, z0, x1, y1, z1);
+        }
+
+        private bool framed;
+        private Vector3 frameOrigin;
+        private float frameYaw;
+
+        /// <summary>
+        /// Until <see cref="ClearFrame"/>, geometry and colliders are given in a local frame whose
+        /// +Z points along the heading (degrees about the vertical) and whose origin is here.
+        /// </summary>
+        private void SetFrame(Vector3 origin, float yawDegrees)
+        {
+            framed = true;
+            frameOrigin = origin;
+            frameYaw = yawDegrees;
+            g.SetFrame(origin, yawDegrees);
+        }
+
+        private void ClearFrame()
+        {
+            framed = false;
+            g.ClearFrame();
+        }
+
+        private void AddCollider(float x0, float y0, float z0, float x1, float y1, float z1)
+        {
+            if (x1 - x0 < 1e-3f || y1 - y0 < 1e-3f || z1 - z0 < 1e-3f) return;
+            Vector3 centre = new Vector3((x0 + x1) * 0.5f, (y0 + y1) * 0.5f, (z0 + z1) * 0.5f);
+            Vector3 size = new Vector3(x1 - x0, y1 - y0, z1 - z0);
+            if (framed)
+            {
+                GameObject turned = new GameObject("Collider");
+                turned.transform.SetParent(current.transform, false);
+                Quaternion rotation = Quaternion.Euler(0f, frameYaw, 0f);
+                turned.transform.localRotation = rotation;
+                turned.transform.localPosition = frameOrigin + rotation * centre;
+                turned.AddComponent<BoxCollider>().size = size;
+                return;
+            }
+            BoxCollider box = current.AddComponent<BoxCollider>();
+            box.center = centre;
+            box.size = size;
+        }
+
+        private void Lamp(float x, float y, float z, float range, float scale = 1f)
+        {
+            GameObject lamp = new GameObject("Light");
+            lamp.transform.SetParent(current.transform, false);
+            lamp.transform.localPosition = new Vector3(x, y, z);
+            Light light = lamp.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(1f, 0.93f, 0.84f);
+            light.range = range;
+            light.intensity = lightIntensity * scale;
+            light.shadows = LightShadows.None;
+        }
+
+        private static Opening Arch(float centre) { return new Opening { centre = centre, width = 1.4f, top = 2.2f, kind = 0 }; }
+        private static Opening Door(float centre) { return new Opening { centre = centre, width = 1.3f, top = 2.15f, kind = 1 }; }
+        private static Opening Window(float centre, float width = 1.2f)
+        {
+            return new Opening { centre = centre, width = width, bottom = 1f, top = 1.95f, kind = 2 };
+        }
+
+        /// <summary>
+        /// A piece of one wall of a room, between two positions along the wall and two heights.
+        /// West and east walls run along z; back and front walls run along x and include the corners.
+        /// </summary>
+        private void WallPiece(int side, FloorRect r, float a0, float a1, float y0, float y1, int material,
+            float inset = 0f, bool draw = true, float colliderExtra = -1f)
+        {
+            if (a1 - a0 < 1e-3f || y1 - y0 < 1e-3f) return;
+            float x0, x1, z0, z1;
+            float outer = colliderExtra >= 0f ? T + colliderExtra : T - inset;
+            float inner = colliderExtra >= 0f ? 0f : inset;
+            switch (side)
+            {
+                case West: x0 = r.x0 - outer; x1 = r.x0 - inner; z0 = a0; z1 = a1; break;
+                case East: x0 = r.x1 + inner; x1 = r.x1 + outer; z0 = a0; z1 = a1; break;
+                case Back: z0 = r.z0 - outer; z1 = r.z0 - inner; x0 = a0; x1 = a1; break;
+                default: z0 = r.z1 + inner; z1 = r.z1 + outer; x0 = a0; x1 = a1; break;
+            }
+            if (draw) g.Box(material, x0, y0, z0, x1, y1, z1);
+            else AddCollider(x0, y0, z0, x1, y1, z1);
+        }
+
+        private void Wall(int side, FloorRect r, float height, int material, params Opening[] openings)
+        {
+            bool alongZ = side == West || side == East;
+            float start = alongZ ? r.z0 : r.x0 - T, end = alongZ ? r.z1 : r.x1 + T;
+            Array.Sort(openings, (a, b) => a.centre.CompareTo(b.centre));
+
+            float cursor = start, solidFrom = start;
+            foreach (Opening o in openings)
+            {
+                float o0 = o.centre - o.width * 0.5f, o1 = o.centre + o.width * 0.5f;
+                WallPiece(side, r, cursor, o0, 0f, height, material);
+                WallPiece(side, r, o0, o1, o.top, height, material);
+                if (o.kind == 2)
+                {
+                    WallPiece(side, r, o0, o1, 0f, o.bottom, material);
+                    WallPiece(side, r, o0, o1, o.bottom, o.top, Glass, 0.1f);
+                }
+                else
+                {
+                    // A way through: the wall's collider stops here and starts again after it.
+                    WallPiece(side, r, solidFrom, o0, 0f, height, material, 0f, false, 0.2f);
+                    solidFrom = o1;
+                    Frame(side, r, o0, o1, o.top);
+                    if (o.kind == 1) SlidingDoor(side, r, o);
+                }
+                cursor = o1;
+            }
+            WallPiece(side, r, cursor, end, 0f, height, material);
+            WallPiece(side, r, solidFrom, end, 0f, height, material, 0f, false, 0.2f);
+        }
+
+        /// <summary>Dark red trim around a doorway, standing slightly proud of both wall faces.</summary>
+        private void Frame(int side, FloorRect r, float o0, float o1, float top)
+        {
+            const float w = 0.1f;
+            WallPiece(side, r, o0 - w, o0, 0f, top + w, DarkRed, -0.04f);
+            WallPiece(side, r, o1, o1 + w, 0f, top + w, DarkRed, -0.04f);
+            WallPiece(side, r, o0, o1, top, top + w, DarkRed, -0.04f);
+        }
+
+        private readonly List<MarsOutpostDoor> doors = new List<MarsOutpostDoor>();
+
+        private MarsOutpostDoor SlidingDoor(int side, FloorRect r, Opening o)
+        {
+            bool alongZ = side == West || side == East;
+            if (doorLeafX == null)
+            {
+                doorLeafX = DoorLeafMesh(false, o.width * 0.5f, o.top);
+                doorLeafZ = DoorLeafMesh(true, o.width * 0.5f, o.top);
+            }
+            float mid = side == West ? r.x0 - T * 0.5f : side == East ? r.x1 + T * 0.5f
+                : side == Back ? r.z0 - T * 0.5f : r.z1 + T * 0.5f;
+            GameObject door = new GameObject("Door");
+            door.transform.SetParent(current.transform, false);
+            door.transform.localPosition = alongZ ? new Vector3(mid, 0f, o.centre) : new Vector3(o.centre, 0f, mid);
+
+            MarsOutpostDoor script = door.AddComponent<MarsOutpostDoor>();
+            script.slideAxis = alongZ ? Vector3.forward : Vector3.right;
+            script.leafOffset = o.width * 0.25f;
+            script.travel = o.width * 0.5f - 0.03f;
+            script.leafA = Leaf(door.transform, alongZ ? doorLeafZ : doorLeafX);
+            script.leafB = Leaf(door.transform, alongZ ? doorLeafZ : doorLeafX);
+            script.blocker = door.AddComponent<BoxCollider>();
+            script.blocker.center = new Vector3(0f, o.top * 0.5f, 0f);
+            script.blocker.size = alongZ ? new Vector3(T + 0.3f, o.top, o.width) : new Vector3(o.width, o.top, T + 0.3f);
+            doors.Add(script);
+            return script;
+        }
+
+        private Transform Leaf(Transform door, Mesh mesh)
+        {
+            GameObject leaf = new GameObject("Leaf");
+            leaf.transform.SetParent(door, false);
+            leaf.AddComponent<MeshFilter>().sharedMesh = mesh;
+            leaf.AddComponent<MeshRenderer>().sharedMaterials = doorLeafMaterials;
+            return leaf.transform;
+        }
+
+        private Mesh DoorLeafMesh(bool alongZ, float width, float height)
+        {
+            OutpostGeometry leaf = new OutpostGeometry();
+            float h = width * 0.5f, t = 0.05f;
+            if (alongZ)
+            {
+                leaf.Box(DarkRed, -t, 0f, -h, t, height, h);
+                leaf.Box(Charcoal, -t - 0.01f, 1.25f, -h + 0.12f, t + 0.01f, 1.7f, h - 0.12f);
+            }
+            else
+            {
+                leaf.Box(DarkRed, -h, 0f, -t, h, height, t);
+                leaf.Box(Charcoal, -h + 0.12f, 1.25f, -t - 0.01f, h - 0.12f, 1.7f, t + 0.01f);
+            }
+            Mesh mesh = leaf.ToMesh("Door Leaf", materials, out doorLeafMaterials);
+            owned.Add(mesh);
+            return mesh;
+        }
+
+        /// <summary>
+        /// A capsule module: foundation, floor, four walls, flat ceiling, a vaulted roof with an
+        /// accent stripe along its ridge, and a ceiling light. <paramref name="roundEnd"/> adds a
+        /// rounded end outside one wall (a side constant), which must have no openings.
+        /// </summary>
+        private void Shell(FloorRect r, float height, int wallMaterial, int accent, float roofRise,
+            Opening[] west, Opening[] east, Opening[] back, Opening[] front, bool sharedBackWall = false,
+            int roundEnd = -1)
+        {
+            FloorRect outer = r.Grow(T);
+            FloorRect plinth = outer.Grow(0.15f);
+            g.Box(Charcoal, plinth, -depth, -0.1f);
+            g.Box(ClaySand, outer, -0.1f, 0f);
+            AddCollider(plinth.x0, -depth, plinth.z0, plinth.x1, 0f, plinth.z1);
+
+            Wall(West, r, height, wallMaterial, west ?? new Opening[0]);
+            Wall(East, r, height, wallMaterial, east ?? new Opening[0]);
+            if (!sharedBackWall) Wall(Back, r, height, wallMaterial, back ?? new Opening[0]);
+            Wall(Front, r, height, wallMaterial, front ?? new Opening[0]);
+
+            float top = height + 0.12f;
+            g.Box(White, outer, height, top);
+            Vault(outer, top, roofRise, wallMaterial == White ? White : accent, accent);
+            AddCollider(outer.x0, height, outer.z0, outer.x1, top + roofRise, outer.z1);
+            if (roundEnd >= 0) RoundEnd(roundEnd, outer, top, roofRise);
+
+            g.Box(GlowWarm, r.CentreX - 0.7f, height - 0.05f, r.CentreZ - 0.3f, r.CentreX + 0.7f, height, r.CentreZ + 0.3f);
+            Lamp(r.CentreX, height - 0.45f, r.CentreZ, Mathf.Max(r.Width, r.Depth) * 0.75f + 4f);
+        }
+
+        /// <summary>A barrel roof along the longer side of a rectangle, with the two ridge strips in an accent colour.</summary>
+        private void Vault(FloorRect outer, float y0, float rise, int material, int ridgeMaterial)
+        {
+            bool alongZ = outer.Depth >= outer.Width;
+            float half = (alongZ ? outer.Width : outer.Depth) * 0.5f + 0.12f;
+            float a0 = (alongZ ? outer.z0 : outer.x0) - 0.12f, a1 = (alongZ ? outer.z1 : outer.x1) + 0.12f;
+            float mid = alongZ ? outer.CentreX : outer.CentreZ;
+            Vector3 inside = new Vector3(outer.CentreX, y0, outer.CentreZ);
+            Vector3 endA = alongZ ? new Vector3(mid, y0, a0) : new Vector3(a0, y0, mid);
+            Vector3 endB = alongZ ? new Vector3(mid, y0, a1) : new Vector3(a1, y0, mid);
+            const int steps = 8;
+            Vector3 previousA = Vector3.zero, previousB = Vector3.zero;
+            for (int k = 0; k <= steps; k++)
+            {
+                float t = Mathf.PI * k / steps;
+                float across = mid + half * Mathf.Cos(t), y = y0 + rise * Mathf.Sin(t);
+                Vector3 a = alongZ ? new Vector3(across, y, a0) : new Vector3(a0, y, across);
+                Vector3 b = alongZ ? new Vector3(across, y, a1) : new Vector3(a1, y, across);
+                if (k > 0)
+                {
+                    bool ridge = k == steps / 2 || k == steps / 2 + 1;
+                    g.Quad(ridge ? ridgeMaterial : material, previousA, a, b, previousB, inside);
+                    g.Triangle(material, endA, previousA, a, inside);
+                    g.Triangle(material, endB, previousB, b, inside);
+                }
+                previousA = a;
+                previousB = b;
+            }
+        }
+
+        /// <summary>
+        /// A half-round end on the outside of one wall, with a half-cone roof meeting the vault
+        /// and a dark window band. Solid: the room inside keeps its flat wall.
+        /// </summary>
+        private void RoundEnd(int side, FloorRect outer, float top, float rise)
+        {
+            bool onX = side == West || side == East;
+            float radius = (onX ? outer.Depth : outer.Width) * 0.5f;
+            Vector3 centre = side == West ? new Vector3(outer.x0, 0f, outer.CentreZ)
+                : side == East ? new Vector3(outer.x1, 0f, outer.CentreZ)
+                : side == Back ? new Vector3(outer.CentreX, 0f, outer.z0)
+                : new Vector3(outer.CentreX, 0f, outer.z1);
+            SetFrame(centre, side == West ? -90f : side == East ? 90f : side == Back ? 180f : 0f);
+
+            Vector3 inside = new Vector3(0f, 1f, radius * 0.3f);
+            Vector3 apex = new Vector3(0f, top + rise, 0f);
+            const int steps = 8;
+            for (int k = 0; k < steps; k++)
+            {
+                float t0 = Mathf.PI * k / steps, t1 = Mathf.PI * (k + 1) / steps;
+                Vector3 d0 = new Vector3(Mathf.Cos(t0), 0f, Mathf.Sin(t0)), d1 = new Vector3(Mathf.Cos(t1), 0f, Mathf.Sin(t1));
+                Vector3 p0 = d0 * radius, p1 = d1 * radius;
+                g.Quad(Charcoal, p0 + Vector3.up * -depth, p1 + Vector3.up * -depth, p1 + Vector3.up * -0.1f, p0 + Vector3.up * -0.1f, inside);
+                g.Quad(White, p0 + Vector3.up * -0.1f, p1 + Vector3.up * -0.1f, p1 + Vector3.up * top, p0 + Vector3.up * top, inside);
+                g.Triangle(k == steps / 2 - 1 || k == steps / 2 ? DarkRed : White, apex, p0 + Vector3.up * top, p1 + Vector3.up * top, inside);
+                if (k >= 2 && k <= 5)
+                {
+                    Vector3 q0 = d0 * (radius + 0.03f), q1 = d1 * (radius + 0.03f);
+                    g.Quad(Charcoal, q0 + Vector3.up * 1f, q1 + Vector3.up * 1f, q1 + Vector3.up * 1.9f, q0 + Vector3.up * 1.9f, inside);
+                }
+            }
+            AddCollider(-radius, -depth, 0f, radius, top, radius * 0.45f);
+            AddCollider(-radius * 0.7f, -depth, radius * 0.45f, radius * 0.7f, top, radius * 0.85f);
+            ClearFrame();
+        }
+
+        private void Tank(int material, float x, float z, float radius, float height, int capMaterial)
+        {
+            g.Prism(material, x, z, radius, 0f, height);
+            g.Prism(capMaterial, x, z, radius * 0.55f, height, height + 0.18f, 8, radius * 0.4f);
+            AddCollider(x - radius, 0f, z - radius, x + radius, height, z + radius);
+        }
+
+        /// <summary>A crate, cabinet or bench: a box on the floor that blocks the astronaut.</summary>
+        private void Block(int material, float x0, float z0, float x1, float z1, float height, float from = 0f)
+        {
+            Solid(material, x0, from, z0, x1, height, z1);
+        }
+
+        /// <summary>A stool or small seat.</summary>
+        private void Stool(float x, float z)
+        {
+            g.Prism(Mauve, x, z, 0.2f, 0f, 0.45f);
+            AddCollider(x - 0.2f, 0f, z - 0.2f, x + 0.2f, 0.45f, z + 0.2f);
+        }
+
+        /// <summary>
+        /// Places a tool model standing on a surface at height y. <paramref name="lay"/> rests
+        /// it on its side instead; lean angles (degrees) prop a long tool against a wall.
+        /// </summary>
+        private void Tool(string id, float x, float y, float z, float yaw = 0f, bool lay = false,
+            float leanX = 0f, float leanZ = 0f)
+        {
+            GameObject prefab = Resources.Load<GameObject>("MarsTools/" + id);
+            if (prefab == null)
+            {
+                toolsMissing++;
+                return;
+            }
+            GameObject tool = UnityEngine.Object.Instantiate(prefab, current.transform, false);
+            tool.name = id;
+            float lowest;
+            ToolLowestPoint.TryGetValue(id, out lowest);
+            if (lay)
+            {
+                tool.transform.localPosition = new Vector3(x, y + 0.03f, z);
+                tool.transform.localRotation = Quaternion.Euler(90f, yaw, 0f);
+            }
+            else
+            {
+                float lean = Mathf.Max(Mathf.Abs(leanX), Mathf.Abs(leanZ)) * Mathf.Deg2Rad;
+                tool.transform.localPosition = new Vector3(x, y - lowest * Mathf.Cos(lean), z);
+                tool.transform.localRotation = Quaternion.Euler(leanX, yaw, leanZ);
+            }
+            foreach (MeshRenderer renderer in tool.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                Material[] shared = renderer.sharedMaterials;
+                for (int i = 0; i < shared.Length; i++) shared[i] = PaletteMaterial(shared[i], renderer.gameObject.name);
+                renderer.sharedMaterials = shared;
+            }
+            toolsPlaced++;
+        }
+
+        private static readonly string[] PaletteNames =
+        {
+            "terracotta", "dusty_rose", "muted_olive", "warm_orange", "deep_purple", "pale_pink", "mauve", "clay_sand",
+        };
+
+        /// <summary>The matte palette material named by an imported OBJ material or its group name.</summary>
+        private Material PaletteMaterial(Material imported, string objectName)
+        {
+            string materialName = imported != null ? imported.name.ToLowerInvariant() : "";
+            string groupName = objectName.ToLowerInvariant();
+            for (int i = 0; i < PaletteNames.Length; i++)
+            {
+                if (materialName.Contains(PaletteNames[i])) return materials[i];
+            }
+            for (int i = 0; i < PaletteNames.Length; i++)
+            {
+                if (groupName.Contains(PaletteNames[i])) return materials[i];
+            }
+            return materials[Terracotta];
+        }
+
+        // ------------------------------------------------------------------ rooms
+
+        /// <summary>Corner radius of a twelve-sided ring whose flat sides are this far from the centre.</summary>
+        private static float Corner(float apothem)
+        {
+            return apothem / Mathf.Cos(Mathf.PI / 12f);
+        }
+
+        private void BuildHub()
+        {
+            Room room = BeginRoom("Command hub and galley", Hub,
+                "Mission control: weather and solar-event alerts, comms, the hardware dashboard. " +
+                "The galley holds food and drinking water (Hunger, Water).",
+                "Comm Radio, Radiation Dosimeter");
+            room.radius = HubApothem;
+            const float h = 2.9f, a = HubApothem;
+
+            g.Prism(Charcoal, 0f, 0f, Corner(a + T + 0.15f), -depth, -0.1f, 12);
+            g.Prism(ClaySand, 0f, 0f, Corner(a + T), -0.1f, 0f, 12);
+            AddCollider(-a - T, -depth, -a - T, a + T, 0f, a + T);
+
+            // Twelve wall facets. The four on the axes hold the doorways to the tunnels.
+            float halfOuter = (a + T) * Mathf.Tan(Mathf.PI / 12f);
+            FloorRect facet = new FloorRect(-halfOuter + T, -1f, halfOuter - T, 0f);
+            for (int k = 0; k < 12; k++)
+            {
+                float angle = k * 30f * Mathf.Deg2Rad;
+                SetFrame(new Vector3(a * Mathf.Cos(angle), 0f, a * Mathf.Sin(angle)), 90f - k * 30f);
+                if (k % 3 == 0) Wall(Front, facet, h, White, Arch(0f));
+                else if (k % 3 == 1) Wall(Front, facet, h, White, Window(0f, 1.3f));
+                else Wall(Front, facet, h, White);
+            }
+            ClearFrame();
+
+            // Flat ceiling inside, a stepped dome outside with a dark red cap and four bands.
+            float top = h + 0.12f;
+            g.Prism(White, 0f, 0f, Corner(a + T), h, top, 12);
+            float[] ringRadius = { a + T + 0.12f, 4.85f, 3.9f, 2.6f, 1.1f };
+            float[] ringHeight = { top, top + 0.95f, top + 1.7f, top + 2.25f, top + 2.5f };
+            for (int i = 0; i + 1 < ringRadius.Length; i++)
+            {
+                g.Prism(White, 0f, 0f, Corner(ringRadius[i]), ringHeight[i], ringHeight[i + 1], 12, Corner(ringRadius[i + 1]));
+            }
+            float domeTop = top + 2.75f;
+            g.Prism(DarkRed, 0f, 0f, Corner(1.1f), top + 2.5f, domeTop, 12, Corner(0.7f));
+            g.Prism(DarkRed, 0f, 0f, Corner(a + T + 0.16f), h - 0.25f, top + 0.02f, 12);
+            for (int band = 0; band < 4; band++)
+            {
+                SetFrame(Vector3.zero, band * 90f);
+                Vector3 lift = new Vector3(0f, 0.06f, 0.06f);
+                for (int i = 0; i + 1 < ringRadius.Length; i++)
+                {
+                    Vector3 b0 = new Vector3(-0.3f, ringHeight[i], ringRadius[i]), b1 = new Vector3(0.3f, ringHeight[i], ringRadius[i]);
+                    Vector3 b2 = new Vector3(0.3f, ringHeight[i + 1], ringRadius[i + 1]), b3 = new Vector3(-0.3f, ringHeight[i + 1], ringRadius[i + 1]);
+                    g.Hexa(DarkRed, b0, b1, b2, b3, b0 + lift, b1 + lift, b2 + lift, b3 + lift);
+                }
+                ClearFrame();
+            }
+            AddCollider(-a - T, h, -a - T, a + T, domeTop, a + T);
+
+            g.Prism(GlowWarm, 0f, 0f, 1.2f, h - 0.05f, h, 12);
+            Lamp(0f, h - 0.45f, 0f, 12f);
+
+            // Command table in the middle; the way between any two doors goes round it.
+            g.Prism(Charcoal, 0f, 0f, 0.85f, 0f, 0.8f);
+            g.Prism(Mauve, 0f, 0f, 1.15f, 0.8f, 0.88f);
+            g.Prism(GlowWarm, 0f, 0f, 0.8f, 0.88f, 0.9f);
+            AddCollider(-1.05f, 0f, -1.05f, 1.05f, 0.9f, 1.05f);
+            Tool("comm_radio", 0.92f, 0.88f, 0.3f, 60f);
+            Tool("dosimeter", -0.92f, 0.88f, -0.3f, -120f);
+
+            // Data and comms racks.
+            Block(Charcoal, 2f, -3.4f, 3.4f, -2f, 2f);
+            g.Box(Mauve, 1.98f, 0.4f, -3.3f, 2f, 1.35f, -2.1f);
+            g.Box(GlowOrange, 1.98f, 1.5f, -3.3f, 2f, 1.58f, -2.1f);
+            g.Box(Mauve, 2.1f, 0.4f, -2f, 3.3f, 1.35f, -1.98f);
+            g.Box(GlowOrange, 2.1f, 1.5f, -2f, 3.3f, 1.58f, -1.98f);
+
+            // Hardware dashboard: console with buttons and a screen behind it.
+            Block(Mauve, -3.4f, -3.4f, -2f, -2f, 0.95f);
+            g.Box(Purple, -3.35f, 0.95f, -3.35f, -2.05f, 1f, -2.05f);
+            for (int i = 0; i < 5; i++)
+            {
+                g.Box(i % 2 == 0 ? GlowOrange : GlowWarm, -3.2f + i * 0.22f, 1f, -2.45f, -3.07f + i * 0.22f, 1.04f, -2.3f);
+            }
+            g.Box(Charcoal, -3.4f, 1f, -3.4f, -2f, 1.95f, -3.32f);
+            g.Box(GlowWarm, -3.32f, 1.08f, -3.32f, -2.08f, 1.87f, -3.31f);
+
+            // Galley: counter, food locker, water and two stools.
+            Block(Mauve, -3.4f, 2f, -2f, 3.4f, 0.88f);
+            g.Box(ClaySand, -3.42f, 0.88f, 1.98f, -1.98f, 0.93f, 3.42f);
+            g.Box(Olive, -3.4f, 0.93f, 2.85f, -2f, 1.75f, 3.4f);
+            g.Prism(Mauve, -3.05f, 2.35f, 0.2f, 0.93f, 1.4f);
+            g.Prism(Orange, -3.05f, 2.35f, 0.09f, 1.4f, 1.47f);
+            g.Box(Orange, -2.5f, 0.93f, 2.2f, -2.25f, 1.01f, 2.45f);
+            Stool(-1.45f, 2.6f);
+            Stool(-2.6f, 1.45f);
+
+            // Supply shelving with crates.
+            Block(Purple, 2f, 2f, 3.4f, 3.4f, 1.95f);
+            int[] crate = { Terracotta, Olive, Orange, ClaySand };
+            for (int i = 0; i < 4; i++)
+            {
+                float y = i < 2 ? 0.45f : 1.2f, o = i % 2 * 0.68f;
+                g.Box(crate[i], 1.96f, y, 2.08f + o, 2f, y + 0.55f, 2.68f + o);
+                g.Box(crate[3 - i], 2.08f + o, y, 1.96f, 2.68f + o, y + 0.55f, 2f);
+            }
+
+            // Comms mast on the dome.
+            g.Prism(Charcoal, 0f, 0f, 0.08f, domeTop, domeTop + 3.2f);
+            g.Box(Charcoal, -0.6f, domeTop + 2.3f, -0.04f, 0.6f, domeTop + 2.38f, 0.04f);
+            g.Prism(DarkRed, 0f, 0f, 0.13f, domeTop + 3.2f, domeTop + 3.4f);
+            End();
+        }
+
+        private void BuildMedical()
+        {
+            FloorRect r = Medical;
+            BeginRoom("Medical bay", r,
+                "Health: treatment and recovery, limited medical supplies, and each person's radiation dose record.",
+                "Portable O2 Canister, Radiation Dosimeter");
+            Shell(r, 2.7f, White, DarkRed, 1.1f, new[] { Arch(0f) }, new[] { Arch(0f) }, null,
+                new[] { Window(-9.5f) });
+
+            // Treatment bed along the back wall.
+            Block(Purple, -10.6f, -2.4f, -8.6f, -1.55f, 0.55f);
+            g.Box(PalePink, -10.58f, 0.55f, -2.38f, -8.62f, 0.7f, -1.57f);
+            g.Box(ClaySand, -10.5f, 0.7f, -2.3f, -10f, 0.78f, -1.65f);
+            // Vital-signs monitor at the foot of the bed.
+            Block(Purple, -8.4f, -2.4f, -8f, -2.05f, 1.15f);
+            g.Box(Purple, -8.5f, 1.15f, -2.35f, -7.9f, 1.65f, -2.25f);
+            g.Box(GlowOrange, -8.45f, 1.2f, -2.25f, -7.95f, 1.6f, -2.24f);
+            // Medical cabinet with the cross.
+            Block(PalePink, -11.9f, -2.45f, -11.05f, -1.95f, 1.9f);
+            g.Box(GlowOrange, -11.68f, 1.27f, -1.95f, -11.27f, 1.37f, -1.94f);
+            g.Box(GlowOrange, -11.53f, 1.12f, -1.95f, -11.42f, 1.52f, -1.94f);
+            // Supply counter under the window side of the front wall.
+            Block(Mauve, -8.6f, 1.8f, -7.3f, 2.45f, 0.88f);
+            g.Box(ClaySand, -8.65f, 0.88f, 1.75f, -7.3f, 0.93f, 2.45f);
+            g.Box(Orange, -7.75f, 0.93f, 1.95f, -7.45f, 1.13f, 2.3f);
+            g.Box(PalePink, -7.67f, 1.13f, 2.08f, -7.53f, 1.14f, 2.17f);
+            Tool("oxygen_canister", -8.35f, 0.93f, 2.1f, 30f);
+            Tool("dosimeter", -8f, 0.93f, 2.15f, -10f);
+            Stool(-9.6f, -0.9f);
+            End();
+        }
+
+        private void BuildQuarters()
+        {
+            FloorRect r = Quarters;
+            BeginRoom("Crew quarters", r,
+                "Tiredness: rest lowers fatigue, and fatigue makes every task take longer.",
+                "Habitat Work Lamp");
+            Shell(r, 2.7f, White, DarkRed, 1.1f, new[] { Arch(0f) }, new[] { Arch(0f) },
+                new[] { Window(-17f) }, new[] { Window(-17.3f, 1f) });
+
+            // Two double bunks against the back wall.
+            for (int i = 0; i < 2; i++)
+            {
+                float x0 = i == 0 ? -19.35f : -16.6f, x1 = x0 + 2f;
+                AddCollider(x0, 0f, -2.95f, x1, 1.9f, -2.05f);
+                for (int level = 0; level < 2; level++)
+                {
+                    float y = level == 0 ? 0.3f : 1.4f;
+                    g.Box(Purple, x0, y, -2.95f, x1, y + 0.12f, -2.05f);
+                    g.Box(PalePink, x0 + 0.03f, y + 0.12f, -2.92f, x1 - 0.03f, y + 0.26f, -2.08f);
+                    g.Box(ClaySand, x0 + 0.1f, y + 0.26f, -2.85f, x0 + 0.55f, y + 0.34f, -2.15f);
+                    g.Box(Mauve, x0 + 0.9f, y + 0.26f, -2.9f, x1 - 0.05f, y + 0.3f, -2.1f);
+                }
+                foreach (float px in new[] { x0, x1 - 0.08f })
+                {
+                    g.Box(Purple, px, 0f, -2.13f, px + 0.08f, 1.9f, -2.05f);
+                    g.Box(Purple, px, 0f, -2.95f, px + 0.08f, 1.9f, -2.87f);
+                }
+            }
+            // Lockers and a desk on the front wall.
+            for (int i = 0; i < 2; i++)
+            {
+                float x = -19.35f + i * 0.72f;
+                Block(Mauve, x, 2.4f, x + 0.68f, 2.95f, 1.9f);
+                g.Box(Purple, x + 0.28f, 0.9f, 2.38f, x + 0.4f, 1.1f, 2.4f);
+            }
+            Block(Purple, -16.7f, 2.3f, -16.6f, 2.95f, 0.72f);
+            Block(Purple, -15f, 2.3f, -14.9f, 2.95f, 0.72f);
+            g.Box(ClaySand, -16.8f, 0.72f, 2.25f, -14.8f, 0.78f, 2.95f);
+            AddCollider(-16.8f, 0.5f, 2.25f, -14.8f, 0.78f, 2.95f);
+            Stool(-15.8f, 1.8f);
+            Tool("work_lamp", -15.2f, 0.78f, 2.6f);
+            g.Box(Orange, -16.5f, 0.78f, 2.5f, -16.15f, 0.82f, 2.8f);
+            End();
+        }
+
+        private void BuildShelter()
+        {
+            FloorRect r = Shelter;
+            BeginRoom("Storm shelter", r,
+                "Radiation: the crew waits out solar particle events here, behind water tanks and piled regolith. " +
+                "Shelter lowers the dose rate; it does not undo dose already received.",
+                "Radiation Dosimeter, Habitat Work Lamp, Comm Radio");
+            const float h = 2.45f;
+            Shell(r, h, Mauve, Terracotta, 0.3f, null, new[] { Door(0f) }, null, null);
+
+            // Water-wall tanks lining the three outside walls.
+            Solid(Mauve, r.x0, 0f, r.z0, r.x1, 2.1f, r.z0 + 0.35f);
+            Solid(Mauve, r.x0, 0f, r.z1 - 0.35f, r.x1, 2.1f, r.z1);
+            Solid(Mauve, r.x0, 0f, r.z0 + 0.35f, r.x0 + 0.35f, 2.1f, r.z1 - 0.35f);
+            for (int i = 0; i < 4; i++)
+            {
+                float x = r.x0 + 0.5f + i * 0.9f;
+                g.Box(PalePink, x, 0.2f, r.z0 + 0.35f, x + 0.06f, 2f, r.z0 + 0.37f);
+                g.Box(PalePink, x, 0.2f, r.z1 - 0.37f, x + 0.06f, 2f, r.z1 - 0.35f);
+            }
+            // Benches, a shelf and an emergency ration crate.
+            Block(Purple, r.x0 + 0.45f, r.z0 + 0.35f, r.x1 - 0.5f, r.z0 + 0.8f, 0.45f);
+            Block(Purple, r.x0 + 0.45f, r.z1 - 0.8f, r.x1 - 0.5f, r.z1 - 0.35f, 0.45f);
+            g.Box(ClaySand, r.x0 + 0.35f, 1.05f, -0.8f, r.x0 + 0.65f, 1.1f, 0.8f);
+            Block(Olive, r.x0 + 0.38f, -0.35f, r.x0 + 0.85f, 0.35f, 0.4f);
+            Tool("dosimeter", r.x0 + 0.5f, 1.1f, -0.55f, 90f);
+            Tool("work_lamp", r.x0 + 0.5f, 1.1f, 0f);
+            Tool("comm_radio", r.x0 + 0.5f, 1.1f, 0.55f, 90f);
+
+            // Regolith piled over the roof and against the three outside walls. The tunnel side is left clear.
+            FloorRect o = r.Grow(T);
+            g.Frustum(Terracotta, h + 0.1f, o.Grow(0.3f), h + 1.1f, o.Grow(-0.7f));
+            float top = h + 0.3f;
+            g.Hexa(Terracotta,
+                new Vector3(o.x0 - 3f, -depth, o.z0 - 3f), new Vector3(o.x0, -depth, o.z0 - 3f),
+                new Vector3(o.x0, -depth, o.z1 + 3f), new Vector3(o.x0 - 3f, -depth, o.z1 + 3f),
+                new Vector3(o.x0 - 0.3f, top, o.z0 - 0.3f), new Vector3(o.x0, top, o.z0 - 0.3f),
+                new Vector3(o.x0, top, o.z1 + 0.3f), new Vector3(o.x0 - 0.3f, top, o.z1 + 0.3f));
+            g.Hexa(Terracotta,
+                new Vector3(o.x0, -depth, o.z0 - 3f), new Vector3(o.x1, -depth, o.z0 - 3f),
+                new Vector3(o.x1, -depth, o.z0), new Vector3(o.x0, -depth, o.z0),
+                new Vector3(o.x0, top, o.z0 - 0.3f), new Vector3(o.x1, top, o.z0 - 0.3f),
+                new Vector3(o.x1, top, o.z0), new Vector3(o.x0, top, o.z0));
+            g.Hexa(Terracotta,
+                new Vector3(o.x0, -depth, o.z1), new Vector3(o.x1, -depth, o.z1),
+                new Vector3(o.x1, -depth, o.z1 + 3f), new Vector3(o.x0, -depth, o.z1 + 3f),
+                new Vector3(o.x0, top, o.z1), new Vector3(o.x1, top, o.z1),
+                new Vector3(o.x1, top, o.z1 + 0.3f), new Vector3(o.x0, top, o.z1 + 0.3f));
+            // The mound blocks the astronaut roughly where it is taller than a step.
+            AddCollider(o.x0 - 2.2f, -depth, o.z0 - 2.2f, o.x0, top, o.z1 + 2.2f);
+            AddCollider(o.x0, -depth, o.z0 - 2.2f, o.x1, top, o.z0);
+            AddCollider(o.x0, -depth, o.z1, o.x1, top, o.z1 + 2.2f);
+            End();
+        }
+
+        private void BuildEnergy()
+        {
+            FloorRect r = Energy;
+            BeginRoom("Energy room", r,
+                "Energy reserves: battery storage in kWh, charged by the solar array outside and shared out " +
+                "between systems by priority.",
+                "Energy Meter, Field Wrench, Solar Panel Duster");
+            Shell(r, 2.7f, White, DarkRed, 1.1f, new[] { Arch(0f) }, new[] { Arch(0f) }, null, null);
+
+            // Battery cabinets along the back wall.
+            for (int i = 0; i < 4; i++)
+            {
+                float x = 7.25f + i * 1.15f;
+                Block(Purple, x, -2.45f, x + 1.05f, -1.8f, 1.9f);
+                g.Box(Mauve, x + 0.08f, 0.15f, -1.8f, x + 0.97f, 1.35f, -1.78f);
+                g.Box(GlowOrange, x + 0.12f, 1.5f, -1.8f, x + 0.12f + 0.2f * (4 - i), 1.6f, -1.79f);
+                g.Box(PalePink, x + 0.12f, 1.68f, -1.8f, x + 0.5f, 1.74f, -1.79f);
+            }
+            // Power distribution board on the front wall.
+            g.Box(Mauve, 7.4f, 0.9f, 2.42f, 9f, 1.95f, 2.5f);
+            for (int i = 0; i < 6; i++)
+            {
+                g.Box(i < 4 ? GlowOrange : Purple, 7.55f + i * 0.23f, 1.5f, 2.4f, 7.68f + i * 0.23f, 1.75f, 2.42f);
+            }
+            g.Box(GlowWarm, 7.55f, 1.05f, 2.4f, 8.85f, 1.35f, 2.42f);
+            // Workbench.
+            Block(Purple, 9.6f, 1.8f, 11.75f, 2.45f, 0.86f);
+            g.Box(ClaySand, 9.55f, 0.86f, 1.75f, 11.75f, 0.92f, 2.45f);
+            Tool("multimeter", 10f, 0.92f, 2.15f, 180f);
+            Tool("power_wrench", 10.8f, 0.92f, 2.1f, 60f, true);
+            // Duster for the solar panels, leaning in the corner by the west wall.
+            g.Box(Purple, 7f, 1f, 1.15f, 7.08f, 1.06f, 1.75f);
+            Tool("panel_brush", 7.2f, 0f, 1.45f, 90f, false, -8f);
+            End();
+        }
+
+        private void BuildLifeSupport()
+        {
+            FloorRect r = LifeSupport;
+            BeginRoom("Life support", r,
+                "Oxygen, Water and Temperature: habitat oxygen tanks and production, clean water and the " +
+                "wastewater recycler, and heating. All of it draws power.",
+                "Portable O2 Canisters");
+            Shell(r, 2.7f, White, DarkRed, 1.1f, new[] { Arch(0f) }, null, null, new[] { Window(17.5f) }, false, East);
+
+            // Oxygen tanks and water tanks along the back wall.
+            for (int i = 0; i < 3; i++) Tank(PalePink, 15.2f + i * 1.05f, -1.9f, 0.45f, 2f, Orange);
+            Tank(Mauve, 18.75f, -1.8f, 0.55f, 1.8f, Purple);
+            Tank(Mauve, 19.9f, -1.8f, 0.55f, 1.8f, Purple);
+            g.Box(Purple, 15.2f, 2.05f, -1.95f, 19.9f, 2.13f, -1.87f);
+            // Oxygen generator.
+            Block(Orange, 14.7f, 1.5f, 15.7f, 2.4f, 1.1f);
+            g.Box(Purple, 14.8f, 1.1f, 1.6f, 15.6f, 1.2f, 2.3f);
+            g.Prism(Purple, 15.2f, 1.95f, 0.1f, 1.2f, 2.7f);
+            g.Box(GlowOrange, 14.85f, 0.55f, 1.49f, 15.25f, 0.85f, 1.5f);
+            // Water recycler.
+            Block(DustyRose, 19.2f, 0.9f, 20.4f, 2.4f, 1.4f);
+            g.Box(Purple, 19.15f, 0.2f, 1.1f, 19.2f, 1.2f, 2.2f);
+            g.Box(GlowWarm, 19.14f, 0.85f, 1.3f, 19.15f, 1.1f, 2f);
+            g.Prism(Mauve, 19.8f, 1.65f, 0.12f, 1.4f, 2.7f);
+            // Thermal control panel on the east wall.
+            g.Box(Purple, 20.44f, 1.1f, -0.9f, 20.5f, 1.9f, 0.3f);
+            g.Box(GlowOrange, 20.42f, 1.2f, -0.8f, 20.44f, 1.8f, -0.3f);
+            g.Box(GlowWarm, 20.42f, 1.2f, -0.2f, 20.44f, 1.8f, 0.2f);
+            // Rack of portable canisters under the window.
+            Block(Purple, 16.5f, 2f, 18.5f, 2.45f, 0.5f);
+            for (int i = 0; i < 3; i++) Tool("oxygen_canister", 16.9f + i * 0.6f, 0.5f, 2.22f, i * 40f);
+            End();
+        }
+
+        private void BuildGreenhouse()
+        {
+            FloorRect r = Greenhouse;
+            BeginRoom("Greenhouse", r,
+                "Farming: crops grown under lights top up the food store (Hunger). They need water, power and tending.",
+                "Regolith Shovel, Hydroponic Sprayer");
+            const float h = 2.7f;
+            Opening[] west = { Window(-9.5f, 1.6f), Window(-12.5f, 1.6f), Window(-15.5f, 1.6f) };
+            Opening[] east = { Window(-9.5f, 1.6f), Window(-12.5f, 1.6f), Window(-15.5f, 1.6f) };
+            Shell(r, h, White, Olive, 1.3f, west, east, null, new[] { Arch(0f) }, false, Back);
+            Lamp(0f, h - 0.45f, -15.5f, 8f, 0.7f);
+            Lamp(0f, h - 0.45f, -9.5f, 8f, 0.7f);
+
+            // Two raised crop beds with a centre aisle.
+            for (int side = -1; side <= 1; side += 2)
+            {
+                float x0 = side < 0 ? -3.3f : 1.3f, x1 = x0 + 2f;
+                Block(Purple, x0 + 0.15f, -16.1f, x1 - 0.15f, -8.6f, 0.55f);
+                g.Box(ClaySand, x0, 0.55f, -16.2f, x1, 0.8f, -8.5f);
+                g.Box(Terracotta, x0 + 0.08f, 0.8f, -16.12f, x1 - 0.08f, 0.83f, -8.58f);
+                AddCollider(x0, 0.5f, -16.2f, x1, 0.83f, -8.5f);
+                g.Box(GlowWarm, x0 + 0.8f, 2.15f, -16f, x0 + 1.2f, 2.2f, -8.7f);
+                g.Box(Purple, x0 + 0.95f, 2.2f, -15.5f, x0 + 1.05f, h, -15.4f);
+                g.Box(Purple, x0 + 0.95f, 2.2f, -9.3f, x0 + 1.05f, h, -9.2f);
+
+                int index = 0;
+                for (float z = -15.85f; z < -8.7f; z += 0.62f)
+                {
+                    for (int row = 0; row < 3; row++, index++)
+                    {
+                        float px = x0 + 0.4f + row * 0.6f;
+                        float size = 0.13f + 0.1f * Noise(index, side);
+                        float tall = 0.18f + 0.38f * Noise(index + 91, side);
+                        g.Prism(Olive, px, z, size, 0.83f, 0.83f + tall, 6, size * 0.45f);
+                        if (Noise(index + 17, side) > 0.72f)
+                        {
+                            g.Box(Orange, px - 0.05f, 0.83f + tall * 0.5f, z + size * 0.5f, px + 0.05f,
+                                0.93f + tall * 0.5f, z + size * 0.5f + 0.1f);
+                        }
+                    }
+                }
+            }
+            // Water tank, potting bench and tools at the far end.
+            Tank(Mauve, -2.6f, -17.25f, 0.5f, 1.5f, Purple);
+            Block(Purple, -1.4f, -17.95f, 1f, -17.2f, 0.82f);
+            g.Box(ClaySand, -1.45f, 0.82f, -17.95f, 1.05f, 0.88f, -17.15f);
+            g.Box(Terracotta, 0.35f, 0.88f, -17.8f, 0.85f, 1.02f, -17.4f);
+            Tool("hydro_sprayer", -0.8f, 0.88f, -17.55f, 200f);
+            g.Box(Purple, 3.42f, 1f, -17.9f, 3.5f, 1.06f, -17.1f);
+            Tool("regolith_shovel", 3.3f, 0f, -17.5f, 90f, false, 8f);
+            End();
+        }
+
+        private static float Noise(int index, int salt)
+        {
+            unchecked
+            {
+                uint n = (uint)(index * 374761393 + salt * 668265263);
+                n = (n ^ (n >> 13)) * 1274126177u;
+                return ((n ^ (n >> 16)) & 0xFFFF) / 65535f;
+            }
+        }
+
+        private void BuildLab()
+        {
+            FloorRect r = Lab;
+            BeginRoom("EVA prep and sample lab", r,
+                "Movement and exploration: suit up and refill suit oxygen before a trip outside, and bring " +
+                "samples back to the bench.",
+                "Rock Hammer, Core Sample Drill, Sample Scoop, Sample Canister Rack, Survey Camera, " +
+                "Survey Markers, Comm Radio, Portable O2 Canister");
+            Shell(r, 2.7f, White, DarkRed, 1.1f, new[] { Window(10f) }, new[] { Window(10f) },
+                new[] { Arch(0f) }, new[] { Door(0f) });
+
+            // Suit lockers and the suit oxygen refill station on the west wall.
+            for (int i = 0; i < 2; i++)
+            {
+                float z = 7.3f + i * 0.95f;
+                Block(PalePink, -2.95f, z, -2.35f, z + 0.85f, 2f);
+                g.Box(Purple, -2.35f, 1.35f, z + 0.2f, -2.33f, 1.75f, z + 0.65f);
+                g.Box(Orange, -2.35f, 0.9f, z + 0.35f, -2.33f, 1.05f, z + 0.5f);
+            }
+            Block(Mauve, -2.95f, 11f, -2.4f, 12.6f, 1.05f);
+            g.Prism(PalePink, -2.68f, 11.4f, 0.2f, 1.05f, 1.75f);
+            g.Box(GlowOrange, -2.4f, 0.6f, 11.9f, -2.39f, 0.85f, 12.4f);
+            Tool("oxygen_canister", -2.65f, 1.05f, 12.2f, 15f);
+            Tool("survey_flag", -2.6f, 0f, 9.7f, 90f);
+            Tool("survey_flag", -2.6f, 0f, 10.4f, 70f);
+
+            // Sample bench along the east wall.
+            Block(Purple, 2.35f, 7.4f, 2.95f, 12.6f, 0.86f);
+            g.Box(ClaySand, 2.3f, 0.86f, 7.35f, 2.95f, 0.92f, 12.65f);
+            Tool("sample_canisters", 2.62f, 0.92f, 7.9f, 90f);
+            Tool("rock_hammer", 2.62f, 0.92f, 8.75f, 80f, true);
+            Tool("core_drill", 2.62f, 0.92f, 9.6f, 90f);
+            Tool("sample_scoop", 2.62f, 0.92f, 10.6f, 100f, true);
+            Tool("survey_camera", 2.62f, 0.92f, 11.4f, -90f);
+            Tool("comm_radio", 2.7f, 0.92f, 12.2f, -70f);
+            // A few rock samples.
+            g.Box(Terracotta, 2.45f, 0.92f, 8.25f, 2.6f, 1.02f, 8.42f);
+            g.Box(Mauve, 2.7f, 0.92f, 10.05f, 2.82f, 1f, 10.2f);
+            g.Box(Terracotta, 2.42f, 0.92f, 11.85f, 2.58f, 1.05f, 12f);
+            End();
+        }
+
+        private void BuildAirlock()
+        {
+            FloorRect r = Airlock;
+            BeginRoom("Airlock", r,
+                "The way in and out. The two doors never open together, so the habitat keeps its air. " +
+                "Outside, the suit's own oxygen is all there is.",
+                "");
+            int inner = doors.Count - 1; // the lab's front door, built just before
+            Shell(r, 2.5f, White, DarkRed, 0.7f, null, null, null, new[] { Door(0f) }, true);
+            if (inner >= 0 && doors.Count > inner + 1)
+            {
+                doors[inner].partner = doors[doors.Count - 1];
+                doors[doors.Count - 1].partner = doors[inner];
+            }
+            // Hazard stripes on the floor and dust-extraction grilles on the walls.
+            for (int i = 0; i < 5; i++)
+            {
+                g.Box(Orange, -1.5f + i * 0.65f, 0f, 16.35f, -1.2f + i * 0.65f, 0.005f, 16.7f);
+                g.Box(Orange, -1.5f + i * 0.65f, 0f, 13.3f, -1.2f + i * 0.65f, 0.005f, 13.65f);
+            }
+            g.Box(Purple, -1.7f, 0.3f, 14.2f, -1.66f, 0.9f, 15.8f);
+            g.Box(Purple, 1.66f, 0.3f, 14.2f, 1.7f, 0.9f, 15.8f);
+            g.Box(GlowOrange, -0.4f, 2.25f, 16.7f, 0.4f, 2.35f, 16.74f);
+            End();
+        }
+
+        // ------------------------------------------------------------------ tunnels
+
+        private void BuildTunnels()
+        {
+            float hub = HubApothem + T;
+            Tunnel(true, Medical.x1 + T, -hub);
+            Tunnel(true, Quarters.x1 + T, Medical.x0 - T);
+            Tunnel(true, Shelter.x1 + T, Quarters.x0 - T);
+            Tunnel(true, hub, Energy.x0 - T);
+            Tunnel(true, Energy.x1 + T, LifeSupport.x0 - T);
+            Tunnel(false, Greenhouse.z1 + T, -hub);
+            Tunnel(false, hub, Lab.z0 - T);
+        }
+
+        /// <summary>
+        /// A tube between two modules, running along x or along z through the origin of the
+        /// other axis: a flat-floored corridor inside, an eight-sided white tube outside with
+        /// dark red collars.
+        /// </summary>
+        private void Tunnel(bool alongX, float from, float to)
+        {
+            Begin("Tunnel");
+            SetFrame(alongX ? new Vector3(from, 0f, 0f) : new Vector3(0f, 0f, from), alongX ? 90f : 0f);
+            float w = TunnelHalf, t = 0.2f, h = TunnelHeight, length = to - from;
+            g.Box(Charcoal, -w - t - 0.1f, -depth, 0f, w + t + 0.1f, -0.1f, length);
+            g.Box(ClaySand, -w - t, -0.1f, 0f, w + t, 0f, length);
+            AddCollider(-w - t - 0.1f, -depth, 0f, w + t + 0.1f, 0f, length);
+            g.Box(White, -w - t, 0f, 0f, -w, h, length);
+            g.Box(White, w, 0f, 0f, w + t, h, length);
+            AddCollider(-w - t - 0.3f, 0f, 0f, -w, h, length);
+            AddCollider(w, 0f, 0f, w + t + 0.3f, h, length);
+            g.Box(White, -w - t, h, 0f, w + t, h + 0.15f, length);
+            AddCollider(-w - t, h, 0f, w + t, h + 0.15f, length);
+            g.Box(GlowWarm, -0.12f, h - 0.03f, 0.3f, 0.12f, h, length - 0.3f);
+
+            g.Loft(White, new[] { TubeRing(1.8f, 0f), TubeRing(1.8f, length) }, false, false);
+            g.Loft(DarkRed, new[] { TubeRing(1.93f, 0.1f), TubeRing(1.93f, 0.4f) });
+            g.Loft(DarkRed, new[] { TubeRing(1.93f, length - 0.4f), TubeRing(1.93f, length - 0.1f) });
+            ClearFrame();
+            End();
+        }
+
+        private static Vector3[] TubeRing(float radius, float z)
+        {
+            Vector3[] ring = new Vector3[8];
+            for (int i = 0; i < 8; i++)
+            {
+                float angle = (i + 0.5f) * Mathf.PI / 4f;
+                ring[i] = new Vector3(Mathf.Cos(angle) * radius, 1.2f + Mathf.Sin(angle) * radius, z);
+            }
+            return ring;
+        }
+
+        // ------------------------------------------------------------------ outside
+
+        /// <summary>Local z of the foot of the entry ramp, on the pad.</summary>
+        public float RampFootZ { get; private set; }
+
+        private void BuildExterior()
+        {
+            // The levelled pad: regolith graded flat, with sloping sides down to the natural ground.
+            Begin("Levelled pad");
+            float spread = padDepth * 1.6f;
+            g.Frustum(Terracotta, -padDepth, Pad.Grow(spread), PadTop, Pad);
+            AddCollider(Pad.x0, -padDepth, Pad.z0, Pad.x1, PadTop, Pad.z1);
+
+            // If the front edge of the pad stands above the ground, an apron ramp leads up onto it.
+            float edge = Pad.z1;
+            if (PadTop - groundAt(0f, edge + 0.5f) > 0.3f)
+            {
+                float run = 3f, foot = PadTop - 0.5f;
+                for (int i = 0; i < 6; i++)
+                {
+                    foot = Mathf.Min(PadTop - 0.2f, groundAt(0f, edge + run) - 0.15f);
+                    run = Mathf.Clamp((PadTop - foot) / Mathf.Tan(10f * Mathf.Deg2Rad), 3f, 45f);
+                }
+                Ramp(Terracotta, 2.5f, edge, PadTop, edge + run, foot, padDepth, false);
+            }
+            End();
+
+            Begin("Entry landing and ramp");
+            FloorRect l = Landing;
+            g.Box(Charcoal, l.Grow(0.1f), -depth, -0.1f);
+            g.Box(ClaySand, l, -0.1f, 0f);
+            AddCollider(l.x0 - 0.1f, -depth, l.z0, l.x1 + 0.1f, 0f, l.z1);
+            RampFootZ = l.z1 + 3f;
+            Ramp(ClaySand, 1.6f, l.z1, 0f, RampFootZ, PadTop - 0.02f, depth, true);
+
+            // Light posts either side of the landing.
+            for (int side = -1; side <= 1; side += 2)
+            {
+                float x = side * 2.15f;
+                g.Prism(Charcoal, x, l.z1 - 0.2f, 0.07f, -depth, 1.7f);
+                g.Box(GlowWarm, x - 0.12f, 1.7f, l.z1 - 0.32f, x + 0.12f, 1.9f, l.z1 - 0.08f);
+            }
+            Lamp(0f, 2.2f, l.z1 + 0.5f, 9f, 0.8f);
+            End();
+
+            // Solar array in front of the energy room, and a water tank behind life support.
+            for (int row = 0; row < 2; row++)
+            {
+                for (int i = 0; i < 3; i++) SolarPanel(8.5f + i * 3.6f, 7.5f + row * 4.2f);
+            }
+            Begin("Outdoor tanks");
+            g.Prism(White, 17.5f, -5.6f, 1.1f, PadTop - 0.1f, PadTop + 2.2f);
+            g.Prism(DarkRed, 17.5f, -5.6f, 1.14f, PadTop + 1.3f, PadTop + 1.6f);
+            g.Prism(DarkRed, 17.5f, -5.6f, 0.7f, PadTop + 2.2f, PadTop + 2.5f, 8, 0.4f);
+            g.Box(Charcoal, 17.4f, PadTop + 0.4f, -4.6f, 17.6f, PadTop + 0.6f, -2.9f);
+            AddCollider(16.4f, PadTop - 0.1f, -6.7f, 18.6f, PadTop + 2.2f, -4.5f);
+            // Pairs of small dark red tanks beside the quarters and the energy room.
+            SmallTanks(-17.6f, 4.45f, -1f);
+            SmallTanks(9f, -3.95f, 1f);
+            End();
+        }
+
+        /// <summary>Two small tanks side by side, piped to the wall on the given z side (-1 or +1).</summary>
+        private void SmallTanks(float x, float z, float wallSide)
+        {
+            for (int i = 0; i < 2; i++)
+            {
+                float cx = x + i * 1.1f;
+                g.Prism(DarkRed, cx, z, 0.45f, PadTop - 0.05f, PadTop + 1.45f);
+                g.Prism(Charcoal, cx, z, 0.3f, PadTop + 1.45f, PadTop + 1.65f, 8, 0.2f);
+                g.Box(Charcoal, cx - 0.06f, PadTop + 1.0f, Mathf.Min(z, z + wallSide * 1.2f), cx + 0.06f, PadTop + 1.12f,
+                    Mathf.Max(z, z + wallSide * 1.2f));
+            }
+            AddCollider(x - 0.5f, PadTop - 0.05f, z - 0.5f, x + 1.6f, PadTop + 1.45f, z + 0.5f);
+        }
+
+        /// <summary>
+        /// A ramp along +Z from (z0, y0) down to (z1, y1), with a collider the astronaut walks on.
+        /// </summary>
+        private void Ramp(int material, float half, float z0, float y0, float z1, float y1, float below, bool stripes)
+        {
+            g.Hexa(material,
+                new Vector3(-half, -below, z0), new Vector3(half, -below, z0),
+                new Vector3(half, y1 - 0.8f, z1), new Vector3(-half, y1 - 0.8f, z1),
+                new Vector3(-half, y0, z0), new Vector3(half, y0, z0),
+                new Vector3(half, y1, z1), new Vector3(-half, y1, z1));
+            for (int side = -1; stripes && side <= 1; side += 2)
+            {
+                float a = side * half, b = side * (half - 0.12f);
+                g.Hexa(Orange,
+                    new Vector3(a, y0 - 0.02f, z0), new Vector3(b, y0 - 0.02f, z0),
+                    new Vector3(b, y1 - 0.02f, z1), new Vector3(a, y1 - 0.02f, z1),
+                    new Vector3(a, y0 + 0.01f, z0), new Vector3(b, y0 + 0.01f, z0),
+                    new Vector3(b, y1 + 0.01f, z1), new Vector3(a, y1 + 0.01f, z1));
+            }
+            float run = z1 - z0, drop = y0 - y1;
+            GameObject ramp = new GameObject("Ramp Collider");
+            ramp.transform.SetParent(current.transform, false);
+            ramp.transform.localRotation = Quaternion.Euler(Mathf.Atan2(drop, run) * Mathf.Rad2Deg, 0f, 0f);
+            Vector3 normal = ramp.transform.localRotation * Vector3.up;
+            ramp.transform.localPosition = new Vector3(0f, (y0 + y1) * 0.5f, (z0 + z1) * 0.5f) - normal * 0.25f;
+            ramp.AddComponent<BoxCollider>().size = new Vector3(half * 2f, 0.5f, Mathf.Sqrt(run * run + drop * drop));
+        }
+
+        private void SolarPanel(float x, float z)
+        {
+            if (panelMesh == null)
+            {
+                OutpostGeometry panel = new OutpostGeometry();
+                panel.Box(White, -1.55f, -0.04f, -0.95f, 1.55f, 0.02f, 0.95f);
+                panel.Box(SolarBlue, -1.5f, 0.02f, -0.9f, 1.5f, 0.05f, 0.9f);
+                for (int i = 1; i < 4; i++) panel.Box(White, -1.5f + i * 0.75f - 0.02f, 0.05f, -0.9f, -1.5f + i * 0.75f + 0.02f, 0.06f, 0.9f);
+                panel.Box(White, -1.5f, 0.05f, -0.02f, 1.5f, 0.06f, 0.02f);
+                panelMesh = panel.ToMesh("Solar Panel", materials, out panelMaterials);
+                owned.Add(panelMesh);
+            }
+            const float ground = PadTop;
+            Begin("Solar panel");
+            g.Prism(Charcoal, x, z, 0.09f, ground - 0.4f, ground + 1.15f);
+            g.Box(Charcoal, x - 0.35f, ground - 0.2f, z - 0.35f, x + 0.35f, ground + 0.08f, z + 0.35f);
+            AddCollider(x - 0.35f, ground - 0.4f, z - 0.35f, x + 0.35f, ground + 1.15f, z + 0.35f);
+            GameObject top = new GameObject("Panel");
+            top.transform.SetParent(current.transform, false);
+            top.transform.localPosition = new Vector3(x, ground + 1.2f, z);
+            top.transform.localRotation = Quaternion.Euler(-14f, 0f, 0f);
+            top.AddComponent<MeshFilter>().sharedMesh = panelMesh;
+            top.AddComponent<MeshRenderer>().sharedMaterials = panelMaterials;
+            top.AddComponent<BoxCollider>().size = new Vector3(3.1f, 0.1f, 1.9f);
+            End();
+        }
+    }
+}
