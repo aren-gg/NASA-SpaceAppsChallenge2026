@@ -9,6 +9,9 @@ namespace MarsSurvival.Interaction
     /// with Mars gravity. The main camera is moved to the astronaut's eyes and a
     /// procedural suited body (<see cref="MarsAstronautBody"/>) is built underneath it.
     ///
+    /// Buildings and other solid objects with colliders (such as the outpost) block the
+    /// astronaut and can be stood on; the terrain itself still uses GetGroundY.
+    ///
     /// Controls: WASD move, mouse looks, Left Shift sprints, Space jumps, Esc frees the
     /// cursor (click to capture it again), F2 switches to the free inspection camera
     /// and back. All speeds and sizes are in real metres.
@@ -41,6 +44,11 @@ namespace MarsSurvival.Interaction
         [Tooltip("Eye height of the 1.8 m astronaut.")]
         public float eyeHeight = 1.68f;
 
+        [Header("Collision with buildings (real metres)")]
+        public float bodyRadius = 0.35f;
+        [Tooltip("Ledges up to this height above the feet are stepped onto rather than blocking.")]
+        public float stepUp = 0.45f;
+
         [Header("Stride length per full cycle (two steps), metres")]
         public float walkStride = 1.25f;
         public float sprintStride = 3.6f;
@@ -62,6 +70,8 @@ namespace MarsSurvival.Interaction
         private float jumpBuffer;
         private float phase, moveBlend, sprintBlend, airBlend;
         private float landDip, cameraDip;
+        private CapsuleCollider capsule;
+        private readonly Collider[] overlaps = new Collider[16];
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AddToTerrainScene()
@@ -88,6 +98,14 @@ namespace MarsSurvival.Interaction
             yaw = cam.eulerAngles.y;
             transform.rotation = Quaternion.Euler(0f, yaw, 0f);
             transform.localScale = Vector3.one * Units(1f);
+
+            // Trigger, so it never shoves anything; used only to measure overlaps with buildings.
+            capsule = gameObject.AddComponent<CapsuleCollider>();
+            capsule.isTrigger = true;
+            capsule.direction = 1;
+            capsule.radius = bodyRadius;
+            capsule.height = Mathf.Max(bodyRadius * 2f, 1.85f - stepUp);
+            capsule.center = new Vector3(0f, stepUp + capsule.height * 0.5f, 0f);
 
             neck = new GameObject("Neck").transform;
             neck.SetParent(transform, false);
@@ -124,9 +142,62 @@ namespace MarsSurvival.Interaction
 
         private bool TerrainReady { get { return terrain != null && terrain.IsReady; } }
 
+        /// <summary>
+        /// Highest walkable surface under the feet: the terrain, or the top of a building
+        /// collider no more than <see cref="stepUp"/> above the feet (ramps, floors, roofs).
+        /// </summary>
         private float GroundY(Vector3 position)
         {
-            return TerrainReady ? terrain.GetGroundY(position) : 0f;
+            float ground = TerrainReady ? terrain.GetGroundY(position) : 0f;
+            float top = position.y + Units(stepUp);
+            float reach = top - ground;
+            if (reach <= 0f) return ground;
+            RaycastHit hit;
+            if (Physics.Raycast(new Vector3(position.x, top, position.z), Vector3.down, out hit, reach,
+                                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+            {
+                ground = Mathf.Max(ground, hit.point.y);
+            }
+            return ground;
+        }
+
+        private bool IsBuilding(Collider other)
+        {
+            if (other == capsule || other.isTrigger) return false;
+            // Terrain chunk colliders (optional) are handled by GetGroundY, not pushed against.
+            return terrain == null || !other.transform.IsChildOf(terrain.transform);
+        }
+
+        /// <summary>Pushes the body sideways out of any building it overlaps.</summary>
+        private Vector3 ResolveWalls(Vector3 position)
+        {
+            if (capsule == null) return position;
+            for (int pass = 0; pass < 3; pass++)
+            {
+                transform.position = position;
+                float scale = transform.lossyScale.y;
+                float half = Mathf.Max(0f, capsule.height * 0.5f - capsule.radius) * scale;
+                Vector3 centre = transform.TransformPoint(capsule.center);
+                int count = Physics.OverlapCapsuleNonAlloc(centre + Vector3.down * half, centre + Vector3.up * half,
+                    capsule.radius * scale, overlaps, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                bool moved = false;
+                for (int i = 0; i < count; i++)
+                {
+                    Collider other = overlaps[i];
+                    if (!IsBuilding(other)) continue;
+                    Vector3 direction;
+                    float distance;
+                    if (!Physics.ComputePenetration(capsule, position, transform.rotation,
+                            other, other.transform.position, other.transform.rotation, out direction, out distance)) continue;
+                    direction.y = 0f;
+                    if (direction.sqrMagnitude < 1e-4f) continue;
+                    // Only the sideways part of the push; the height comes from GroundY.
+                    position += direction.normalized * (distance + Units(0.001f));
+                    moved = true;
+                }
+                if (!moved) break;
+            }
+            return position;
         }
 
         private static void LockCursor(bool locked)
@@ -207,6 +278,7 @@ namespace MarsSurvival.Interaction
             else velocity.y = 0f;
 
             Vector3 position = transform.position + velocity * Units(1f) * dt;
+            position = ResolveWalls(position);
             float ground = GroundY(position);
             if (grounded)
             {

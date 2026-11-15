@@ -9,6 +9,8 @@ Two modules in one Unity project (`My project/`, Unity 2022.3, URP 14):
 
 Open `My project/Assets/Scenes/Mars.unity`. If the scene has no weather yet, choose **Mars → Add Weather To Terrain Scene**. Press Play.
 
+The outpost from `Base_assets` (quarters, command hub, greenhouse and tunnels) appears about 20 m in front of the astronaut, with the hub's airlock door facing you. It is added automatically at Play (`Scripts/Base/MarsOutpost.cs`), sits on the ground, clears rocks from under itself, and blocks the astronaut (the entry ramp is walkable). The models are in `My project/Assets/MarsBase/Resources/MarsBase/`. To place it somewhere fixed, add a **MarsOutpost** component to an object in the scene and untick *Place In Front Of Player*.
+
 | Key | Action |
 | --- | --- |
 | W A S D | Walk (3.4 km/h) |

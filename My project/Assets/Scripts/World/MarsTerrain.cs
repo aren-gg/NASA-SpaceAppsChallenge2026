@@ -115,6 +115,7 @@ namespace MarsSurvival.World
         private readonly List<long> rockKeys = new List<long>();
         private Vector3 lastRockPosition;
         private bool rocksSettled;
+        private readonly List<Vector3> rockClearings = new List<Vector3>(); // local x, local z, radius
 
         public MarsHeightmap Heightmap { get { return map; } }
         public TerrainStats Stats { get { return stats; } }
@@ -626,6 +627,34 @@ namespace MarsSurvival.World
             return transform.TransformPoint(new Vector3(local.x, y, local.y));
         }
 
+        /// <summary>
+        /// Keeps procedural rocks out of a circle around a world position, for example
+        /// under a building, and rebuilds the rock tiles it touches straight away.
+        /// </summary>
+        public void ClearRocks(Vector3 worldCentre, float radiusMeters)
+        {
+            Vector3 local = transform.InverseTransformPoint(worldCentre);
+            float radius = config.ToUnits(radiusMeters);
+            rockClearings.Add(new Vector3(local.x, local.z, radius));
+            if (map == null) return;
+
+            float tileSize = config.ToUnits(config.rockTileSizeMeters);
+            float reach = radius + config.ToUnits(config.rockRadiusRangeMeters.y);
+            rockKeys.Clear();
+            foreach (KeyValuePair<long, RockTile> pair in rockTiles)
+            {
+                if (RectDistance(pair.Value.centre, tileSize, local) <= reach) rockKeys.Add(pair.Key);
+            }
+            for (int i = 0; i < rockKeys.Count; i++)
+            {
+                RockTile tile = rockTiles[rockKeys[i]];
+                rockTiles.Remove(rockKeys[i]);
+                ReleaseRockTile(tile);
+            }
+            rocksSettled = false;
+            UpdateRocks(ViewerLocalPosition(), int.MaxValue);
+        }
+
         public bool IsInsideTile(Vector3 worldPosition)
         {
             Vector3 local = transform.InverseTransformPoint(worldPosition);
@@ -800,7 +829,7 @@ namespace MarsSurvival.World
             Vector2 corner = new Vector2(tx * tileSize, tz * tileSize);
             tile.gameObject.transform.localPosition = new Vector3(corner.x, 0f, corner.y);
             int seed = unchecked(tx * 73856093 ^ tz * 19349663);
-            tile.mesh = MarsRockBuilder.Build(map, config, corner, tileSize, tileSize, seed, out tile.rockCount);
+            tile.mesh = MarsRockBuilder.Build(map, config, corner, tileSize, tileSize, seed, out tile.rockCount, rockClearings);
             tile.mesh.hideFlags = HideFlags.DontSave;
             tile.gameObject.GetComponent<MeshFilter>().sharedMesh = tile.mesh;
 

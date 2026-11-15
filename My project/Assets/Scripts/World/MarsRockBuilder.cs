@@ -68,11 +68,25 @@ namespace MarsSurvival.World
             }
         }
 
+        private static bool InClearing(List<Vector3> clearings, float x, float z, float margin)
+        {
+            if (clearings == null) return false;
+            for (int i = 0; i < clearings.Count; i++)
+            {
+                float dx = x - clearings[i].x;
+                float dz = z - clearings[i].y;
+                float r = clearings[i].z + margin;
+                if (dx * dx + dz * dz < r * r) return true;
+            }
+            return false;
+        }
+
         /// <param name="chunkCorner">Terrain-local X/Z of the tile's south-west corner (Unity units).</param>
         /// <param name="chunkIndex">Seed for this tile; the same value gives the same rocks.</param>
+        /// <param name="clearings">Optional circles kept free of rocks: terrain-local X, Z and radius (Unity units).</param>
         /// <returns>A mesh in tile-local space (origin at the tile corner, Y = terrain-local Y).</returns>
         public static Mesh Build(MarsHeightmap map, MarsTerrainConfig config, Vector2 chunkCorner,
-            float chunkSizeX, float chunkSizeZ, int chunkIndex, out int rockCount)
+            float chunkSizeX, float chunkSizeZ, int chunkIndex, out int rockCount, List<Vector3> clearings = null)
         {
             Positions.Clear();
             Normals.Clear();
@@ -102,6 +116,7 @@ namespace MarsSurvival.World
                 float localX = chunkCorner.x + px;
                 float localZ = chunkCorner.y + pz;
                 if (!map.Contains(localX, localZ)) continue;
+                if (InClearing(clearings, localX, localZ, maxRadius)) continue;
                 if (map.SampleSlopeDegrees(localX, localZ, stride) > config.rockMaxSlopeDegrees) continue;
 
                 // Mostly small rocks with an occasional boulder.
