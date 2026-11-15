@@ -1,0 +1,67 @@
+{
+  "units": "metres, Y-up",
+  "origin": "ground centre",
+  "door_facing": "+Z",
+  "pieces": [
+    {
+      "id": "base_outpost",
+      "name": "Assembled Outpost",
+      "notes": "Complete base: quarters + tunnel + command hub + tunnel + greenhouse.",
+      "triangles": 1124,
+      "size_m": [
+        20.41,
+        5.99,
+        7.31
+      ],
+      "model": "models/base_outpost.obj"
+    },
+    {
+      "id": "base_hub",
+      "name": "Command Hub",
+      "notes": "Main module and spawn point. Airlock door faces +Z; tunnel ports on +/-X.",
+      "triangles": 360,
+      "size_m": [
+        6.5,
+        5.99,
+        7.31
+      ],
+      "model": "models/base_hub.obj"
+    },
+    {
+      "id": "base_quarters",
+      "name": "Living Quarters",
+      "notes": "Rest/sleep module (tiredness recovery). Tunnel port on +X.",
+      "triangles": 240,
+      "size_m": [
+        4.84,
+        3.22,
+        4.66
+      ],
+      "model": "models/base_quarters.obj"
+    },
+    {
+      "id": "base_greenhouse",
+      "name": "Greenhouse",
+      "notes": "Enclosed farm module; crops go inside. Tunnel port on -X, side door on +Z.",
+      "triangles": 332,
+      "size_m": [
+        6.53,
+        3.32,
+        4.84
+      ],
+      "model": "models/base_greenhouse.obj"
+    },
+    {
+      "id": "base_tunnel",
+      "name": "Connecting Tunnel",
+      "notes": "1.8 m straight tunnel; ends overlap module walls by ~0.15 m.",
+      "triangles": 96,
+      "size_m": [
+        1.8,
+        2.1,
+        1.9
+      ],
+      "model": "models/base_tunnel.obj"
+    }
+  ]
+}

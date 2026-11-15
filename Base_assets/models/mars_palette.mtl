@@ -1,0 +1,64 @@
+# Mars outpost 8-colour palette: matte, no textures
+newmtl terracotta
+Kd 0.7255 0.4275 0.3333
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+d 1
+illum 1
+
+newmtl dusty_rose
+Kd 0.7804 0.5529 0.5294
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+d 1
+illum 1
+
+newmtl muted_olive
+Kd 0.4902 0.5333 0.3961
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+d 1
+illum 1
+
+newmtl warm_orange
+Kd 0.9020 0.6275 0.4314
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+d 1
+illum 1
+
+newmtl deep_purple
+Kd 0.2510 0.2000 0.3098
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+d 1
+illum 1
+
+newmtl pale_pink
+Kd 0.9137 0.7255 0.7373
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+d 1
+illum 1
+
+newmtl mauve
+Kd 0.5020 0.4078 0.5255
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+d 1
+illum 1
+
+newmtl clay_sand
+Kd 0.8471 0.6745 0.5608
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+d 1
+illum 1
