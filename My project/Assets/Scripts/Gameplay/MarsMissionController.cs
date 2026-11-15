@@ -121,7 +121,7 @@ namespace MarsSurvival.Gameplay
             Simulation.State.playerX = position.x; Simulation.State.playerY = position.y; Simulation.State.playerZ = position.z;
             Simulation.State.playerYaw = player.transform.eulerAngles.y;
             if (!IsRunning || Paused) return;
-            if (environmentModel == null) environmentModel = MissionEnvironment.LoadBundled();
+            if (environmentModel == null) environmentModel = MissionEnvironment.LoadBundled(MissionDataSources.Seasons(), MissionDataSources.ScheduleSourceLabel);
             if (AdvanceRemaining <= 0) pendingTime += Time.unscaledDeltaTime;
             int budget = AdvanceRemaining > 0 ? 1000 : 10;
             for (int i = 0; i < budget && IsRunning; i++)
@@ -186,7 +186,7 @@ namespace MarsSurvival.Gameplay
         public void NewMission(MissionLength length)
         {
             if (!Ready) { Notice = "Waiting for the astronaut and outpost."; return; }
-            Simulation = new MissionSimulation(new MissionSettings(), MissionSimulation.NewMission(length, 2026));
+            Simulation = new MissionSimulation(MissionDataSources.CreateSettings(), MissionSimulation.NewMission(length, 2026));
             rover.RestoreMissionPose(initialRoverPosition, initialRoverYaw, 0);
             World.CreateSites(terrain, outpost, Simulation.State);
             player.RestoreMissionPose(outpost.transform.TransformPoint(new Vector3(0, 0.05f, 0)), outpost.transform.eulerAngles.y);
@@ -264,7 +264,7 @@ namespace MarsSurvival.Gameplay
                 MissionState s;
                 try { s = ReadSave(SavePath); }
                 catch { s = ReadSave(SavePath + ".bak"); Notice = "Recovered the previous backup save."; }
-                Simulation = new MissionSimulation(new MissionSettings(), s); World.CreateSites(terrain, outpost, s);
+                Simulation = new MissionSimulation(MissionDataSources.CreateSettings(), s); World.CreateSites(terrain, outpost, s);
                 rover.RestoreMissionPose(new Vector3((float)s.roverX, (float)s.roverY, (float)s.roverZ), (float)s.roverYaw, s.roverOdometer);
                 lastOdometer = rover.OdometerKm;
                 player.RestoreMissionPose(new Vector3((float)s.playerX, (float)s.playerY, (float)s.playerZ), (float)s.playerYaw);

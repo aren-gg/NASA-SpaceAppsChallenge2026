@@ -6,32 +6,63 @@ using MarsSurvival.Gameplay;
 using MarsSurvival.Hardware;
 using MarsSurvival.Simulation;
 using MarsSurvival.World;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using AlertBanner = MarsTrainer.UI.AlertBanner;
+using ControlGuide = MarsTrainer.UI.ControlGuide;
+using EndScreen = MarsTrainer.UI.EndScreen;
+using FacetedImage = MarsTrainer.UI.FacetedImage;
+using PauseMenu = MarsTrainer.UI.PauseMenu;
+using ResourceGlyph = MarsTrainer.UI.ResourceGlyph;
+using ResourceSymbol = MarsTrainer.UI.ResourceSymbol;
+using StatBar = MarsTrainer.UI.StatBar;
+using SunZapMeterView = MarsTrainer.UI.SunZapMeterView;
+using UiTypeface = MarsTrainer.UI.UiTypeface;
+using SimClock = MarsTrainer.Sim.SimClock;
+using SuitShieldState = MarsTrainer.Sim.SuitShieldState;
+using Ui = MarsTrainer.Sim.GameConstants;
 
 namespace MarsSurvival.UI
 {
+    /// <summary>
+    /// The mission HUD and outpost console, drawn with the MarsTrainer UI kit (faceted plates,
+    /// resource medallions, stat bars, Counter-Strike UI font): suit vitals with oxygen first,
+    /// battery and Sun-Zap radiation meter, warning banner, quick Eat/Drink, pause menu and
+    /// mission report. The console (Tab) holds the three power knobs, the daily task routine,
+    /// research, field log, radio, learning sources, help and settings.
+    /// </summary>
     public sealed class MarsMissionHud : MonoBehaviour
     {
         private static readonly string[] TabNames = { "Overview", "Base tasks", "Research", "Field log", "Radio", "Learning", "Help", "Settings" };
         private const int HelpTab = 6;
         private readonly List<Action> live = new List<Action>();
-        private readonly List<Action> shellLive = new List<Action>();
         private readonly List<Selectable> controls = new List<Selectable>();
+        private readonly HashSet<string> shownWarnings = new HashSet<string>();
         private MarsMissionController mission;
         private MissionState drawnState;
         private Canvas canvas;
         private CanvasScaler scaler;
-        private Font font;
-        private RectTransform panel, content, selector;
-        private Text status, needs, alert, guide, location;
+        private TMP_FontAsset font;
+        private RectTransform panel, content, selector, gameplay;
+        private TMP_Text date, navigation, notice, guide, powerText;
+        private StatBar[] vitals;
+        private StatBar battery;
+        private SunZapMeterView sunZap;
+        private AlertBanner alerts;
+        private PauseMenu pause;
+        private EndScreen end;
+        private Button eatButton, drinkButton;
         private ScrollRect scroll;
         private int tab, drawnPhase = -1, drawnReports = -1;
-        private bool built, lastOpen, suppressSliders;
+        private bool built, lastOpen, suppressSliders, reportShown, pausedByMenu;
         private float nextRefresh, uiScale = 1;
         private Color ink, paper, accent, muted;
+
+        /// <summary>True while the pause menu or mission report covers the screen.</summary>
+        public bool ScreenOpen { get { return (pause != null && pause.gameObject.activeSelf) || (end != null && end.gameObject.activeSelf); } }
 
         private void Start()
         {
@@ -48,13 +79,15 @@ namespace MarsSurvival.UI
 
             HandleKeys();
             MissionState state = mission.Simulation == null ? null : mission.Simulation.State;
-            if (state == null && !mission.PanelOpen) mission.SetPanelOpen(true);
+            if (state == null && !mission.PanelOpen && !ScreenOpen) mission.SetPanelOpen(true);
             int phase = state == null ? -1 : (int)state.phase;
             if (state != drawnState || phase != drawnPhase)
             {
+                if (state != drawnState) { shownWarnings.Clear(); alerts.Clear(); reportShown = false; }
                 drawnState = state;
                 drawnPhase = phase;
-                if (state == null || state.phase != MissionPhase.Running) mission.SetPanelOpen(true);
+                if (state != null && state.phase != MissionPhase.Running && !reportShown) ShowReport();
+                else if (state == null || state.phase != MissionPhase.Running) mission.SetPanelOpen(true);
                 RebuildPanel();
             }
             if (mission.PanelOpen != lastOpen)
@@ -68,9 +101,10 @@ namespace MarsSurvival.UI
                     Cursor.visible = true;
                 }
             }
+            gameplay.gameObject.SetActive(state != null);
             if (Time.unscaledTime >= nextRefresh)
             {
-                nextRefresh = Time.unscaledTime + 0.2f;
+                nextRefresh = Time.unscaledTime + Ui.UiRefreshSeconds;
                 RefreshShell();
                 if (mission.PanelOpen)
                 {
@@ -84,8 +118,18 @@ namespace MarsSurvival.UI
         {
 #if ENABLE_LEGACY_INPUT_MANAGER
             bool typing = EventSystem.current != null && EventSystem.current.currentSelectedGameObject != null &&
-                EventSystem.current.currentSelectedGameObject.GetComponent<InputField>() != null;
+                EventSystem.current.currentSelectedGameObject.GetComponent<TMP_InputField>() != null;
             if (typing) return;
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                if (pause.gameObject.activeSelf) pause.Close();
+                else if (end.gameObject.activeSelf) { }
+                else if (mission.PanelOpen && mission.IsRunning) mission.SetPanelOpen(false);
+                else if (mission.IsRunning) OpenPause();
+                else mission.SetPanelOpen(true);
+                return;
+            }
+            if (ScreenOpen) return;
             if (Input.GetKeyDown(KeyCode.Tab)) TogglePanel();
             if (Input.GetKeyDown(KeyCode.H))
             {
@@ -93,23 +137,23 @@ namespace MarsSurvival.UI
                 else OpenHelp();
             }
             if (Input.GetKeyDown(KeyCode.P) && mission.IsRunning) mission.SetPaused(!mission.Paused);
-            if (Input.GetKeyDown(KeyCode.Escape))
-            {
-                if (mission.PanelOpen && mission.IsRunning) mission.SetPanelOpen(false);
-                else mission.SetPanelOpen(true);
-            }
+            if (Input.GetKeyDown(KeyCode.F) && mission.IsRunning && !mission.PanelOpen) mission.Execute("eat");
+            if (Input.GetKeyDown(KeyCode.G) && mission.IsRunning && !mission.PanelOpen) mission.Execute("drink");
             if (Input.GetKeyDown(KeyCode.F5)) mission.SaveMission();
             if (Input.GetKeyDown(KeyCode.F9)) mission.LoadMission();
 #endif
         }
 
+        // ------------------------------------------------------------------ shell
+
         private void BuildShell()
         {
-            ink = MarsPalette.DeepPurple;
-            paper = MarsPalette.ClaySand;
-            accent = MarsPalette.WarmOrange;
-            muted = MarsPalette.PalePink;
-            font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            ink = StatBar.ColorOf(Ui.UiSurface);
+            paper = StatBar.ColorOf(Ui.UiText);
+            accent = StatBar.ColorOf(Ui.UiCopper);
+            muted = Color.Lerp(paper, ink, 0.35f);
+            font = Resources.Load<TMP_FontAsset>(UiTypeface.ResourcePath);
+            if (font == null) font = TMP_Settings.defaultFontAsset;
             GameObject root = new GameObject("Mission Interface", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             root.transform.SetParent(transform, false);
             canvas = root.GetComponent<Canvas>();
@@ -117,44 +161,74 @@ namespace MarsSurvival.UI
             canvas.sortingOrder = 100;
             scaler = root.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920, 1080);
+            scaler.referenceResolution = new Vector2(Ui.UiWidth, Ui.UiHeight);
             scaler.matchWidthOrHeight = 0.5f;
             if (FindObjectOfType<EventSystem>() == null)
                 new GameObject("Mission Event System", typeof(EventSystem), typeof(StandaloneInputModule));
 
-            RectTransform header = Box("Mission readouts", root.transform, WithAlpha(ink, 0.94f));
-            Anchor(header, new Vector2(0, 1), Vector2.one, new Vector2(24, -140), new Vector2(-24, -20));
-            status = Label(header, "MARS OUTPOST", 27, accent);
-            Anchor(status.rectTransform, new Vector2(0, 1), Vector2.one, new Vector2(20, -46), new Vector2(-530, -10));
-            needs = Label(header, "", 23, paper);
-            Anchor(needs.rectTransform, Vector2.zero, Vector2.one, new Vector2(20, 10), new Vector2(-20, -55));
-            RectTransform headerButtons = Row(header, 46);
-            Anchor(headerButtons, Vector2.one, Vector2.one, new Vector2(-660, -53), new Vector2(-20, -7));
-            SmallButton(headerButtons, "Help  [H]", OpenHelp);
-            SmallButton(headerButtons, "Console  [Tab]", TogglePanel);
-            SmallButton(headerButtons, "Pause  [P]", () => { if (mission != null) mission.SetPaused(!mission.Paused); });
-            SmallButton(headerButtons, "Save  [F5]", () => { if (mission != null) mission.SaveMission(); });
+            RectTransform safe = StatBar.Frame(root.transform, "Safe area", 0, 0, 1, 1);
+            gameplay = StatBar.Frame(safe, "Mission HUD", 0, 0, 1, 1);
 
-            // Bottom bar: the latest message, then a survival guide for right now, then where you are.
-            RectTransform footer = Box("Mission feedback", root.transform, WithAlpha(ink, 0.94f));
-            Anchor(footer, Vector2.zero, new Vector2(1, 0), new Vector2(24, 18), new Vector2(-24, 172));
-            alert = Label(footer, "", 22, paper);
-            Anchor(alert.rectTransform, new Vector2(0, 1), Vector2.one, new Vector2(20, -42), new Vector2(-20, -8));
-            guide = Label(footer, "", 23, accent);
-            Anchor(guide.rectTransform, Vector2.zero, Vector2.one, new Vector2(20, 36), new Vector2(-20, -44));
-            location = Label(footer, "", 19, muted);
-            Anchor(location.rectTransform, Vector2.zero, new Vector2(1, 0), new Vector2(20, 6), new Vector2(-20, 34));
+            // Top: mission date, where you are, screen buttons.
+            RectTransform heading = StatBar.Frame(gameplay, "Mission date", .015f, .915f, .30f, .985f, Ui.UiSurface);
+            date = Overlay(heading, "Sol 1.0", Ui.UiBody);
+            RectTransform location = StatBar.Frame(gameplay, "Navigation", .31f, .915f, .69f, .985f, Ui.UiSurface);
+            navigation = Overlay(location, "Habitat", Ui.UiBody * 0.8f);
+            navigation.alignment = TextAlignmentOptions.Center;
+            RectTransform menus = StatBar.Frame(gameplay, "Screen buttons", .70f, .915f, .985f, .985f);
+            HorizontalLayoutGroup menuRow = menus.gameObject.AddComponent<HorizontalLayoutGroup>();
+            menuRow.spacing = Ui.UiGap;
+            menuRow.childControlHeight = menuRow.childForceExpandHeight = menuRow.childControlWidth = menuRow.childForceExpandWidth = true;
+            KitButton(menus, "Console [Tab]", ResourceSymbol.Backpack, TogglePanel);
+            KitButton(menus, "Help [H]", ResourceSymbol.Research, OpenHelp);
+            KitButton(menus, "Menu [Esc]", ResourceSymbol.Menu, OpenPause);
 
-            panel = Box("Outpost console", root.transform, WithAlpha(ink, 0.985f));
-            Anchor(panel, Vector2.zero, Vector2.one, new Vector2(100, 190), new Vector2(-100, -160));
-            RectTransform titleRow = Row(panel, 50);
-            Anchor(titleRow, new Vector2(0, 1), Vector2.one, new Vector2(26, -64), new Vector2(-26, -14));
-            Text title = Label(titleRow, "OUTPOST CONSOLE", 30, accent);
-            title.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1;
-            SmallButton(titleRow, "Return to world  [Tab]", () => { if (mission != null && mission.IsRunning) mission.SetPanelOpen(false); });
+            // Warnings queue under the top bar.
+            alerts = AlertBanner.Create(gameplay);
+            Place((RectTransform)alerts.transform, .31f, .75f, .69f, .905f);
 
-            selector = Row(panel, 46);
-            Anchor(selector, new Vector2(0, 1), Vector2.one, new Vector2(26, -120), new Vector2(-26, -74));
+            // Bottom left: suit vitals, oxygen first (MarsTrainer survival model).
+            RectTransform survival = StatBar.Frame(gameplay, "Suit vitals", .015f, .02f, .235f, .34f);
+            VerticalLayoutGroup strip = survival.gameObject.AddComponent<VerticalLayoutGroup>();
+            strip.spacing = Ui.UiHudVitalGap; strip.childControlWidth = strip.childControlHeight = true;
+            strip.childForceExpandHeight = false; strip.childForceExpandWidth = true;
+            vitals = new StatBar[5];
+            string[] labels = { "Air", "Health", "Water", "Food", "Rest" };
+            for (int i = 0; i < labels.Length; i++) vitals[i] = StatBar.Create(survival, labels[i], true);
+
+            // Bottom right: power, radiation and quick supplies.
+            RectTransform power = StatBar.Frame(gameplay, "Outpost power", .765f, .355f, .985f, .52f, Ui.UiSurface);
+            StatBar.Stack(power);
+            battery = StatBar.Create(power, "Battery");
+            powerText = StatBar.Text(power, "Solar -- kW / Load -- kW", Ui.UiBody * 0.75f, Ui.UiLine);
+            sunZap = SunZapMeterView.Create(gameplay);
+            Place((RectTransform)sunZap.transform, .765f, .15f, .985f, .345f);
+            RectTransform supplies = StatBar.Frame(gameplay, "Quick supplies", .765f, .02f, .985f, .14f);
+            HorizontalLayoutGroup supplyRow = supplies.gameObject.AddComponent<HorizontalLayoutGroup>();
+            supplyRow.spacing = Ui.UiGap;
+            supplyRow.childControlWidth = supplyRow.childControlHeight = supplyRow.childForceExpandWidth = supplyRow.childForceExpandHeight = true;
+            eatButton = SupplyButton(supplies, "Eat [F]", ResourceSymbol.Food, () => { if (mission != null) mission.Execute("eat"); });
+            drinkButton = SupplyButton(supplies, "Drink [G]", ResourceSymbol.Water, () => { if (mission != null) mission.Execute("drink"); });
+
+            // Bottom centre, above the tool hotbar: latest message and what to do next.
+            RectTransform feedback = StatBar.Frame(gameplay, "Mission feedback", .245f, .165f, .755f, .30f, Ui.UiSurface);
+            notice = Overlay(feedback, "", Ui.UiBody * 0.72f);
+            Place(notice.rectTransform, .025f, .52f, .975f, .96f);
+            guide = Overlay(feedback, "", Ui.UiBody * 0.72f);
+            guide.color = accent;
+            Place(guide.rectTransform, .025f, .04f, .975f, .5f);
+
+            // The outpost console.
+            panel = StatBar.Frame(root.transform, "Outpost console", .045f, .14f, .955f, .90f, Ui.UiSurface);
+            panel.GetComponent<Image>().raycastTarget = true;
+            RectTransform titleRow = Row(panel, 56);
+            Anchor(titleRow, new Vector2(0, 1), Vector2.one, new Vector2(26, -72), new Vector2(-26, -16));
+            TMP_Text title = Label(titleRow, "Outpost Console", Ui.UiHeading, accent);
+            title.gameObject.AddComponent<LayoutElement>().flexibleWidth = 2;
+            SmallButton(titleRow, "Return to world [Tab]", () => { if (mission != null && mission.IsRunning) mission.SetPanelOpen(false); });
+
+            selector = Row(panel, 50);
+            Anchor(selector, new Vector2(0, 1), Vector2.one, new Vector2(26, -132), new Vector2(-26, -82));
             for (int i = 0; i < TabNames.Length; i++)
             {
                 int index = i;
@@ -162,12 +236,13 @@ namespace MarsSurvival.UI
             }
 
             RectTransform scrollRoot = NewRect("Scrollable content", panel);
-            Anchor(scrollRoot, Vector2.zero, Vector2.one, new Vector2(26, 22), new Vector2(-26, -136));
+            Anchor(scrollRoot, Vector2.zero, Vector2.one, new Vector2(26, 22), new Vector2(-26, -146));
             scroll = scrollRoot.gameObject.AddComponent<ScrollRect>();
             scroll.horizontal = false;
             scroll.movementType = ScrollRect.MovementType.Clamped;
             scroll.scrollSensitivity = 40;
-            RectTransform viewport = Box("Viewport", scrollRoot, new Color(0, 0, 0, 0));
+            RectTransform viewport = NewRect("Viewport", scrollRoot);
+            viewport.gameObject.AddComponent<Image>().color = new Color(0, 0, 0, 0);
             Stretch(viewport);
             viewport.gameObject.AddComponent<RectMask2D>();
             content = NewRect("Content", viewport);
@@ -177,7 +252,7 @@ namespace MarsSurvival.UI
             content.offsetMin = Vector2.zero;
             content.offsetMax = Vector2.zero;
             VerticalLayoutGroup layout = content.gameObject.AddComponent<VerticalLayoutGroup>();
-            layout.spacing = 14;
+            layout.spacing = Ui.UiGap;
             layout.padding = new RectOffset(4, 16, 4, 20);
             layout.childControlWidth = true;
             layout.childControlHeight = true;
@@ -186,6 +261,13 @@ namespace MarsSurvival.UI
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             scroll.viewport = viewport;
             scroll.content = content;
+
+            // Full-screen MarsTrainer screens: pause menu (Escape) and mission report.
+            pause = PauseMenu.Create(safe);
+            pause.Bind(new SimClock());
+            pause.Closed = ClosePause;
+            end = EndScreen.Create(safe);
+            end.ReviewRequested = () => { tab = 0; mission.SetPanelOpen(true); RebuildPanel(); };
             built = true;
             panel.gameObject.SetActive(false);
         }
@@ -193,32 +275,76 @@ namespace MarsSurvival.UI
         private void RefreshShell()
         {
             MissionSimulation simulation = mission.Simulation;
-            if (simulation == null)
-            {
-                status.text = "MARS OUTPOST  /  CHOOSE A MISSION";
-                needs.text = "Life control  •  Temperature  •  Radiation shielding";
-                alert.text = string.IsNullOrEmpty(mission.Notice) ? "Choose how long you will maintain your outpost." : mission.Notice;
-                guide.text = "HOW TO PLAY: pick a mission length, then press H at any time for the full guide.";
-                location.text = "A Martian month is one-twelfth of a Martian year in this game.";
-                return;
-            }
+            if (simulation == null) return;
             MissionState s = simulation.State;
             double duration = MissionSettings.Duration(s.length);
-            status.text = string.Format(CultureInfo.InvariantCulture,
-                "{0}  /  SOL {1:0.0}  /  {2:0.0}% COMPLETE   {3}", LengthName(s.length).ToUpperInvariant(),
-                1 + s.elapsedSeconds / MissionSettings.SolSeconds, s.elapsedSeconds / duration * 100,
-                mission.Paused ? "PAUSED" : mission.AdvanceRemaining > 0 ? "ADVANCING" : "");
-            needs.text = string.Format(CultureInfo.InvariantCulture,
-                "HP {0:0}    Food need {1:0}%    Hydration {2:0}%    Fatigue {3:0}%    Suit O₂ {4:0} g    Battery {5:0.0} kWh",
-                s.astronaut.health, s.astronaut.satiety, s.astronaut.hydration, s.astronaut.fatigue,
-                s.resources.suitOxygenGrams, s.resources.batteryKwh);
-            string warning = simulation.Warnings.Count == 0 ? "" : simulation.Warnings[0];
-            alert.text = !string.IsNullOrEmpty(warning) ? "WARNING: " + warning : !string.IsNullOrEmpty(mission.Notice) ? mission.Notice : "Objective: " + NextObjective(s);
-            guide.text = "SURVIVE THE SOL  >  " + SurvivalGuide(s) + "   [H] full guide";
-            string nearby = string.IsNullOrEmpty(mission.Context.station) ? mission.Context.zone.ToString() : mission.Context.station.Replace('_', ' ');
-            location.text = string.Format(CultureInfo.InvariantCulture,
-                "{0}  |  {1}  |  Solar {2:0.0} kW · Load {3:0.0} kW · Net {4:+0.0;-0.0;0.0} kW  |  [Tab] console · [P] pause",
-                nearby, mission.Environment.label ?? "Environment loading", simulation.Power.generatedKw, simulation.Power.loadKw, simulation.Power.netKw);
+            date.text = string.Format(CultureInfo.InvariantCulture, "Sol {0:0.0} / {1:0}{2}",
+                1 + s.elapsedSeconds / MissionSettings.SolSeconds, duration / MissionSettings.SolSeconds,
+                mission.Paused ? "  Paused" : mission.AdvanceRemaining > 0 ? "  Advancing" : "");
+            string nearby = string.IsNullOrEmpty(mission.Context.station) ? mission.Context.zone.ToString() : Title(mission.Context.station.Replace('_', ' '));
+            navigation.text = string.Format(CultureInfo.InvariantCulture, "{0}  /  Base {1:0} m  /  {2}",
+                nearby, mission.Context.distanceFromBase, mission.Environment.label ?? "Environment loading");
+
+            AstronautState a = s.astronaut;
+            vitals[0].Show("Air", a.oxygen);
+            vitals[1].Show("Health", a.health);
+            vitals[2].Show("Water", a.hydration);
+            vitals[3].Show("Food", a.satiety);
+            vitals[4].Show("Rest", 100 - a.fatigue);
+            battery.Show("Battery kWh", s.resources.batteryKwh, simulation.BatteryCapacity);
+            powerText.text = string.Format(CultureInfo.InvariantCulture, "Solar {0:0.0} kW / Load {1:0.0} kW / Suit O2 {2:0} g",
+                simulation.Power.generatedKw, simulation.Power.loadKw, s.resources.suitOxygenGrams);
+            double rate = SurvivalNeeds.MilliSievert(mission.Environment.radiationMicrograyPerHour) * MissionSettings.SolSeconds / 3600;
+            double budget = SurvivalNeeds.DoseBudgetFraction(a);
+            sunZap.ShowDose(rate, SurvivalNeeds.MilliSievert(a.doseMicrogray));
+            sunZap.ShowState(budget >= Ui.ShieldCriticalFraction ? SuitShieldState.Critical : budget >= Ui.ShieldDangerFraction ? SuitShieldState.Danger
+                : budget >= Ui.ShieldWarnFraction || mission.Environment.solarEvent > 0.1 ? SuitShieldState.Warn : SuitShieldState.Safe);
+            eatButton.interactable = a.satiety <= 95 && s.resources.food >= 1;
+            drinkButton.interactable = a.hydration <= 95 && s.resources.cleanWaterLiters >= SurvivalNeeds.DrinkLitres;
+
+            // New warnings enter the banner queue once; the forecast line follows radiation events.
+            foreach (string warning in simulation.Warnings)
+                if (shownWarnings.Add(warning)) alerts.Enqueue(warning);
+            shownWarnings.RemoveWhere(w => !simulation.Warnings.Contains(w));
+            if (mission.Environment.solarEvent > 0.05) alerts.ShowCountdown(0); else alerts.HideCountdown();
+
+            string warningText = simulation.Warnings.Count == 0 ? "" : simulation.Warnings[0];
+            notice.text = !string.IsNullOrEmpty(mission.Notice) ? mission.Notice : !string.IsNullOrEmpty(warningText) ? "Warning: " + warningText : "Objective: " + NextObjective(s);
+            guide.text = "Survive the sol > " + SurvivalGuide(s);
+        }
+
+        private void ShowReport()
+        {
+            reportShown = true;
+            MissionState s = mission.Simulation.State;
+            mission.SetPanelOpen(false);
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            string helped = string.Format(CultureInfo.InvariantCulture, "{0} kWh of solar energy, {1:0} food portions harvested, {2} repairs, {3} research installs",
+                s.totalGeneratedKwh.ToString("0", CultureInfo.InvariantCulture), s.totalFoodHarvested, s.repairsCompleted, s.installed.Count);
+            string hurt = string.IsNullOrEmpty(s.astronaut.lastDamageCause) ? "No serious warnings recorded" : s.astronaut.lastDamageCause;
+            end.Show(s.phase == MissionPhase.Won, s.elapsedSeconds / MissionSettings.SolSeconds, hurt, helped,
+                SurvivalNeeds.MilliSievert(s.astronaut.doseMicrogray),
+                s.phase == MissionPhase.Won ? "You Survived " + LengthName(s.length) + "!" : "Your Mission Has Ended");
+        }
+
+        private void OpenPause()
+        {
+            if (mission == null || !mission.IsRunning || ScreenOpen) return;
+            mission.SetPanelOpen(false);
+            pausedByMenu = !mission.Paused;
+            mission.SetPaused(true);
+            pause.Open();
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+        }
+
+        private void ClosePause()
+        {
+            if (mission == null) return;
+            if (pausedByMenu) mission.SetPaused(false);
+            pausedByMenu = false;
+            mission.SetPanelOpen(false);
         }
 
         private void RebuildPanel()
@@ -301,7 +427,7 @@ namespace MarsSurvival.UI
                     if (mission.Dashboard != null) mission.Dashboard.NotifySoftwareOverride((PowerChannel)channel);
                     mission.SetPowerRequest((PowerChannel)channel, value);
                 });
-                Text readout = LabelInFlow(card, "", 22, paper);
+                TMP_Text readout = LabelInFlow(card, "", 22, paper);
                 live.Add(() =>
                 {
                     suppressSliders = true;
@@ -439,7 +565,7 @@ namespace MarsSurvival.UI
                 for (int j = i; j < Math.Min(i + 3, State.sites.Count); j++)
                 {
                     SiteState site = State.sites[j];
-                    SmallButton(row, site.name + (site.analyzed ? " ✓" : ""), () => { mission.SelectSite(site.id); RebuildPanel(); });
+                    SmallButton(row, site.name + (site.analyzed ? " (done)" : ""), () => { mission.SelectSite(site.id); RebuildPanel(); });
                 }
             }
             SiteState selected = State.sites.Find(s => s.id == mission.SelectedSiteId);
@@ -483,9 +609,9 @@ namespace MarsSurvival.UI
             }
             double spanX = Math.Max(200, maxX - minX), spanZ = Math.Max(200, maxZ - minZ);
             Func<double, double, Vector2> project = (x, z) => new Vector2((float)(0.08 + 0.84 * (x - minX) / spanX), (float)(0.12 + 0.76 * (z - minZ) / spanZ));
-            Text legend = Label(map, "N ↑     ● You     ■ Habitat     Numbered sites: select to navigate", 18, muted);
+            TMP_Text legend = Label(map, "N ↑     ● You     ■ Habitat     Numbered sites: select to navigate", 18, muted);
             Anchor(legend.rectTransform, new Vector2(0, 1), Vector2.one, new Vector2(12, -32), new Vector2(-12, -4));
-            Text baseMarker = Label(map, "■ HOME", 19, paper);
+            TMP_Text baseMarker = Label(map, "■ HOME", 19, paper);
             MapPosition(baseMarker.rectTransform, project(home.x, home.z), new Vector2(110, 26));
             for (int i = 0; i < State.sites.Count; i++)
             {
@@ -494,7 +620,7 @@ namespace MarsSurvival.UI
                 MapPosition((RectTransform)point.transform, project(site.x, site.z), new Vector2(38, 34));
                 point.GetComponent<Image>().color = site.id == mission.SelectedSiteId ? accent : MarsPalette.Mauve;
             }
-            Text player = Label(map, "●", 27, accent);
+            TMP_Text player = Label(map, "●", 27, accent);
             live.Add(() => MapPosition(player.rectTransform, project(State.playerX, State.playerZ), new Vector2(26, 26)));
         }
 
@@ -551,6 +677,33 @@ namespace MarsSurvival.UI
                 "\nEvents: " + (mission.Environment.eventSource ?? "Loading"), 21);
             Paragraph("Terrain comes from the bundled USGS MOLA–HRSC elevation product, sampled on a 200 m grid. Smaller rocks, science caches, radio coverage and mission markers are gameplay objects. The data panel [F3] preserves terrain source and scale information. Absorbed radiation dose is shown in microgray; it is not a medical diagnosis.", 20);
             Button(content, "NASA Mars Trek", () => Application.OpenURL("https://trek.nasa.gov/mars/"));
+
+            Heading("DATA SOURCES");
+            Paragraph("The seasonal schedule (StreamingAssets/mars_year_schedule.json, 668 sols) and crop table (crop_parameters.json) were prepared offline by tools/build_schedule.py and tools/build_crops.py. Rows built without a live feed are marked synthetic and are seeded from the published references below. Nothing is downloaded while you play.", 20);
+            LiveParagraph(() => "Schedule: " + MissionDataSources.ScheduleSourceLabel + "\nCrops: " + MissionDataSources.CropSourceLabel +
+                string.Format(CultureInfo.InvariantCulture, " - leafy bed uses {0:0.00} L per sol", mission.Simulation.Settings.leafyWaterLitersPerSol) +
+                string.Format(CultureInfo.InvariantCulture, "\nDose budget used: {0:0.0}% of {1:0} mSv ({2:0.0} mSv so far)",
+                    SurvivalNeeds.DoseBudgetFraction(State.astronaut) * 100, Ui.H_limit, SurvivalNeeds.MilliSievert(State.astronaut.doseMicrogray)), 20);
+            SourceCard("Curiosity RAD", "Daily galactic cosmic ray dose at Gale Crater (about 210 microgray per day) sets the background radiation for every sol.",
+                "https://science.nasa.gov/resource/radiation-measurements-on-mars/");
+            SourceCard("NASA DONKI", "Space weather flare records set each sol's flare level, which scales simulated solar particle events. Not a forecast.",
+                "https://ccmc.gsfc.nasa.gov/tools/DONKI/");
+            SourceCard("Curiosity REMS / InSight", "The REMS sol 224 measurements give the shape of the day; the schedule's seasonal minimum and maximum set its range.",
+                "https://atmos.nmsu.edu/data_and_services/atmospheres_data/MARS/curiosity/rems.html");
+            SourceCard("NASA-STD-3001 Vol. 1", "The career radiation limit (600 mSv, scaled for play) is the dose budget behind the Sun-Zap meter and radiation health damage.",
+                "https://www.nasa.gov/reference/4-0-human-performance/");
+            SourceCard("KSC Veggie / CEA", "Veggie crop identities and per-plant water estimates (provisional) set the leafy greenhouse bed's water use.",
+                "https://www.nasa.gov/wp-content/uploads/2019/04/veggie_fact_sheet_508.pdf");
+            SourceCard("NASA Mars24", "Sun position, local solar time and Sun distance for day, night and solar power.",
+                "https://www.giss.nasa.gov/tools/mars24/help/algorithm.html");
+        }
+
+        private void SourceCard(string title, string body, string url)
+        {
+            RectTransform card = Card();
+            LabelInFlow(card, title, 25, accent);
+            LabelInFlow(card, body, 20, paper);
+            Button(card, "Open: " + title, () => Application.OpenURL(url));
         }
 
         private void LearningCard(string title, string body, string sourceName, string url)
@@ -558,7 +711,7 @@ namespace MarsSurvival.UI
             RectTransform card = Card();
             LabelInFlow(card, title, 25, accent);
             LabelInFlow(card, body, 21, paper);
-            Button(card, sourceName + " ↗", () => Application.OpenURL(url));
+            Button(card, "Open: " + sourceName, () => Application.OpenURL(url));
         }
 
         private void BuildSettings()
@@ -574,8 +727,10 @@ namespace MarsSurvival.UI
             Slider scale = Slider(content, (uiScale - 0.8f) / 0.4f, value =>
             {
                 uiScale = Mathf.Lerp(0.8f, 1.2f, value);
-                scaler.referenceResolution = new Vector2(1920 / uiScale, 1080 / uiScale);
+                scaler.referenceResolution = new Vector2(Ui.UiWidth / uiScale, Ui.UiHeight / uiScale);
             });
+            Paragraph("Sound and text size", 21);
+            MarsTrainer.UI.MissionSettings.Create(content);
             Heading("THREE-KNOB DASHBOARD");
             Paragraph("Arduino Uno over USB serial (115200 baud, COM7 when present). Left knob: Life control. Middle: Temperature. Right: Radiation shielding. Turn a knob counter-clockwise for more power, clockwise for less. " +
                       "Each LED group is green when the power put in meets the useful need, yellow when 1-15% short, red when more than 15% short; the buzzer sounds on red and on warnings. " +
@@ -752,7 +907,7 @@ namespace MarsSurvival.UI
         {
             Heading("HOW TO COMPLETE YOUR DAILY TASKS");
             Paragraph("Every task follows the same three steps:", 22);
-            Paragraph("1.  Pick up the tools.  Walk up to a tool in the base, look at it and press E. You can carry many at once; press G inside the base to put them all back.\n" +
+            Paragraph("1.  Pick up the tools.  Walk up to a tool in the base, look at it and press E. You can carry many at once; press B inside the base to put them all back.\n" +
                       "2.  Go to the right room.  Tasks only start at their station (the bottom bar names the room you are in). Stand still.\n" +
                       "3.  Press the task button.  Open the console (Tab), choose the task and wait. Moving pauses the task; it resumes when you stand still. Inside, + 1 hour waits faster.", 21);
             if (mission != null && mission.Tools != null && mission.Simulation != null)
@@ -836,11 +991,13 @@ namespace MarsSurvival.UI
             return seconds.ToString("0", CultureInfo.InvariantCulture) + " s";
         }
 
+        // ------------------------------------------------------------------ MarsTrainer UI kit primitives
+
         private RectTransform Card()
         {
-            RectTransform card = Box("Card", content, WithAlpha(MarsPalette.Mauve, 0.19f));
+            RectTransform card = Box("Card", content, StatBar.ColorOf(Ui.UiPanel));
             VerticalLayoutGroup layout = card.gameObject.AddComponent<VerticalLayoutGroup>();
-            layout.padding = new RectOffset(18, 18, 14, 14);
+            layout.padding = new RectOffset(20, 20, 16, 16);
             layout.spacing = 10;
             layout.childControlHeight = true;
             layout.childControlWidth = true;
@@ -848,54 +1005,71 @@ namespace MarsSurvival.UI
             return card;
         }
 
-        private void Heading(string value) { LabelInFlow(content, value, 27, accent); }
+        private void Heading(string value) { LabelInFlow(content, Title(value.ToLowerInvariant()), Ui.UiHeading, accent); }
         private void Paragraph(string value, int size = 23) { LabelInFlow(content, value, size, paper); }
         private void LiveParagraph(Func<string> value, int size = 23) { LiveLabel(content, value, size); }
         private void LiveLabel(Transform parent, Func<string> value, int size)
         {
-            Text label = LabelInFlow(parent, "", size, paper);
+            TMP_Text label = LabelInFlow(parent, "", size, paper);
             live.Add(() => label.text = value());
         }
 
-        private Text LabelInFlow(Transform parent, string value, int size, Color color)
+        /// <summary>Console text sizes were authored for the legacy font; the UI kit's font reads best a little larger.</summary>
+        private static float Size(float legacy) { return legacy >= Ui.UiHeading ? legacy : Mathf.Round(legacy * 1.15f); }
+
+        private TMP_Text LabelInFlow(Transform parent, string value, float size, Color color)
         {
-            Text label = Label(parent, value, size, color);
-            label.gameObject.AddComponent<LayoutElement>().minHeight = size + 8;
+            TMP_Text label = Label(parent, value, size, color);
+            label.gameObject.AddComponent<LayoutElement>().minHeight = Size(size) + 8;
             return label;
         }
 
-        private Text Label(Transform parent, string value, int size, Color color)
+        private TMP_Text Label(Transform parent, string value, float size, Color color)
         {
-            Text label = NewRect("Text", parent).gameObject.AddComponent<Text>();
+            TextMeshProUGUI label = NewRect("Text", parent).gameObject.AddComponent<TextMeshProUGUI>();
             label.font = font;
             label.text = value;
-            label.fontSize = size;
+            label.fontSize = Size(size);
             label.color = color;
-            label.alignment = TextAnchor.MiddleLeft;
-            label.horizontalOverflow = HorizontalWrapMode.Wrap;
-            label.verticalOverflow = VerticalWrapMode.Overflow;
-            label.supportRichText = true;
+            label.alignment = TextAlignmentOptions.MidlineLeft;
+            label.enableWordWrapping = true;
+            label.overflowMode = TextOverflowModes.Overflow;
+            label.lineSpacing = Ui.UiTextLineSpacing;
+            label.richText = false;
             label.raycastTarget = false;
             return label;
         }
 
+        /// <summary>Text filling a HUD plate, inset by the kit gap.</summary>
+        private TMP_Text Overlay(RectTransform parent, string value, float size)
+        {
+            TMP_Text text = Label(parent, value, size, paper);
+            text.fontSize = size;
+            text.margin = new Vector4(Ui.UiGap * 1.5f, 0, Ui.UiGap * 1.5f, 0);
+            Stretch(text.rectTransform);
+            return text;
+        }
+
         private Button Button(Transform parent, string text, UnityAction action)
         {
-            RectTransform rect = Box(text, parent, WithAlpha(MarsPalette.Mauve, 0.5f));
-            Height(rect, 46);
+            RectTransform rect = Box(text, parent, StatBar.ColorOf(Ui.UiButtonColor));
+            Height(rect, 52);
+            Image image = rect.GetComponent<Image>();
+            image.raycastTarget = true;
             Button button = rect.gameObject.AddComponent<Button>();
+            button.targetGraphic = image;
             ColorBlock colors = button.colors;
-            colors.normalColor = Color.white;
-            colors.highlightedColor = new Color(1.35f, 1.25f, 1.15f);
+            colors.highlightedColor = StatBar.ColorOf(Ui.UiButtonFocus);
             colors.selectedColor = colors.highlightedColor;
-            colors.pressedColor = MarsPalette.WarmOrange;
-            colors.disabledColor = new Color(0.5f, 0.5f, 0.5f, 0.5f);
+            colors.pressedColor = StatBar.ColorOf(Ui.UiCopper);
+            colors.disabledColor = new Color(0.55f, 0.5f, 0.5f, 0.55f);
             button.colors = colors;
             button.navigation = new Navigation { mode = Navigation.Mode.Automatic };
             button.onClick.AddListener(action);
-            Text label = Label(rect, text, 20, paper);
-            label.alignment = TextAnchor.MiddleCenter;
-            Anchor(label.rectTransform, Vector2.zero, Vector2.one, new Vector2(10, 4), new Vector2(-10, -4));
+            TMP_Text label = Label(rect, Title(text), 20, paper);
+            label.alignment = TextAlignmentOptions.Center;
+            label.margin = new Vector4(Ui.UiGap, 0, Ui.UiGap, 0);
+            Stretch(label.rectTransform);
             controls.Add(button);
             return button;
         }
@@ -907,24 +1081,46 @@ namespace MarsSurvival.UI
             return button;
         }
 
+        private Button KitButton(Transform parent, string text, ResourceSymbol symbol, UnityAction action)
+        {
+            Button button = StatBar.Button(parent, text, action);
+            ResourceGlyph.Decorate(button, symbol);
+            TMP_Text label = button.GetComponentInChildren<TMP_Text>();
+            label.fontSize = Ui.UiBody * 0.75f;
+            return button;
+        }
+
+        private Button SupplyButton(Transform parent, string text, ResourceSymbol symbol, UnityAction action)
+        {
+            Button button = StatBar.Button(parent, text, action);
+            ResourceGlyph glyphIcon = ResourceGlyph.Create(button.transform, symbol, Ui.UiBadgeDiameter);
+            RectTransform glyph = glyphIcon.rectTransform;
+            glyph.anchorMin = glyph.anchorMax = new Vector2(.5f, .7f); glyph.pivot = new Vector2(.5f, .5f); glyph.anchoredPosition = Vector2.zero;
+            RectTransform label = button.GetComponentInChildren<TMP_Text>().rectTransform;
+            label.anchorMin = Vector2.zero; label.anchorMax = new Vector2(1, .45f);
+            label.offsetMin = label.offsetMax = Vector2.zero;
+            button.GetComponentInChildren<TMP_Text>().fontSize = Ui.UiBody * 0.75f;
+            return button;
+        }
+
         private Slider Slider(Transform parent, float initial, UnityAction<float> changed)
         {
             RectTransform rect = NewRect("Power slider", parent);
-            Height(rect, 34);
+            Height(rect, 40);
             Slider slider = rect.gameObject.AddComponent<Slider>();
             slider.minValue = 0;
             slider.maxValue = 1;
             slider.wholeNumbers = false;
-            RectTransform track = Box("Track", rect, WithAlpha(MarsPalette.Mauve, 0.6f));
-            Anchor(track, Vector2.zero, Vector2.one, new Vector2(12, 11), new Vector2(-12, -11));
+            RectTransform track = Box("Track", rect, StatBar.ColorOf(Ui.UiButtonColor));
+            Anchor(track, Vector2.zero, Vector2.one, new Vector2(12, 12), new Vector2(-12, -12));
             RectTransform fillArea = NewRect("Fill area", rect);
-            Anchor(fillArea, Vector2.zero, Vector2.one, new Vector2(12, 11), new Vector2(-12, -11));
-            RectTransform fill = Box("Fill", fillArea, accent);
+            Anchor(fillArea, Vector2.zero, Vector2.one, new Vector2(12, 12), new Vector2(-12, -12));
+            RectTransform fill = Box("Fill", fillArea, StatBar.ColorOf(Ui.UiSafe));
             Stretch(fill);
             RectTransform handleArea = NewRect("Handle area", rect);
             Anchor(handleArea, Vector2.zero, Vector2.one, new Vector2(12, 0), new Vector2(-12, 0));
             RectTransform handle = Box("Handle", handleArea, paper);
-            handle.sizeDelta = new Vector2(24, 32);
+            handle.sizeDelta = new Vector2(26, 38);
             slider.fillRect = fill;
             slider.handleRect = handle;
             slider.targetGraphic = handle.GetComponent<Image>();
@@ -941,12 +1137,17 @@ namespace MarsSurvival.UI
             RectTransform row = NewRect("Actions", parent);
             Height(row, height);
             HorizontalLayoutGroup layout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
-            layout.spacing = 10;
+            layout.spacing = Ui.UiGap;
             layout.childControlHeight = true;
             layout.childControlWidth = true;
             layout.childForceExpandWidth = true;
             layout.childForceExpandHeight = true;
             return row;
+        }
+
+        private static string Title(string text)
+        {
+            return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(text).Replace("Kwh", "kWh").Replace("Msv", "mSv");
         }
 
         private static void Height(RectTransform rect, float value)
@@ -967,8 +1168,16 @@ namespace MarsSurvival.UI
         private static RectTransform Box(string name, Transform parent, Color color)
         {
             RectTransform rect = NewRect(name, parent);
-            rect.gameObject.AddComponent<Image>().color = color;
+            FacetedImage image = rect.gameObject.AddComponent<FacetedImage>();
+            image.color = color;
+            image.raycastTarget = false;
             return rect;
+        }
+
+        private static void Place(RectTransform rect, float x0, float y0, float x1, float y1)
+        {
+            rect.anchorMin = new Vector2(x0, y0); rect.anchorMax = new Vector2(x1, y1);
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
         }
 
         private static void Anchor(RectTransform rect, Vector2 minimum, Vector2 maximum, Vector2 offsetMin, Vector2 offsetMax)

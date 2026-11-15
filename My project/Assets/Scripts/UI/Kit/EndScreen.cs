@@ -12,10 +12,10 @@ namespace MarsTrainer.UI
         [SerializeField] private Button review;
         [SerializeField] private Button restart;
         public System.Action ReviewRequested { get; set; }
-        public void Show(bool completed, double sols, string hurt, string saved, double totalDose)
+        public void Show(bool completed, double sols, string hurt, string saved, double totalDose, string heading = null)
         {
             gameObject.SetActive(true);
-            title.text = completed ? "You Survived " + GameConstants.MissionDurationDays + " Martian Days!" : "Your Mission Has Ended";
+            title.text = heading ?? (completed ? "You Survived " + GameConstants.MissionDurationDays + " Martian Days!" : "Your Mission Has Ended");
             report.text = "Mission Report - " + sols.ToString("0.0") + " Martian Days\n\nWhat Hurt: " + hurt
                 + "\n\nWhat Helped: " + saved + "\n\nTotal Dose: " + totalDose.ToString("0.00") + " mSv";
             review.onClick.RemoveAllListeners(); review.onClick.AddListener(Review);

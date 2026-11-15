@@ -7,11 +7,12 @@ namespace MarsTrainer.UI
     {
         public static readonly string[,] Exploration =
         {
-            {"WASD / Left Stick", "Walk"}, {"RMB / Right Stick", "Orbit Camera"},
-            {"Shift / Stick Press", "Sprint"}, {"Mouse Wheel", "Zoom"},
-            {"E", "Open / Close Pack"}, {"F", "Eat"}, {"G", "Drink"},
-            {"R", "Open Research"}, {"Space", "Pause / Resume"},
-            {"1 / 2 / 3", "Set Time Speed"}, {"Escape", "Menu / Back"}
+            // Outpost mission controls (first-person astronaut, rover and tools).
+            {"WASD / Mouse", "Walk / Look"}, {"Shift / Space", "Sprint / Jump"},
+            {"E", "Pick Up Tool / Rover"}, {"F / G", "Eat / Drink"},
+            {"Tab", "Outpost Console"}, {"H", "Daily Task Help"},
+            {"P", "Pause / Resume"}, {"F5 / F9", "Save / Load"},
+            {"F3", "Terrain Data"}, {"Escape", "Menu / Back"}
         };
         public static readonly string[,] Menus =
         {

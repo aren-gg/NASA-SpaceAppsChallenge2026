@@ -45,7 +45,7 @@ namespace MarsSurvival.Simulation
             {
                 if (!crop.planted || crop.ready) continue;
                 double conservation = Installed("H0") ? 0.8 : 1;
-                double waterNeed = sols * (crop.crop == "staple" ? 1.5 : 1) * conservation;
+                double waterNeed = sols * Settings.leafyWaterLitersPerSol * (crop.crop == "staple" ? 1.5 : 1) * conservation;
                 double nutrientNeed = sols * 0.35 * conservation;
                 double resourceFraction = Math.Min(1, Math.Min(waterNeed > 0 ? r.cleanWaterLiters / waterNeed : 1,
                     nutrientNeed > 0 ? r.nutrients / nutrientNeed : 1));

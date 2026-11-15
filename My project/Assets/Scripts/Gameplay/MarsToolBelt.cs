@@ -10,7 +10,7 @@ namespace MarsSurvival.Gameplay
 {
     /// <summary>
     /// Lets the astronaut pick up the tools standing in the outpost (look at one and press E;
-    /// G inside puts everything back) and says which tools each daily task needs.
+    /// B inside puts everything back) and says which tools each daily task needs.
     /// The carried set is stored in the mission save.
     /// </summary>
     public sealed class MarsToolBelt : MonoBehaviour
@@ -121,7 +121,7 @@ namespace MarsSurvival.Gameplay
 #if ENABLE_LEGACY_INPUT_MANAGER
             if (Input.GetKeyDown(KeyCode.E) && aimed != null) mission.Notice = TryPickUp(aimed);
             if (Input.GetKeyDown(KeyCode.Q)) CycleHeld();
-            if (Input.GetKeyDown(KeyCode.G) && state.carriedTools.Count > 0)
+            if (Input.GetKeyDown(KeyCode.B) && state.carriedTools.Count > 0)
                 mission.Notice = mission.Context.zone == PlayerZone.Outdoors ? "Put tools back inside the base." : PutAllBack();
 #endif
         }
@@ -337,7 +337,7 @@ namespace MarsSurvival.Gameplay
                 float w = 620 * scale, h = 80 * scale;
                 GUI.Box(new Rect((Screen.width - w) * 0.5f, Screen.height * 0.5f + 40 * scale, w, h), text, promptStyle);
             }
-            string carried = "Carrying: " + CarriedSummary() + (state.carriedTools.Count > 0 ? "   [G] put back (inside)" : "");
+            string carried = "Carrying: " + CarriedSummary() + (state.carriedTools.Count > 0 ? "   [B] put back (inside)" : "");
             GUI.Label(new Rect(Screen.width * 0.4f, 150 * scale, Screen.width * 0.6f - 30 * scale, 60 * scale), carried, listStyle);
         }
     }

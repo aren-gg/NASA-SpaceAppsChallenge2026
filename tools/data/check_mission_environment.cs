@@ -13,6 +13,7 @@ public static class MissionEnvironmentChecks
         {
             int count = Run();
             if (args.Length == 1) count += Run(ReadPreparedCsv(args[0]));
+            count += RunSchedule(args.Length == 1 ? ReadPreparedCsv(args[0]) : null);
             Console.WriteLine("Environment checks passed: " + count);
             return 0;
         }
@@ -52,6 +53,37 @@ public static class MissionEnvironmentChecks
         assert(model.TemperatureAt(0) == model.TemperatureAt(24), "Cyclic temperature continuity");
         EnvironmentSample later = model.Sample(650 * MarsTime.SolSeconds, start, 2026, -4.5895, 137.4417);
         assert(later.eventSource.Contains("Seeded"), "Honest long-duration source label");
+        return checks;
+    }
+
+    // The MarsTrainer per-sol schedule (RAD dose, REMS/InSight range, dust opacity, DONKI flare level).
+    public static int RunSchedule(MissionEnvironment.EnvironmentProfile profile)
+    {
+        int checks = 0;
+        Action<bool, string> assert = (valid, name) => { if (!valid) throw new Exception(name); checks++; };
+        var days = new[]
+        {
+            new MissionEnvironment.SeasonDay { minC = -90, maxC = -30, dustOpacity = 0.35, gcrMicrograyPerDay = 200, flareLevel = 0 },
+            new MissionEnvironment.SeasonDay { minC = -60, maxC = -5, dustOpacity = 1.7, gcrMicrograyPerDay = 228, flareLevel = 3 },
+        };
+        var plain = new MissionEnvironment(profile);
+        var model = new MissionEnvironment(profile, null, days, "test schedule");
+        assert(model.UsesSeasonSchedule && !plain.UsesSeasonSchedule, "Schedule accepted");
+        assert(!new MissionEnvironment(profile, null, new[] { new MissionEnvironment.SeasonDay { minC = 10, maxC = -10 } }).UsesSeasonSchedule, "Invalid schedule rejected");
+        const double start = 1763985600;
+        for (int i = 0; i < 400; i++)
+        {
+            double elapsed = i * 0.005 * MarsTime.SolSeconds;
+            int sol = (int)(elapsed / MarsTime.SolSeconds);
+            EnvironmentSample a = model.Sample(elapsed, start, 2026, -4.5895, 137.4417);
+            EnvironmentSample b = plain.Sample(elapsed, start, 2026, -4.5895, 137.4417);
+            var day = days[sol % days.Length];
+            assert(a.temperatureC >= day.minC - 1e-6 && a.temperatureC <= day.maxC + 9 + 1e-6, "Scheduled temperature range");
+            assert(Math.Abs(a.radiationMicrograyPerHour - (day.gcrMicrograyPerDay / 24.0 + a.solarEvent * 500 * (0.5 + 0.5 * day.flareLevel))) < 1e-9, "RAD background and DONKI flare scaling");
+            assert(a.solarFraction <= b.solarFraction * 1.05 + 1e-9, "Seasonal dust never adds much light");
+            if (sol == 1) assert(a.solarFraction <= b.solarFraction + 1e-9, "Dusty sol dims panels");
+            assert(a.radiationSource.Contains("RAD") && a.temperatureSource.Contains("REMS") && a.eventSource.Contains("DONKI"), "Source labels");
+        }
         return checks;
     }
 

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using MarsSurvival.World;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
@@ -61,7 +62,7 @@ namespace MarsSurvival.UI
         private float orbitAngle;
         private Vector3 fallbackTarget;
 
-        private Font font;
+        private TMP_FontAsset font;
         private Sprite roundFill, roundRing;
         private GameObject menuCanvas;
         private Image fade;
@@ -69,7 +70,7 @@ namespace MarsSurvival.UI
         private RectTransform helpCard;
         private bool helpOpen;
         private float helpBlend;
-        private Text hint;
+        private TMP_Text hint;
         private float openedAt;
 
         private struct Reveal
@@ -161,7 +162,9 @@ namespace MarsSurvival.UI
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
 
-            font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            // MarsTrainer UI typeface (Counter-Strike UI SDF), shared with the mission HUD.
+            font = Resources.Load<TMP_FontAsset>(MarsTrainer.UI.UiTypeface.ResourcePath);
+            if (font == null) font = TMP_Settings.defaultFontAsset;
             roundFill = RoundedSprite(64, 22f, 0f);
             roundRing = RoundedSprite(64, 22f, 3f);
             EnsureEventSystem();
@@ -372,15 +375,12 @@ namespace MarsSurvival.UI
             float y = 0f;
             int index = 0;
 
-            Text eyebrowText = NewText(column, eyebrow, 26, orange, FontStyle.Bold, TextAnchor.UpperLeft);
+            TMP_Text eyebrowText = NewText(column, eyebrow, 26, orange, FontStyle.Bold, TextAnchor.UpperLeft);
             Place(eyebrowText.rectTransform, ref y, 900f, 34f, 22f, index++);
 
-            Text title = NewText(column, titleTop + "\n<color=#" + ColorUtility.ToHtmlStringRGB(orange) + ">" + titleBottom + "</color>",
+            TMP_Text title = NewText(column, titleTop + "\n<color=#" + ColorUtility.ToHtmlStringRGB(orange) + ">" + titleBottom + "</color>",
                                  156, pink, FontStyle.Bold, TextAnchor.UpperLeft);
-            title.lineSpacing = 0.82f;
-            Shadow shadow = title.gameObject.AddComponent<Shadow>();
-            shadow.effectColor = WithAlpha(purple, 0.55f);
-            shadow.effectDistance = new Vector2(0f, -6f);
+            title.lineSpacing = -18f;
             Place(title.rectTransform, ref y, 900f, 300f, 26f, index++);
 
             Image rule = NewRect("Rule", column).gameObject.AddComponent<Image>();
@@ -391,9 +391,9 @@ namespace MarsSurvival.UI
             rule.raycastTarget = false;
             Place(rule.rectTransform, ref y, 120f, 8f, 30f, index++);
 
-            Text taglineText = NewText(column, tagline, 32, WithAlpha(pink, 0.92f), FontStyle.Normal, TextAnchor.UpperLeft);
-            taglineText.horizontalOverflow = HorizontalWrapMode.Wrap;
-            taglineText.lineSpacing = 1.1f;
+            TMP_Text taglineText = NewText(column, tagline, 32, WithAlpha(pink, 0.92f), FontStyle.Normal, TextAnchor.UpperLeft);
+            taglineText.enableWordWrapping = true;
+            taglineText.lineSpacing = 10f;
             Place(taglineText.rectTransform, ref y, 700f, 84f, 56f, index++);
 
             RectTransform start = MakeButton(column, "START MISSION", ButtonStyle.Primary, StartMission);
@@ -404,7 +404,7 @@ namespace MarsSurvival.UI
             Place(quit, ref y, 460f, 60f, 0f, index++);
 
             // Footer: data credit bottom-left, start hint bottom-right.
-            Text creditText = NewText(root, credit, 20, WithAlpha(pink, 0.6f), FontStyle.Normal, TextAnchor.LowerLeft);
+            TMP_Text creditText = NewText(root, credit, 20, WithAlpha(pink, 0.6f), FontStyle.Normal, TextAnchor.LowerLeft);
             RectTransform creditRect = creditText.rectTransform;
             creditRect.anchorMin = creditRect.anchorMax = creditRect.pivot = Vector2.zero;
             creditRect.sizeDelta = new Vector2(1400f, 30f);
@@ -444,7 +444,7 @@ namespace MarsSurvival.UI
             card.type = Image.Type.Sliced;
             card.color = WithAlpha(Color.Lerp(purple, MarsPalette.Mauve, 0.12f), 0.97f);
 
-            Text heading = NewText(helpCard, "HOW TO PLAY", 40, MarsPalette.WarmOrange, FontStyle.Bold, TextAnchor.UpperLeft);
+            TMP_Text heading = NewText(helpCard, "HOW TO PLAY", 40, MarsPalette.WarmOrange, FontStyle.Bold, TextAnchor.UpperLeft);
             TopLeft(heading.rectTransform, new Vector2(64f, -56f), new Vector2(700f, 50f));
 
             string[,] rows =
@@ -453,11 +453,12 @@ namespace MarsSurvival.UI
                 { "Mouse", "Look around" },
                 { "Shift", "Sprint" },
                 { "Space", "Jump (gravity is low on Mars!)" },
-                { "Tab", "Mission dashboard and tasks" },
+                { "Tab", "Outpost console: power, tasks" },
                 { "E", "Pick up the tool you are looking at" },
+                { "F / G", "Eat / drink" },
                 { "H", "Help: how to do your daily tasks" },
                 { "P", "Pause or resume the mission" },
-                { "Esc", "Free the mouse pointer" },
+                { "Esc", "Menu: pause, controls, sound" },
                 { "F5 / F9", "Save / load mission" },
                 { "F3", "Terrain data" },
             };
@@ -471,10 +472,10 @@ namespace MarsSurvival.UI
                 chipImage.type = Image.Type.Sliced;
                 chipImage.pixelsPerUnitMultiplier = 1.6f;
                 chipImage.color = WithAlpha(pink, 0.55f);
-                Text key = NewText(chip, rows[i, 0], 22, pink, FontStyle.Bold, TextAnchor.MiddleCenter);
+                TMP_Text key = NewText(chip, rows[i, 0], 22, pink, FontStyle.Bold, TextAnchor.MiddleCenter);
                 Stretch(key.rectTransform);
 
-                Text action = NewText(helpCard, rows[i, 1], 27, WithAlpha(pink, 0.92f), FontStyle.Normal, TextAnchor.MiddleLeft);
+                TMP_Text action = NewText(helpCard, rows[i, 1], 27, WithAlpha(pink, 0.92f), FontStyle.Normal, TextAnchor.MiddleLeft);
                 TopLeft(action.rectTransform, new Vector2(262f, rowY), new Vector2(540f, 44f));
             }
 
@@ -503,7 +504,7 @@ namespace MarsSurvival.UI
             button.targetGraphic = background;
             button.onClick.AddListener(onClick);
 
-            Text text = NewText(rect, label, style == ButtonStyle.Ghost ? 26 : 30,
+            TMP_Text text = NewText(rect, label, style == ButtonStyle.Ghost ? 26 : 30,
                                 Color.white, FontStyle.Bold, TextAnchor.MiddleCenter);
             Stretch(text.rectTransform);
 
@@ -568,18 +569,22 @@ namespace MarsSurvival.UI
             return (RectTransform)go.transform;
         }
 
-        private Text NewText(Transform parent, string content, int size, Color color, FontStyle style, TextAnchor anchor)
+        private TMP_Text NewText(Transform parent, string content, int size, Color color, FontStyle style, TextAnchor anchor)
         {
-            Text text = NewRect("Text", parent).gameObject.AddComponent<Text>();
+            TextMeshProUGUI text = NewRect("Text", parent).gameObject.AddComponent<TextMeshProUGUI>();
             text.font = font;
             text.text = content;
             text.fontSize = size;
-            text.fontStyle = style;
+            text.fontStyle = style == FontStyle.Bold ? FontStyles.Bold : FontStyles.Normal;
             text.color = color;
-            text.alignment = anchor;
-            text.supportRichText = true;
-            text.horizontalOverflow = HorizontalWrapMode.Overflow;
-            text.verticalOverflow = VerticalWrapMode.Overflow;
+            text.alignment = anchor == TextAnchor.UpperLeft ? TextAlignmentOptions.TopLeft
+                : anchor == TextAnchor.MiddleCenter ? TextAlignmentOptions.Center
+                : anchor == TextAnchor.MiddleLeft ? TextAlignmentOptions.MidlineLeft
+                : anchor == TextAnchor.LowerLeft ? TextAlignmentOptions.BottomLeft
+                : anchor == TextAnchor.LowerRight ? TextAlignmentOptions.BottomRight : TextAlignmentOptions.Center;
+            text.richText = true;
+            text.enableWordWrapping = false;
+            text.overflowMode = TextOverflowModes.Overflow;
             text.raycastTarget = false;
             return text;
         }

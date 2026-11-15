@@ -42,6 +42,8 @@ namespace MarsSurvival.Simulation
         public double chargeEfficiency = 0.95;
         public double portableChargeEfficiency = 0.9;
         public double cropLeafySols = 5, cropStapleSols = 10;
+        /// <summary>Water one leafy bed uses per sol; set from the KSC Veggie crop estimates (MissionDataSources).</summary>
+        public double leafyWaterLitersPerSol = 1;
         public static double Duration(MissionLength length)
         {
             return SolSeconds * SolsPerYear / (length == MissionLength.Month ? 12 : length == MissionLength.HalfYear ? 2 : 1);

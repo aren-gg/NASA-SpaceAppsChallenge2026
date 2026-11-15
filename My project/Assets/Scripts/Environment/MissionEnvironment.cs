@@ -10,6 +10,22 @@ namespace MarsSurvival.Simulation
         public const string ProfileResource = "mission_environment_profile";
         private readonly EnvironmentProfile profile;
         private readonly MarsWeatherArchive archive;
+        private readonly SeasonDay[] seasons;
+        private readonly string seasonSource;
+        private readonly double profileMinC, profileMaxC;
+
+        /// <summary>
+        /// One sol of the MarsTrainer seasonal schedule (StreamingAssets/mars_year_schedule.json): daily
+        /// air temperature range (Curiosity REMS / InSight), dust opacity, daily GCR dose (Curiosity RAD)
+        /// and flare level (NASA DONKI). Loaded by MissionDataSources; plain values keep this class standalone.
+        /// </summary>
+        [Serializable]
+        public sealed class SeasonDay
+        {
+            public double minC, maxC, dustOpacity, gcrMicrograyPerDay;
+            public int flareLevel;
+            public bool measured;
+        }
 
         [Serializable]
         public sealed class TemperaturePoint
@@ -29,13 +45,27 @@ namespace MarsSurvival.Simulation
 
         public MissionEnvironment() : this(null, null) { }
 
-        public MissionEnvironment(EnvironmentProfile temperatureProfile, MarsWeatherArchive solarArchive = null)
+        public MissionEnvironment(EnvironmentProfile temperatureProfile, MarsWeatherArchive solarArchive = null,
+            SeasonDay[] seasonSchedule = null, string seasonScheduleSource = null)
         {
             profile = Valid(temperatureProfile) ? temperatureProfile : DefaultProfile();
             archive = solarArchive;
+            seasons = ValidSeasons(seasonSchedule) ? seasonSchedule : null;
+            seasonSource = seasonScheduleSource ?? "MarsTrainer seasonal schedule";
+            profileMinC = double.MaxValue; profileMaxC = double.MinValue;
+            foreach (TemperaturePoint point in profile.temperatures)
+            {
+                profileMinC = Math.Min(profileMinC, point.temperatureC);
+                profileMaxC = Math.Max(profileMaxC, point.temperatureC);
+            }
         }
 
-        public static MissionEnvironment LoadBundled()
+        /// <summary>True when the per-sol RAD/REMS/DONKI schedule drives the environment.</summary>
+        public bool UsesSeasonSchedule { get { return seasons != null; } }
+
+        public static MissionEnvironment LoadBundled() { return LoadBundled(null, null); }
+
+        public static MissionEnvironment LoadBundled(SeasonDay[] seasonSchedule, string seasonScheduleSource)
         {
             EnvironmentProfile loaded = null;
             TextAsset asset = Resources.Load<TextAsset>(ProfileResource);
@@ -45,7 +75,7 @@ namespace MarsSurvival.Simulation
                 catch (Exception ex) { Debug.LogWarning("Environment profile: " + ex.Message); }
             }
             if (!Valid(loaded)) Debug.LogWarning("Using the labeled representative Gale temperature model; measured REMS profile is unavailable.");
-            return new MissionEnvironment(loaded, MarsWeatherArchive.Load());
+            return new MissionEnvironment(loaded, MarsWeatherArchive.Load(), seasonSchedule, seasonScheduleSource);
         }
 
         public EnvironmentSample Sample(double elapsedSeconds, double startUnix, int seed, double latitude, double longitude)
@@ -67,11 +97,24 @@ namespace MarsSurvival.Simulation
             double heat = Math.Floor(sol) == hotSol && hour > 11 && hour < 17
                 ? Math.Sin((hour - 11) / 6 * Math.PI) * 0.75 : 0;
             double cold = Clamp01(-astronomy.sunElevation / 12);
-            double seasonalOffset = 5 * Math.Sin((astronomy.solarLongitude - 180) * Math.PI / 180);
-            double outsideC = TemperatureAt(hour) + seasonalOffset + heat * 9;
+            SeasonDay day = seasons == null ? null : seasons[(int)(Math.Floor(sol) % seasons.Length)];
+            double outsideC;
+            if (day == null)
+                outsideC = TemperatureAt(hour) + 5 * Math.Sin((astronomy.solarLongitude - 180) * Math.PI / 180) + heat * 9;
+            else
+            {
+                // Keep the measured REMS diurnal shape, rescaled to this sol's scheduled minimum and maximum.
+                double span = Math.Max(1, profileMaxC - profileMinC);
+                outsideC = day.minC + (TemperatureAt(hour) - profileMinC) / span * (day.maxC - day.minC) + heat * 9;
+            }
             double distanceScale = 1.523679 / astronomy.sunDistanceAu;
             double sunlight = Math.Max(0, astronomy.sunUp) * distanceScale * distanceScale;
-            double solarFraction = sunlight * (1 - 0.65 * dust);
+            // Seasonal background dust opacity (tau) dims panels beyond the clear-sky 0.35; storms add on top.
+            double seasonalDust = day == null ? 1 : Math.Max(0.6, Math.Min(1.05, 1 - 0.18 * (day.dustOpacity - 0.35)));
+            double solarFraction = sunlight * (1 - 0.65 * dust) * seasonalDust;
+            double backgroundPerDay = day == null ? profile.backgroundMicrograyPerEarthDay : day.gcrMicrograyPerDay;
+            // DONKI flare level (0-3) scales the simulated particle event's peak dose.
+            double particlePeak = profile.simulatedParticlePeakMicrograyPerHour * (day == null ? 1 : 0.5 + 0.5 * day.flareLevel);
             double nextWindow;
             double signal = RadioSignal(elapsedSeconds, seed, latitude, longitude, out nextWindow);
             bool solarWarning = nextSolar > 0 && nextSolar <= 0.3;
@@ -87,17 +130,22 @@ namespace MarsSurvival.Simulation
             {
                 temperatureC = outsideC,
                 solarFraction = Math.Max(0, solarFraction),
-                radiationMicrograyPerHour = profile.backgroundMicrograyPerEarthDay / 24.0 +
-                    solarEvent * profile.simulatedParticlePeakMicrograyPerHour,
+                radiationMicrograyPerHour = backgroundPerDay / 24.0 + solarEvent * particlePeak,
                 dust = dust, heat = heat, cold = cold, solarEvent = solarEvent,
                 localHour = hour, solarLongitude = astronomy.solarLongitude,
                 signal = signal, nextWindowSeconds = nextWindow,
                 warning = solarWarning || dustWarning,
                 label = label,
-                temperatureSource = profile.temperatureSource,
-                radiationSource = "RAD 2012-2013 background reference; event increment simulated (microgray/hour)",
-                eventSource = string.IsNullOrEmpty(context) ? "Seeded teaching scenario; not a live forecast" :
-                    "Seeded teaching scenario; independent DONKI context: " + context
+                temperatureSource = day == null ? profile.temperatureSource : profile.temperatureSource +
+                    "; daily range " + day.minC.ToString("0", System.Globalization.CultureInfo.InvariantCulture) + " to " +
+                    day.maxC.ToString("0", System.Globalization.CultureInfo.InvariantCulture) + " C from the " + seasonSource + " (REMS/InSight)",
+                radiationSource = day == null ? "RAD 2012-2013 background reference; event increment simulated (microgray/hour)"
+                    : "Curiosity RAD daily GCR " + day.gcrMicrograyPerDay.ToString("0", System.Globalization.CultureInfo.InvariantCulture) +
+                      " microgray/day from the " + seasonSource + "; event increment simulated",
+                eventSource = (string.IsNullOrEmpty(context) ? "Seeded teaching scenario; not a live forecast" :
+                    "Seeded teaching scenario; independent DONKI context: " + context) +
+                    (day == null ? "" : "; DONKI flare level " + day.flareLevel + ", dust opacity " +
+                     day.dustOpacity.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + (day.measured ? "" : " (synthetic row)"))
             };
         }
 
@@ -162,6 +210,17 @@ namespace MarsSurvival.Simulation
                 return item.kind == "cme" ? "modeled CME arrival " + item.id : item.kind + " " + item.id;
             }
             return "";
+        }
+
+        private static bool ValidSeasons(SeasonDay[] value)
+        {
+            if (value == null || value.Length == 0) return false;
+            foreach (SeasonDay day in value)
+                if (day == null || !Finite(day.minC) || !Finite(day.maxC) || day.minC > day.maxC || day.minC < -150 || day.maxC > 50 ||
+                    !Finite(day.dustOpacity) || day.dustOpacity < 0 || day.dustOpacity > 10 ||
+                    !Finite(day.gcrMicrograyPerDay) || day.gcrMicrograyPerDay < 0 || day.gcrMicrograyPerDay > 2000 ||
+                    day.flareLevel < 0 || day.flareLevel > 3) return false;
+            return true;
         }
 
         private static bool Valid(EnvironmentProfile value)
