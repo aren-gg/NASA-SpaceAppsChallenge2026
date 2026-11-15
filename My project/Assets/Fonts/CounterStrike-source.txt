@@ -1,0 +1,7 @@
+Counter-Strike Regular by SoJa
+Source: https://www.dafont.com/counter-strike.font
+Download: https://dl.dafont.com/dl/?f=counter_strike
+Retrieved 2026-11-15. The author listing labels the font 100% Free.
+Original font file is unmodified. Liberation Sans remains a fallback for unsupported characters.
+
+CounterStrikeUI.ttf is a local UI derivative with outlines and horizontal metrics scaled to 94% width. Vertical outlines are unchanged. Generated using fontTools; original TTF is preserved.

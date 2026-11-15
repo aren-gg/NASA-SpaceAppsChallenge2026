@@ -1,0 +1,35 @@
+[
+  {
+    "id": "romaine",
+    "name": "Outredgeous red romaine",
+    "daysToHarvest": 33,
+    "kcalPerHarvest": 17,
+    "parSat": 400,
+    "waterLPerDay": 0.12,
+    "co2Ppm": 1000,
+    "lightHours": 16,
+    "needsVerification": true
+  },
+  {
+    "id": "mizuna",
+    "name": "Mizuna mustard",
+    "daysToHarvest": 28,
+    "kcalPerHarvest": 20,
+    "parSat": 450,
+    "waterLPerDay": 0.1,
+    "co2Ppm": 1000,
+    "lightHours": 16,
+    "needsVerification": true
+  },
+  {
+    "id": "tokyo_bekana",
+    "name": "Tokyo Bekana cabbage",
+    "daysToHarvest": 28,
+    "kcalPerHarvest": 15,
+    "parSat": 400,
+    "waterLPerDay": 0.12,
+    "co2Ppm": 1000,
+    "lightHours": 16,
+    "needsVerification": true
+  }
+]

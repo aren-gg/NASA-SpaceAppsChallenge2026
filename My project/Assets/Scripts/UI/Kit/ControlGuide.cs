@@ -1,0 +1,47 @@
+using MarsTrainer.Sim;
+using UnityEngine;
+
+namespace MarsTrainer.UI
+{
+    public static class ControlGuide
+    {
+        public static readonly string[,] Exploration =
+        {
+            {"WASD / Left Stick", "Walk"}, {"RMB / Right Stick", "Orbit Camera"},
+            {"Shift / Stick Press", "Sprint"}, {"Mouse Wheel", "Zoom"},
+            {"E", "Open / Close Pack"}, {"F", "Eat"}, {"G", "Drink"},
+            {"R", "Open Research"}, {"Space", "Pause / Resume"},
+            {"1 / 2 / 3", "Set Time Speed"}, {"Escape", "Menu / Back"}
+        };
+        public static readonly string[,] Menus =
+        {
+            {"Arrows", "Move Focus"}, {"Enter", "Choose"},
+            {"Tab", "Next Choice"}, {"Shift + Tab", "Previous Choice"}
+        };
+        public static RectTransform Create(Transform parent, string name, string[,] controls, int columns = 1)
+        {
+            int rows = (controls.GetLength(0) + columns - 1) / columns;
+            var owner = StatBar.Frame(parent, name, 0, 0, 1, 1);
+            StatBar.Height(owner, rows * GameConstants.UiControlRowHeight);
+            for (int i = 0; i < controls.GetLength(0); i++)
+            {
+                int column = i / rows, row = i % rows;
+                float x = column / (float)columns, y = 1 - (row + 1f) / rows;
+                var line = StatBar.Frame(owner, controls[i, 1] + " Control", x, y, x + 1f / columns, y + 1f / rows);
+                var key = StatBar.Text(line, controls[i, 0]);
+                Place(key.rectTransform, 0, GameConstants.UiControlKeyFraction);
+                key.margin = new Vector4(GameConstants.UiControlIndent, 0, GameConstants.UiGap, 0);
+                key.color = StatBar.ColorOf(GameConstants.UiCopper);
+                var action = StatBar.Text(line, controls[i, 1]);
+                Place(action.rectTransform, GameConstants.UiControlKeyFraction, 1);
+                action.margin = new Vector4(GameConstants.UiGap, 0, GameConstants.UiGap, 0);
+            }
+            return owner;
+        }
+        private static void Place(RectTransform rect, float left, float right)
+        {
+            rect.anchorMin = new Vector2(left, 0); rect.anchorMax = new Vector2(right, 1);
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+        }
+    }
+}

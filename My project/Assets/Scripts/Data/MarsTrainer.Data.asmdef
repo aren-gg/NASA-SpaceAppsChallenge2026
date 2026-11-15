@@ -1,0 +1,9 @@
+{
+  "name": "MarsTrainer.Data",
+  "rootNamespace": "MarsTrainer.Data",
+  "references": [
+    "MarsTrainer.Sim",
+    "Unity.Newtonsoft.Json"
+  ],
+  "noEngineReferences": false
+}

@@ -1,0 +1,6 @@
+{
+  "name": "MarsTrainer.Sim",
+  "rootNamespace": "MarsTrainer.Sim",
+  "references": [],
+  "noEngineReferences": true
+}
