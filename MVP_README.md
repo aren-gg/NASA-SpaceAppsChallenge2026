@@ -11,9 +11,11 @@ Open `My project/Assets/Scenes/Mars.unity`. If the scene has no weather yet, cho
 
 | Key | Action |
 | --- | --- |
-| W A S D, Q / E | Move, down / up |
-| Right mouse | Look |
-| Shift, scroll wheel | Faster, change speed |
+| W A S D | Walk (3.4 km/h) |
+| Mouse | Look (Esc frees the cursor, click captures it) |
+| Left Shift + W | Sprint (29 km/h) |
+| Space | Jump (Mars gravity) |
+| F2 | Switch between the astronaut and the free inspection camera (W A S D, Q / E, right mouse to look, Shift faster, scroll wheel changes speed) |
 | 1–5 | Clear, Solar Flare, Dust Storm, Heat Storm, Cold Night |
 | F3 | Terrain data panel |
 

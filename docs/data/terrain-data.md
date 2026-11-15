@@ -118,7 +118,7 @@ Steps:
 
 1. Open `My project/` in Unity 2022.3 (or copy `Assets/Data` and `Assets/Scripts` into the existing project).
 2. Choose **Mars → Terrain → Create Gale Crater Terrain** (or **Reset Config To Recommended Settings** if the terrain already exists, to pick up new defaults). This creates the config asset and four palette materials, then adds the terrain, a sunset light, fog, and a camera at Curiosity's landing site to the open scene.
-3. Press Play. WASD moves, Q/E lowers and raises, right mouse looks, Shift is 15× faster, the scroll wheel changes speed (default 150 m/s; 1.4 m/s is walking pace), F3 toggles the data panel.
+3. Press Play. You start as a first-person astronaut (WASD walks, mouse looks, Left Shift sprints, Space jumps; see `Assets/Scripts/Interaction/MarsAstronautPlayer.cs`). F2 switches to the free inspection camera, where WASD moves, Q/E lowers and raises, right mouse looks, Shift is 15× faster, the scroll wheel changes speed (default 150 m/s; 1.4 m/s is walking pace), F3 toggles the data panel.
 
 For other systems:
 
