@@ -1,5 +1,7 @@
 # Mars terrain and weather prototype
 
+The survival game is now integrated with this project. See [play and build instructions](docs/play-survival.md) and the [implementation and verification ledger](docs/implementation-status.md). Run `Artifacts/MarsOutpost/MarsOutpost.exe` for the packaged Windows build, or open `Assets/Scenes/Mars.unity` in Unity. The prototype notes below describe the earlier foundations.
+
 Two modules in one Unity project (`My project/`, Unity 2022.3, URP 14):
 
 - **Terrain:** Gale Crater at life size (1:1) from real NASA/USGS elevation data, streamed in chunks around the camera. See [terrain data and setup](docs/data/terrain-data.md).

@@ -84,8 +84,8 @@ namespace MarsSurvival.Base
                 TryPlace();
                 return;
             }
-            Camera cam = Camera.main;
-            Viewer = cam != null ? cam.transform : null;
+            var astronaut = FindObjectOfType<MarsSurvival.Interaction.MarsAstronautPlayer>();
+            Viewer = astronaut != null && !astronaut.IsDriving ? astronaut.transform : null;
             CurrentRoom = null;
             if (Viewer == null) return;
             Vector3 local = transform.InverseTransformPoint(Viewer.position);
@@ -113,6 +113,10 @@ namespace MarsSurvival.Base
                 Camera cam = Camera.main;
                 if (cam != null)
                 {
+                    // Start the playable outpost near the documented landing site, away from Mount Sharp's steep centre.
+                    Vector3 landing = terrain.LatLonToWorld(MarsSurvival.TimeAndWeather.MarsTime.CuriosityLatitude,
+                        MarsSurvival.TimeAndWeather.MarsTime.CuriosityLongitudeEast);
+                    cam.transform.position = landing + Vector3.up * terrain.config.ToUnits(1.68f);
                     // The base goes downhill of the player with its airlock facing uphill, toward
                     // them: the pad then meets the ground at the entrance instead of standing above it.
                     Vector3 uphill = UphillDirection(cam.transform.position, terrain.config.ToUnits(10f));

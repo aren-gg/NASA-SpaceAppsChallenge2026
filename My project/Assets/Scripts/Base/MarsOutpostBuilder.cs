@@ -240,7 +240,9 @@ namespace MarsSurvival.Base
             light.shadows = LightShadows.None;
         }
 
-        private static Opening Arch(float centre) { return new Opening { centre = centre, width = 1.4f, top = 2.2f, kind = 0 }; }
+        // Every doorway between modules and tunnels gets a sliding door that opens on approach;
+        // an empty frame read as a door the astronaut could walk straight through.
+        private static Opening Arch(float centre) { return Door(centre); }
         private static Opening Door(float centre) { return new Opening { centre = centre, width = 1.3f, top = 2.15f, kind = 1 }; }
         private static Opening Window(float centre, float width = 1.2f)
         {
@@ -323,12 +325,23 @@ namespace MarsSurvival.Base
                 : side == Back ? r.z0 - T * 0.5f : r.z1 + T * 0.5f;
             GameObject door = new GameObject("Door");
             door.transform.SetParent(current.transform, false);
-            door.transform.localPosition = alongZ ? new Vector3(mid, 0f, o.centre) : new Vector3(o.centre, 0f, mid);
+            Vector3 local = alongZ ? new Vector3(mid, 0f, o.centre) : new Vector3(o.centre, 0f, mid);
+            if (framed)
+            {
+                // Hub facets and tunnels are built in a turned frame; the door must follow it.
+                Quaternion turn = Quaternion.Euler(0f, frameYaw, 0f);
+                door.transform.localPosition = frameOrigin + turn * local;
+                door.transform.localRotation = turn;
+            }
+            else door.transform.localPosition = local;
 
             MarsOutpostDoor script = door.AddComponent<MarsOutpostDoor>();
             script.slideAxis = alongZ ? Vector3.forward : Vector3.right;
             script.leafOffset = o.width * 0.25f;
             script.travel = o.width * 0.5f - 0.03f;
+            // Wide enough that the door is open before a sprinting astronaut reaches it.
+            script.openRange = 3.5f;
+            script.secondsToOpen = 0.45f;
             script.leafA = Leaf(door.transform, alongZ ? doorLeafZ : doorLeafX);
             script.leafB = Leaf(door.transform, alongZ ? doorLeafZ : doorLeafX);
             script.blocker = door.AddComponent<BoxCollider>();
@@ -497,6 +510,11 @@ namespace MarsSurvival.Base
             }
             GameObject tool = UnityEngine.Object.Instantiate(prefab, current.transform, false);
             tool.name = id;
+            int copy = 0;
+            foreach (MarsBaseTool other in current.GetComponentsInChildren<MarsBaseTool>(true)) if (other.toolId == id) copy++;
+            MarsBaseTool usable = tool.AddComponent<MarsBaseTool>();
+            usable.toolId = id;
+            usable.key = current.name + "/" + id + "#" + copy;
             float lowest;
             ToolLowestPoint.TryGetValue(id, out lowest);
             if (lay)
@@ -975,6 +993,9 @@ namespace MarsSurvival.Base
             {
                 doors[inner].partner = doors[doors.Count - 1];
                 doors[doors.Count - 1].partner = doors[inner];
+                // The airlock is only 3.5 m deep: keep the range short so the two doors take turns.
+                doors[inner].openRange = doors[doors.Count - 1].openRange = 1.9f;
+                doors[inner].secondsToOpen = doors[doors.Count - 1].secondsToOpen = 0.7f;
             }
             // Hazard stripes on the floor and dust-extraction grilles on the walls.
             for (int i = 0; i < 5; i++)
@@ -1024,8 +1045,8 @@ namespace MarsSurvival.Base
             g.Box(GlowWarm, -0.12f, h - 0.03f, 0.3f, 0.12f, h, length - 0.3f);
 
             g.Loft(White, new[] { TubeRing(1.8f, 0f), TubeRing(1.8f, length) }, false, false);
-            g.Loft(DarkRed, new[] { TubeRing(1.93f, 0.1f), TubeRing(1.93f, 0.4f) });
-            g.Loft(DarkRed, new[] { TubeRing(1.93f, length - 0.4f), TubeRing(1.93f, length - 0.1f) });
+            g.Loft(DarkRed, new[] { TubeRing(1.93f, 0.1f), TubeRing(1.93f, 0.4f) }, false, false);
+            g.Loft(DarkRed, new[] { TubeRing(1.93f, length - 0.4f), TubeRing(1.93f, length - 0.1f) }, false, false);
             ClearFrame();
             End();
         }

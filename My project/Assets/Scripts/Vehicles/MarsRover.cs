@@ -70,6 +70,7 @@ namespace MarsSurvival.Vehicles
         public float OdometerKm { get; private set; }
         public bool IsDriven { get { return driven; } }
         public bool IsCharging { get; private set; }
+        public bool IsReady { get { return placed; } }
 
         private const float S = MarsRoverModel.Scale;
         private const float BodyHalfWidth = 1.45f * S, BodyHalfLength = 3.05f * S;
@@ -219,6 +220,8 @@ namespace MarsSurvival.Vehicles
                 TryPlace();
                 return;
             }
+            var mission = MarsSurvival.Gameplay.MarsMissionController.Instance;
+            if (mission != null && mission.InputBlocked) return;
             float dt = Mathf.Min(Time.deltaTime, 0.05f);
             if (player == null) player = FindObjectOfType<MarsAstronautPlayer>();
             if (cycle == null) cycle = FindObjectOfType<MarsDayNightCycle>();
@@ -406,9 +409,25 @@ namespace MarsSurvival.Vehicles
             return false;
         }
 
+        public void ApplyMissionBattery(float value)
+        {
+            BatteryKwh = Mathf.Clamp(value, 0, batteryCapacityKwh);
+        }
+
+        public void RestoreMissionPose(Vector3 position, float yaw, double odometer)
+        {
+            speed = 0;
+            if (driven) TryLeave();
+            heading = yaw;
+            transform.SetPositionAndRotation(position, Quaternion.Euler(0, yaw, 0));
+            OdometerKm = (float)odometer;
+        }
+        public void RestoreDriving() { if (!driven && player != null) Board(); }
+
         private void Recharge(float dt)
         {
             IsCharging = false;
+            if (MarsSurvival.Gameplay.MarsMissionController.Instance != null) return;
             if (outpost == null || Mathf.Abs(speed) > 0.1f || BatteryKwh >= batteryCapacityKwh) return;
             Vector3 local = outpost.transform.InverseTransformPoint(transform.position);
             if (!MarsOutpostBuilder.Pad.Contains(local.x, local.z)) return;

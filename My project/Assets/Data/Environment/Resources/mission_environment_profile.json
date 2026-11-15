@@ -1,0 +1,112 @@
+{
+    "id":  "rems-sol224-hourly-representative-v1",
+    "temperatureSource":  "REMS sol 224 (23-24 March 2013), quality-filtered hourly air temperatures; seasonal/event offsets modeled",
+    "backgroundMicrograyPerEarthDay":  210,
+    "simulatedParticlePeakMicrograyPerHour":  500,
+    "temperatures":  [
+                         {
+                             "hour":  0,
+                             "temperatureC":  -55.705877
+                         },
+                         {
+                             "hour":  0.051542,
+                             "temperatureC":  -55.96959
+                         },
+                         {
+                             "hour":  1.0538,
+                             "temperatureC":  -56.646583
+                         },
+                         {
+                             "hour":  2.053288,
+                             "temperatureC":  -60.700769
+                         },
+                         {
+                             "hour":  3.064071,
+                             "temperatureC":  -63.010543
+                         },
+                         {
+                             "hour":  4.03549,
+                             "temperatureC":  -67.826364
+                         },
+                         {
+                             "hour":  5.056058,
+                             "temperatureC":  -65.43
+                         },
+                         {
+                             "hour":  6.046279,
+                             "temperatureC":  -67.798
+                         },
+                         {
+                             "hour":  7.051213,
+                             "temperatureC":  -66.670862
+                         },
+                         {
+                             "hour":  8.075306,
+                             "temperatureC":  -58.033619
+                         },
+                         {
+                             "hour":  9.059673,
+                             "temperatureC":  -46.999307
+                         },
+                         {
+                             "hour":  10.059587,
+                             "temperatureC":  -40.58494
+                         },
+                         {
+                             "hour":  11.052141,
+                             "temperatureC":  -30.496125
+                         },
+                         {
+                             "hour":  12.515086,
+                             "temperatureC":  -27.397707
+                         },
+                         {
+                             "hour":  13.518792,
+                             "temperatureC":  -18.250793
+                         },
+                         {
+                             "hour":  14.502354,
+                             "temperatureC":  -12.95092
+                         },
+                         {
+                             "hour":  15.047302,
+                             "temperatureC":  -11.450865
+                         },
+                         {
+                             "hour":  16.053283,
+                             "temperatureC":  -14.667662
+                         },
+                         {
+                             "hour":  17.052496,
+                             "temperatureC":  -18.694702
+                         },
+                         {
+                             "hour":  18.053996,
+                             "temperatureC":  -27.518961
+                         },
+                         {
+                             "hour":  19.055291,
+                             "temperatureC":  -40.484628
+                         },
+                         {
+                             "hour":  20.05328,
+                             "temperatureC":  -42.673577
+                         },
+                         {
+                             "hour":  21.055657,
+                             "temperatureC":  -40.188686
+                         },
+                         {
+                             "hour":  22.053764,
+                             "temperatureC":  -48.766284
+                         },
+                         {
+                             "hour":  23.056254,
+                             "temperatureC":  -50.877222
+                         },
+                         {
+                             "hour":  24,
+                             "temperatureC":  -55.705877
+                         }
+                     ]
+}

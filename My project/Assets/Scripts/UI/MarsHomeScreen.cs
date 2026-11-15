@@ -215,7 +215,7 @@ namespace MarsSurvival.UI
 
             // Clicked buttons would stay selected and also react to Enter; keep nothing selected.
             EventSystem events = EventSystem.current;
-            if (events != null && events.currentSelectedGameObject != null) events.SetSelectedGameObject(null);
+            // Preserve keyboard navigation focus between frames.
 
             if (state == State.Open)
             {
@@ -438,7 +438,7 @@ namespace MarsSurvival.UI
             dimButton.onClick.AddListener(() => SetHelp(false));
 
             helpCard = NewRect("Card", overlay);
-            helpCard.sizeDelta = new Vector2(860f, 790f);
+            helpCard.sizeDelta = new Vector2(860f, 900f);
             Image card = helpCard.gameObject.AddComponent<Image>();
             card.sprite = roundFill;
             card.type = Image.Type.Sliced;
@@ -453,15 +453,17 @@ namespace MarsSurvival.UI
                 { "Mouse", "Look around" },
                 { "Shift", "Sprint" },
                 { "Space", "Jump (gravity is low on Mars!)" },
-                { "1 – 5", "Change the weather" },
-                { "[  ]", "Move the Mars clock an hour" },
+                { "Tab", "Mission dashboard and tasks" },
+                { "E", "Pick up the tool you are looking at" },
+                { "H", "Help: how to do your daily tasks" },
+                { "P", "Pause or resume the mission" },
                 { "Esc", "Free the mouse pointer" },
-                { "F2", "Fly camera" },
+                { "F5 / F9", "Save / load mission" },
                 { "F3", "Terrain data" },
             };
             for (int i = 0; i < rows.GetLength(0); i++)
             {
-                float rowY = -140f - i * 56f;
+                float rowY = -140f - i * 52f;
                 RectTransform chip = NewRect("Key", helpCard);
                 TopLeft(chip, new Vector2(64f, rowY), new Vector2(170f, 44f));
                 Image chipImage = chip.gameObject.AddComponent<Image>();
@@ -497,7 +499,7 @@ namespace MarsSurvival.UI
 
             Button button = rect.gameObject.AddComponent<Button>();
             button.transition = Selectable.Transition.None;
-            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            button.navigation = new Navigation { mode = Navigation.Mode.Automatic };
             button.targetGraphic = background;
             button.onClick.AddListener(onClick);
 

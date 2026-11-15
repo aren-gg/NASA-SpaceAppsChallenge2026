@@ -1,0 +1,83 @@
+{
+    "schemaVersion":  1,
+    "profileId":  "rems-sol224-hourly-representative-v1",
+    "classification":  "quality-filtered measured REMS profile, historical radiation reference, and explicitly simulated modifiers/hazards",
+    "numericRemsDataImported":  true,
+    "temperature":  {
+                        "classification":  "hourly means derived from measured calibrated ambient air temperature; representative replay with modeled offsets",
+                        "source":  "https://atmos.nmsu.edu/PDS/data/PDS4/msl_rems_bundle/data_calibrated/SOL_00180_00269/SOL00224/RME_417331939RMD02240000000_______P8.TAB",
+                        "sourceLabel":  "https://atmos.nmsu.edu/PDS/data/PDS4/msl_rems_bundle/data_calibrated/SOL_00180_00269/SOL00224/RME_417331939RMD02240000000_______P8.xml",
+                        "productIdentifier":  "urn:nasa:pds:msl_rems:data_calibrated:rme_417331939rmd02240000000_______p8",
+                        "version":  "1.0",
+                        "instrument":  "Curiosity REMS",
+                        "location":  "Gale Crater, Curiosity sol 224; not a global temperature map",
+                        "observationStartUtc":  "2013-03-23T17:38:11.697Z",
+                        "observationEndUtc":  "2013-03-24T17:21:21.489Z",
+                        "localDownloadCompletedUtc":  "2026-11-15T05:21:37.9976379Z",
+                        "preparedUtc":  "2026-11-15T05:24:11.3452584Z",
+                        "inputUnit":  "Kelvin",
+                        "unit":  "degrees Celsius",
+                        "localTimeUnit":  "LMST hours; one sol divided into 24 hours",
+                        "downloadedTableBytes":  6534180,
+                        "downloadedLabelBytes":  28158,
+                        "sourceTableSha256":  "aec78f5862c24df0c93ea70ca09d5dac46d5ae93b3c2eb45bd735eacf70018e6",
+                        "sourceLabelSha256":  "86bd2b0bdb0361a56b042d91a6e39b923bc7c4a08c0cea09fbd0f38892c36496",
+                        "bundledRuntimeProfileBytes":  4589,
+                        "bundledRuntimeProfileSha256":  "8d3d4dced100e8ce6818c01dff1aa6dbe72af763ca580b03f4325e8bcbe012ff",
+                        "preparedHourlyCsvSha256":  "794db2202c11ee2aa276856c8cf84e9d3138a6161c654ebf87cef29ef7b3563a",
+                        "sourceRows":  17565,
+                        "rejectedInvalidTemperature":  0,
+                        "rejectedQuality":  7242,
+                        "acceptedRows":  10323,
+                        "confidenceCodeCounts":  {
+                                                     "011XX1101":  199,
+                                                     "111XX0001":  1636,
+                                                     "111XX1101":  3734,
+                                                     "111XX0101":  546,
+                                                     "111XX1111":  6479,
+                                                     "111XX0011":  3087,
+                                                     "011XX1111":  1127,
+                                                     "111XX0111":  757
+                                                 },
+                        "acceptedConfidenceCodeCounts":  {
+                                                             "111XX1111":  6479,
+                                                             "111XX0111":  757,
+                                                             "111XX0011":  3087
+                                                         },
+                        "qualityRule":  "Nine-character code; bytes 0,1,2,7,8 must equal 1. Wind factors 3/4 may be X; retain all codes. Numeric temperature must be inside 150-300K.",
+                        "processing":  "Use label fixed-width byte offsets; verify sol, monotonic LMST and record count; hourly unweighted arithmetic mean of accepted values and their LMST; Celsius=Kelvin-273.15; cyclic linear interpolation; endpoints0/24 interpolated across midnight.",
+                        "maximumInterpolationGapLocalHours":  1.4629449999999995,
+                        "gapPolicy":  "Preparation fails if any hourly bin is empty or adjacent means are more than two local hours apart. No fallback samples are mixed into this prepared series.",
+                        "limitation":  "One historical sol reused as representative daily shape; modeled seasonal offset and thermal-stress increments are not new observations. Unknown wind quality factors remain a limitation.",
+                        "attribution":  "NASA/JPL-Caltech, Centro de Astrobiologia REMS team, NASA PDS Atmospheres Node; credit original data providers. No NASA endorsement is implied."
+                    },
+    "radiation":  {
+                      "classification":  "representative rate derived from published historical summary, not a replay",
+                      "source":  "https://science.nasa.gov/resource/radiation-measurements-on-mars/",
+                      "instrument":  "Curiosity RAD",
+                      "observationPeriod":  "August 2012 to June 2013",
+                      "sourceRateMicrograyPerDay":  210,
+                      "conversion":  "Game convention: interpret day as 24 SI hours, yielding 8.75 microgray/hour; not per Martian sol",
+                      "detectorBoundary":  "Absorbed dose remains a detector reference; no conversion to effective dose or human medical limits",
+                      "simulatedAdditionalPeakMicrograyPerHour":  500
+                  },
+    "solar":  {
+                  "classification":  "astronomical geometry with simplified atmospheric attenuation",
+                  "source":  "https://www.giss.nasa.gov/tools/mars24/help/algorithm.html",
+                  "processing":  "max(0, sunUp) * (1.523679 / distanceAu)^2 * (1 - 0.65 * dust)",
+                  "limitation":  "Not measured irradiance; panel area/efficiency are represented by installed array rating. Permanent deposits, wear and research are applied once by the simulation."
+              },
+    "hazards":  {
+                    "classification":  "seeded teaching scenarios",
+                    "dustPeriodSols":  30,
+                    "solarParticlePeriodSols":  42,
+                    "warningLeadSols":  0.3,
+                    "limitation":  "Cadence, onset, duration and severity are game rules, not forecasts or inferred DONKI radiation. Independent DONKI records appear only as historical context while their archive covers the selected date."
+                },
+    "communications":  {
+                           "classification":  "fictional local relay model",
+                           "windowPeriodSeconds":  7200,
+                           "windowOpenSeconds":  5400,
+                           "limitation":  "Signal varies with coordinates and time; this is not a measured Earth-Mars link or NASA network availability."
+                       }
+}

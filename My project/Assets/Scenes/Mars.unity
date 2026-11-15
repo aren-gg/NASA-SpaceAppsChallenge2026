@@ -167,6 +167,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   config: {fileID: 11400000, guid: 18322d6e8c6cd624597d23ff81194442, type: 2}
+  manageFogAndSky: 1
   viewer: {fileID: 1266413132}
 --- !u!4 &157511454
 Transform:
@@ -232,6 +233,7 @@ MonoBehaviour:
   terrain: {fileID: 157511453}
   speedMetersPerSecond: 150
   fastMultiplier: 15
+  speedRangeMetersPerSecond: {x: 1, y: 5000}
   lookSensitivity: 2
   minHeightAboveGroundMeters: 1.7
 --- !u!81 &1266413134
@@ -387,6 +389,63 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
+--- !u!1001 &1917937164
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1392207260606937331, guid: 80d6d32b9be97408fb566861832296cd, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1392207260606937331, guid: 80d6d32b9be97408fb566861832296cd, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1392207260606937331, guid: 80d6d32b9be97408fb566861832296cd, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1392207260606937331, guid: 80d6d32b9be97408fb566861832296cd, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1392207260606937331, guid: 80d6d32b9be97408fb566861832296cd, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1392207260606937331, guid: 80d6d32b9be97408fb566861832296cd, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1392207260606937331, guid: 80d6d32b9be97408fb566861832296cd, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1392207260606937331, guid: 80d6d32b9be97408fb566861832296cd, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1392207260606937331, guid: 80d6d32b9be97408fb566861832296cd, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1392207260606937331, guid: 80d6d32b9be97408fb566861832296cd, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4164974703491643060, guid: 80d6d32b9be97408fb566861832296cd, type: 3}
+      propertyPath: m_Name
+      value: MarsWeather
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 80d6d32b9be97408fb566861832296cd, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -394,3 +453,4 @@ SceneRoots:
   - {fileID: 1266413132}
   - {fileID: 1495727156}
   - {fileID: 157511454}
+  - {fileID: 1917937164}

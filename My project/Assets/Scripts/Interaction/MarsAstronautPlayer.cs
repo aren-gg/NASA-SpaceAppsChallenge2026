@@ -250,12 +250,14 @@ namespace MarsSurvival.Interaction
                 placed = true;
             }
 
+            var mission = MarsSurvival.Gameplay.MarsMissionController.Instance;
+            if (mission != null && mission.InputBlocked) { velocity = Vector3.zero; sprinting = false; return; }
             if (driving) return;
 
             float forwardInput = 0f, sideInput = 0f;
             bool sprintHeld = false;
 #if ENABLE_LEGACY_INPUT_MANAGER
-            if (Input.GetKeyDown(KeyCode.F2) && flyCamera != null) SetFlying(!flying);
+            if (Debug.isDebugBuild && mission == null && Input.GetKeyDown(KeyCode.F2) && flyCamera != null) SetFlying(!flying);
             if (flying) return;
 
             if (Input.GetKeyDown(KeyCode.Escape)) LockCursor(false);
@@ -280,6 +282,21 @@ namespace MarsSurvival.Interaction
 
             Move(forwardInput, sideInput, sprintHeld, dt);
             AnimateBody(dt);
+        }
+
+        /// <summary>
+        /// True when a step would leave the terrain tile or climb onto terrain steeper than
+        /// 25 degrees. It never traps the astronaut: steps that stay outside the tile, go
+        /// downhill or start from a building floor are always allowed.
+        /// </summary>
+        private bool TerrainBlocks(Vector3 from, Vector3 to)
+        {
+            if (!TerrainReady) return false;
+            if (!terrain.IsInsideTile(to)) return terrain.IsInsideTile(from);
+            float fromGround = terrain.GetGroundY(from);
+            float toGround = terrain.GetGroundY(to);
+            bool onTerrain = from.y <= fromGround + Units(0.5f);
+            return onTerrain && toGround > fromGround && terrain.GetSlopeDegrees(to) > 25f;
         }
 
         private void Move(float forwardInput, float sideInput, bool sprintHeld, float dt)
@@ -307,6 +324,11 @@ namespace MarsSurvival.Interaction
             else velocity.y = 0f;
 
             Vector3 position = transform.position + velocity * Units(1f) * dt;
+            if (TerrainBlocks(transform.position, position))
+            {
+                position.x = transform.position.x; position.z = transform.position.z;
+                velocity.x = 0; velocity.z = 0;
+            }
             position = ResolveWalls(position);
             if (velocity.y > 0f && HitsCeiling(position))
             {
@@ -364,6 +386,31 @@ namespace MarsSurvival.Interaction
         /// Boards a vehicle: the astronaut is hidden and stops responding to input, and the
         /// camera is released for the vehicle to place. Returns false if that is not possible now.
         /// </summary>
+        public void RestoreMissionPose(Vector3 position, float heading)
+        {
+            if (driving) LeaveVehicle(position, heading);
+            transform.position = position;
+            yaw = heading; pitch = 0; velocity = Vector3.zero; grounded = true;
+            MountCamera();
+        }
+
+        /// <summary>Turns the body and head to look at a world point (used by scripted checks and cut-ins).</summary>
+        public void AimAt(Vector3 point)
+        {
+            if (neck == null) return;
+            // The eyes sit ahead of the neck pivot, so refine the aim a few times from the eye.
+            for (int pass = 0; pass < 4; pass++)
+            {
+                Vector3 eye = viewCamera != null && viewCamera.transform.IsChildOf(transform) ? viewCamera.transform.position : neck.position;
+                Vector3 d = point - eye;
+                if (d.sqrMagnitude < 1e-6f) return;
+                yaw = Mathf.Atan2(d.x, d.z) * Mathf.Rad2Deg;
+                pitch = Mathf.Clamp(-Mathf.Atan2(d.y, new Vector2(d.x, d.z).magnitude) * Mathf.Rad2Deg, -80f, 80f);
+                transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+                neck.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+            }
+        }
+
         public bool BoardVehicle()
         {
             if (!IsReady || driving) return false;

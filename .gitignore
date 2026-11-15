@@ -9,3 +9,4 @@
 /My project/*.csproj
 /My project/*.sln
 __pycache__/
+/Artifacts/
