@@ -134,6 +134,18 @@ public static class SimulationChecks
         sim.State.crops[0].stress = 0;
         Assert(!sim.Command("water_crop", "0", Home, out reason), "unstressed crop needs no water");
         sim.State.crops[0].planted = false;
+        // A task left behind (walking outside during an inside task) stops instead of waiting forever.
+        MissionSimulation leave = Fresh();
+        double seedsBefore = leave.State.resources.seeds;
+        Assert(leave.StartTask(TaskKind.Plant, "0:leafy", Home, out reason), "plant before leaving");
+        Assert(leave.State.resources.seeds < seedsBefore, "planting reserves a seed");
+        leave.Step(5, Clear, field);
+        Assert(leave.State.task.kind == TaskKind.None, "leaving the habitat stops an inside task");
+        Near(leave.State.resources.seeds, seedsBefore, 1e-9, "stopped task returns its seed");
+        Assert(leave.StartTask(TaskKind.Plant, "0:leafy", Home, out reason), "plant again");
+        leave.Step(1, Clear, new PlayerContext { zone = PlayerZone.Habitat, moving = true });
+        Assert(leave.State.task.kind == TaskKind.Plant, "moving inside only pauses a task");
+        leave.CancelTask();
         sim.State.astronaut.hydration = 40;
         double water = sim.State.resources.cleanWaterLiters + sim.State.resources.wasteWaterLiters;
         Assert(sim.Command("drink", "", Home, out reason), "drink succeeds");

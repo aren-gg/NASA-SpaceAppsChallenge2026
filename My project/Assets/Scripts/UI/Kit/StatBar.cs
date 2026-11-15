@@ -56,7 +56,7 @@ namespace MarsTrainer.UI
         {
             var rect = Frame(parent, content, 0, 0, 1, 1); Height(rect, height);
             var text = rect.gameObject.AddComponent<TextMeshProUGUI>();
-            text.font = Resources.Load<TMP_FontAsset>(UiTypeface.ResourcePath);
+            text.font = UiTypeface.Font;
             text.text = content; text.fontSize = size; text.color = ColorOf(GameConstants.UiText);
             text.lineSpacing = GameConstants.UiTextLineSpacing; text.wordSpacing = GameConstants.UiTextWordSpacing;
             text.enableWordWrapping = true; text.raycastTarget = false; text.richText = false;
@@ -83,7 +83,7 @@ namespace MarsTrainer.UI
             var button = rect.gameObject.AddComponent<Button>(); button.targetGraphic = image;
             var colors = button.colors; colors.selectedColor = ColorOf(GameConstants.UiButtonFocus);
             colors.highlightedColor = ColorOf(GameConstants.UiButtonFocus); button.colors = colors;
-            var text = Text(rect, System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(label).Replace("Kwh", "kWh").Replace("Msv", "mSv")); text.alignment = TextAlignmentOptions.Center;
+            var text = Text(rect, label); text.alignment = TextAlignmentOptions.Center;
             text.margin = Vector4.one * GameConstants.UiGap;
             if (action != null) button.onClick.AddListener(action); return button;
         }

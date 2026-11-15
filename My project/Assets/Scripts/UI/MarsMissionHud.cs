@@ -11,7 +11,6 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using AlertBanner = MarsTrainer.UI.AlertBanner;
 using ControlGuide = MarsTrainer.UI.ControlGuide;
 using EndScreen = MarsTrainer.UI.EndScreen;
 using FacetedImage = MarsTrainer.UI.FacetedImage;
@@ -19,46 +18,48 @@ using PauseMenu = MarsTrainer.UI.PauseMenu;
 using ResourceGlyph = MarsTrainer.UI.ResourceGlyph;
 using ResourceSymbol = MarsTrainer.UI.ResourceSymbol;
 using StatBar = MarsTrainer.UI.StatBar;
-using SunZapMeterView = MarsTrainer.UI.SunZapMeterView;
 using UiTypeface = MarsTrainer.UI.UiTypeface;
 using SimClock = MarsTrainer.Sim.SimClock;
-using SuitShieldState = MarsTrainer.Sim.SuitShieldState;
 using Ui = MarsTrainer.Sim.GameConstants;
 
 namespace MarsSurvival.UI
 {
     /// <summary>
-    /// The mission HUD and outpost console, drawn with the MarsTrainer UI kit (faceted plates,
-    /// resource medallions, stat bars, Counter-Strike UI font): suit vitals with oxygen first,
-    /// battery and Sun-Zap radiation meter, warning banner, quick Eat/Drink, pause menu and
-    /// mission report. The console (Tab) holds the three power knobs, the daily task routine,
-    /// research, field log, radio, learning sources, help and settings.
+    /// The mission HUD and outpost console, drawn with the MarsTrainer UI kit in the Electrolize
+    /// typeface. The HUD stays minimal: a small sol / battery / radiation block top left, quiet key
+    /// hints top right, one warning at a time, suit vitals (oxygen first) that brighten only when
+    /// low, small eat/drink buttons and one fading message line. The console (Tab) holds the three
+    /// power knobs, the daily task routine, research, field log, radio, learning sources, help and
+    /// settings; Escape opens the pause menu and a report closes each mission.
     /// </summary>
     public sealed class MarsMissionHud : MonoBehaviour
     {
         private static readonly string[] TabNames = { "Overview", "Base tasks", "Research", "Field log", "Radio", "Learning", "Help", "Settings" };
         private const int HelpTab = 6;
+        private const float NoticeSeconds = 6f;
         private readonly List<Action> live = new List<Action>();
         private readonly List<Selectable> controls = new List<Selectable>();
-        private readonly HashSet<string> shownWarnings = new HashSet<string>();
+        private readonly List<string> warningQueue = new List<string>();
+        private readonly HashSet<string> dismissed = new HashSet<string>();
         private MarsMissionController mission;
         private MissionState drawnState;
         private Canvas canvas;
         private CanvasScaler scaler;
         private TMP_FontAsset font;
-        private RectTransform panel, content, selector, gameplay;
-        private TMP_Text date, navigation, notice, guide, powerText;
-        private StatBar[] vitals;
-        private StatBar battery;
-        private SunZapMeterView sunZap;
-        private AlertBanner alerts;
+        private RectTransform panel, content, selector, gameplay, alertPlate;
+        private TMP_Text solText, navigation, notice, guide, batteryText, radiationText, alertText;
+        private Image batteryFill, radiationFill, noticePlate;
+        private TMP_Text[] vitalLabels;
+        private Image[] vitalFills;
+        private CanvasGroup[] vitalGroups;
         private PauseMenu pause;
         private EndScreen end;
         private Button eatButton, drinkButton;
         private ScrollRect scroll;
         private int tab, drawnPhase = -1, drawnReports = -1;
         private bool built, lastOpen, suppressSliders, reportShown, pausedByMenu;
-        private float nextRefresh, uiScale = 1;
+        private float nextRefresh, uiScale = 1, noticeChangedAt = -100f;
+        private string lastNotice = "";
         private Color ink, paper, accent, muted;
 
         /// <summary>True while the pause menu or mission report covers the screen.</summary>
@@ -83,7 +84,7 @@ namespace MarsSurvival.UI
             int phase = state == null ? -1 : (int)state.phase;
             if (state != drawnState || phase != drawnPhase)
             {
-                if (state != drawnState) { shownWarnings.Clear(); alerts.Clear(); reportShown = false; }
+                if (state != drawnState) { warningQueue.Clear(); dismissed.Clear(); reportShown = false; }
                 drawnState = state;
                 drawnPhase = phase;
                 if (state != null && state.phase != MissionPhase.Running && !reportShown) ShowReport();
@@ -112,6 +113,7 @@ namespace MarsSurvival.UI
                     foreach (Action update in live) update();
                 }
             }
+            FadeNotice();
         }
 
         private void HandleKeys()
@@ -139,6 +141,8 @@ namespace MarsSurvival.UI
             if (Input.GetKeyDown(KeyCode.P) && mission.IsRunning) mission.SetPaused(!mission.Paused);
             if (Input.GetKeyDown(KeyCode.F) && mission.IsRunning && !mission.PanelOpen) mission.Execute("eat");
             if (Input.GetKeyDown(KeyCode.G) && mission.IsRunning && !mission.PanelOpen) mission.Execute("drink");
+            // X stops the task in progress (it would otherwise wait for you to come back and stand still).
+            if (Input.GetKeyDown(KeyCode.X) && mission.IsRunning && mission.Simulation.State.task.kind != TaskKind.None) mission.Execute("cancel");
             if (Input.GetKeyDown(KeyCode.F5)) mission.SaveMission();
             if (Input.GetKeyDown(KeyCode.F9)) mission.LoadMission();
 #endif
@@ -146,14 +150,16 @@ namespace MarsSurvival.UI
 
         // ------------------------------------------------------------------ shell
 
+        // Minimal HUD: only what matters now, small and quiet until it needs attention.
+        private const float Small = 17f, Tiny = 15f;
+
         private void BuildShell()
         {
             ink = StatBar.ColorOf(Ui.UiSurface);
             paper = StatBar.ColorOf(Ui.UiText);
             accent = StatBar.ColorOf(Ui.UiCopper);
             muted = Color.Lerp(paper, ink, 0.35f);
-            font = Resources.Load<TMP_FontAsset>(UiTypeface.ResourcePath);
-            if (font == null) font = TMP_Settings.defaultFontAsset;
+            font = UiTypeface.Font;
             GameObject root = new GameObject("Mission Interface", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             root.transform.SetParent(transform, false);
             canvas = root.GetComponent<Canvas>();
@@ -169,66 +175,77 @@ namespace MarsSurvival.UI
             RectTransform safe = StatBar.Frame(root.transform, "Safe area", 0, 0, 1, 1);
             gameplay = StatBar.Frame(safe, "Mission HUD", 0, 0, 1, 1);
 
-            // Top: mission date, where you are, screen buttons.
-            RectTransform heading = StatBar.Frame(gameplay, "Mission date", .015f, .915f, .30f, .985f, Ui.UiSurface);
-            date = Overlay(heading, "Sol 1.0", Ui.UiBody);
-            RectTransform location = StatBar.Frame(gameplay, "Navigation", .31f, .915f, .69f, .985f, Ui.UiSurface);
-            navigation = Overlay(location, "Habitat", Ui.UiBody * 0.8f);
+            // Top left: sol counter, with battery and radiation right under it.
+            RectTransform status = Plate(gameplay, "Mission status", .010f, .855f, .175f, .985f);
+            solText = Text(status, "Sol 1.0 / 56", 21, paper, .07f, .68f, .95f, .97f);
+            batteryText = Text(status, "Battery", Tiny, muted, .07f, .42f, .95f, .66f);
+            batteryFill = Bar(status, .07f, .37f, .93f, .41f, StatBar.ColorOf(Ui.UiPower));
+            radiationText = Text(status, "Radiation", Tiny, muted, .07f, .12f, .95f, .36f);
+            radiationFill = Bar(status, .07f, .07f, .93f, .11f, StatBar.ColorOf(Ui.UiRadiation));
+
+            // Top centre: where you are, as quiet text.
+            RectTransform where = Plate(gameplay, "Location", .36f, .958f, .64f, .99f);
+            where.GetComponent<Image>().color = WithAlpha(ink, 0.45f);
+            navigation = Text(where, "", Tiny, Color.Lerp(paper, ink, 0.12f), .02f, 0, .98f, 1);
             navigation.alignment = TextAlignmentOptions.Center;
-            RectTransform menus = StatBar.Frame(gameplay, "Screen buttons", .70f, .915f, .985f, .985f);
-            HorizontalLayoutGroup menuRow = menus.gameObject.AddComponent<HorizontalLayoutGroup>();
-            menuRow.spacing = Ui.UiGap;
-            menuRow.childControlHeight = menuRow.childForceExpandHeight = menuRow.childControlWidth = menuRow.childForceExpandWidth = true;
-            KitButton(menus, "Console [Tab]", ResourceSymbol.Backpack, TogglePanel);
-            KitButton(menus, "Help [H]", ResourceSymbol.Research, OpenHelp);
-            KitButton(menus, "Menu [Esc]", ResourceSymbol.Menu, OpenPause);
 
-            // Warnings queue under the top bar.
-            alerts = AlertBanner.Create(gameplay);
-            Place((RectTransform)alerts.transform, .31f, .75f, .69f, .905f);
+            // Top right: key hints that also work as small buttons.
+            RectTransform keys = StatBar.Frame(gameplay, "Screen keys", .80f, .955f, .99f, .99f);
+            HorizontalLayoutGroup keyRow = keys.gameObject.AddComponent<HorizontalLayoutGroup>();
+            keyRow.spacing = 6; keyRow.childAlignment = TextAnchor.MiddleRight;
+            keyRow.childControlHeight = keyRow.childForceExpandHeight = keyRow.childControlWidth = true;
+            keyRow.childForceExpandWidth = false;
+            HintButton(keys, "Tab  Console", TogglePanel);
+            HintButton(keys, "H  Help", OpenHelp);
+            HintButton(keys, "Esc  Menu", OpenPause);
 
-            // Bottom left: suit vitals, oxygen first (MarsTrainer survival model).
-            RectTransform survival = StatBar.Frame(gameplay, "Suit vitals", .015f, .02f, .235f, .34f);
-            VerticalLayoutGroup strip = survival.gameObject.AddComponent<VerticalLayoutGroup>();
-            strip.spacing = Ui.UiHudVitalGap; strip.childControlWidth = strip.childControlHeight = true;
-            strip.childForceExpandHeight = false; strip.childForceExpandWidth = true;
-            vitals = new StatBar[5];
-            string[] labels = { "Air", "Health", "Water", "Food", "Rest" };
-            for (int i = 0; i < labels.Length; i++) vitals[i] = StatBar.Create(survival, labels[i], true);
+            // One slim warning at a time, only when there is one.
+            alertPlate = Plate(gameplay, "Warning", .32f, .885f, .68f, .945f);
+            alertPlate.GetComponent<Image>().color = WithAlpha(Color.Lerp(ink, StatBar.ColorOf(Ui.UiDanger), 0.25f), 0.85f);
+            alertText = Text(alertPlate, "", Small, paper, .02f, 0, .86f, 1);
+            Button ok = HintButton(alertPlate, "OK", DismissWarning);
+            Place((RectTransform)ok.transform, .88f, .15f, .98f, .85f);
 
-            // Bottom right: power, radiation and quick supplies.
-            RectTransform power = StatBar.Frame(gameplay, "Outpost power", .765f, .355f, .985f, .52f, Ui.UiSurface);
-            StatBar.Stack(power);
-            battery = StatBar.Create(power, "Battery");
-            powerText = StatBar.Text(power, "Solar -- kW / Load -- kW", Ui.UiBody * 0.75f, Ui.UiLine);
-            sunZap = SunZapMeterView.Create(gameplay);
-            Place((RectTransform)sunZap.transform, .765f, .15f, .985f, .345f);
-            RectTransform supplies = StatBar.Frame(gameplay, "Quick supplies", .765f, .02f, .985f, .14f);
-            HorizontalLayoutGroup supplyRow = supplies.gameObject.AddComponent<HorizontalLayoutGroup>();
-            supplyRow.spacing = Ui.UiGap;
-            supplyRow.childControlWidth = supplyRow.childControlHeight = supplyRow.childForceExpandWidth = supplyRow.childForceExpandHeight = true;
-            eatButton = SupplyButton(supplies, "Eat [F]", ResourceSymbol.Food, () => { if (mission != null) mission.Execute("eat"); });
-            drinkButton = SupplyButton(supplies, "Drink [G]", ResourceSymbol.Water, () => { if (mission != null) mission.Execute("drink"); });
+            // Bottom left: suit vitals, oxygen first. Quiet while fine, bright when low.
+            RectTransform vitalsPlate = Plate(gameplay, "Suit vitals", .010f, .015f, .160f, .205f);
+            string[] labels = { "Oxygen", "Health", "Water", "Food", "Rest" };
+            ResourceSymbol[] symbols = { ResourceSymbol.Air, ResourceSymbol.Health, ResourceSymbol.Water, ResourceSymbol.Food, ResourceSymbol.Rest };
+            vitalLabels = new TMP_Text[5]; vitalFills = new Image[5]; vitalGroups = new CanvasGroup[5];
+            for (int i = 0; i < 5; i++)
+            {
+                float top = 1 - i * .2f, bottom = top - .2f;
+                RectTransform row = StatBar.Frame(vitalsPlate, labels[i], .03f, bottom, .97f, top);
+                vitalGroups[i] = row.gameObject.AddComponent<CanvasGroup>();
+                ResourceGlyph icon = ResourceGlyph.Create(row, symbols[i], 24);
+                icon.rectTransform.anchoredPosition = new Vector2(2, 0);
+                vitalLabels[i] = Text(row, labels[i], Tiny, paper, .22f, .38f, 1, 1);
+                vitalFills[i] = Bar(row, .22f, .18f, .98f, .30f, StatBar.ColorOf(ResourceGlyph.ColorFor(symbols[i])));
+            }
 
-            // Bottom centre, above the tool hotbar: latest message and what to do next.
-            RectTransform feedback = StatBar.Frame(gameplay, "Mission feedback", .245f, .205f, .755f, .335f, Ui.UiSurface);
-            notice = Overlay(feedback, "", Ui.UiBody * 0.72f);
-            Place(notice.rectTransform, .025f, .52f, .975f, .96f);
-            guide = Overlay(feedback, "", Ui.UiBody * 0.72f);
-            guide.color = accent;
-            Place(guide.rectTransform, .025f, .04f, .975f, .5f);
+            // Bottom right: small eat and drink buttons.
+            eatButton = HintButton(gameplay, "F  Eat", () => { if (mission != null) mission.Execute("eat"); });
+            Place((RectTransform)eatButton.transform, .875f, .02f, .93f, .06f);
+            drinkButton = HintButton(gameplay, "G  Drink", () => { if (mission != null) mission.Execute("drink"); });
+            Place((RectTransform)drinkButton.transform, .935f, .02f, .99f, .06f);
+
+            // Above the tool hotbar: the latest message, which fades into the next step.
+            noticePlate = Plate(gameplay, "Message", .30f, .215f, .70f, .25f).GetComponent<Image>();
+            notice = Text(noticePlate.rectTransform, "", Small, paper, .02f, 0, .98f, 1);
+            notice.alignment = TextAlignmentOptions.Center;
+            guide = Text(noticePlate.rectTransform, "", Small, accent, .02f, 0, .98f, 1);
+            guide.alignment = TextAlignmentOptions.Center;
 
             // The outpost console.
             panel = StatBar.Frame(root.transform, "Outpost console", .045f, .14f, .955f, .90f, Ui.UiSurface);
             panel.GetComponent<Image>().raycastTarget = true;
-            RectTransform titleRow = Row(panel, 56);
-            Anchor(titleRow, new Vector2(0, 1), Vector2.one, new Vector2(26, -72), new Vector2(-26, -16));
-            TMP_Text title = Label(titleRow, "Outpost Console", Ui.UiHeading, accent);
-            title.gameObject.AddComponent<LayoutElement>().flexibleWidth = 2;
-            SmallButton(titleRow, "Return to world [Tab]", () => { if (mission != null && mission.IsRunning) mission.SetPanelOpen(false); });
+            RectTransform titleRow = Row(panel, 52);
+            Anchor(titleRow, new Vector2(0, 1), Vector2.one, new Vector2(26, -68), new Vector2(-26, -16));
+            TMP_Text title = Label(titleRow, "Outpost console", 30, accent);
+            title.gameObject.AddComponent<LayoutElement>().flexibleWidth = 3;
+            SmallButton(titleRow, "Back to Mars (Tab)", () => { if (mission != null && mission.IsRunning) mission.SetPanelOpen(false); });
 
-            selector = Row(panel, 50);
-            Anchor(selector, new Vector2(0, 1), Vector2.one, new Vector2(26, -132), new Vector2(-26, -82));
+            selector = Row(panel, 46);
+            Anchor(selector, new Vector2(0, 1), Vector2.one, new Vector2(26, -124), new Vector2(-26, -78));
             for (int i = 0; i < TabNames.Length; i++)
             {
                 int index = i;
@@ -236,7 +253,7 @@ namespace MarsSurvival.UI
             }
 
             RectTransform scrollRoot = NewRect("Scrollable content", panel);
-            Anchor(scrollRoot, Vector2.zero, Vector2.one, new Vector2(26, 22), new Vector2(-26, -146));
+            Anchor(scrollRoot, Vector2.zero, Vector2.one, new Vector2(26, 22), new Vector2(-26, -138));
             scroll = scrollRoot.gameObject.AddComponent<ScrollRect>();
             scroll.horizontal = false;
             scroll.movementType = ScrollRect.MovementType.Clamped;
@@ -278,39 +295,72 @@ namespace MarsSurvival.UI
             if (simulation == null) return;
             MissionState s = simulation.State;
             double duration = MissionSettings.Duration(s.length);
-            date.text = string.Format(CultureInfo.InvariantCulture, "Sol {0:0.0} / {1:0}{2}",
+            solText.text = string.Format(CultureInfo.InvariantCulture, "Sol {0:0.0} / {1:0}{2}",
                 1 + s.elapsedSeconds / MissionSettings.SolSeconds, duration / MissionSettings.SolSeconds,
-                mission.Paused ? "  Paused" : mission.AdvanceRemaining > 0 ? "  Advancing" : "");
-            string nearby = string.IsNullOrEmpty(mission.Context.station) ? mission.Context.zone.ToString() : Title(mission.Context.station.Replace('_', ' '));
-            navigation.text = string.Format(CultureInfo.InvariantCulture, "{0}  /  Base {1:0} m  /  {2}",
-                nearby, mission.Context.distanceFromBase, mission.Environment.label ?? "Environment loading");
+                mission.Paused ? "  paused" : mission.AdvanceRemaining > 0 ? "  advancing" : "");
+            string nearby = string.IsNullOrEmpty(mission.Context.station) ? mission.Context.zone.ToString() : Sentence(mission.Context.station.Replace('_', ' '));
+            navigation.text = string.Format(CultureInfo.InvariantCulture, "{0}  ·  base {1:0} m  ·  {2}",
+                nearby, mission.Context.distanceFromBase, (mission.Environment.label ?? "").ToLowerInvariant());
+
+            // Battery and radiation, right under the sol counter.
+            double charge = s.resources.batteryKwh / Math.Max(1, simulation.BatteryCapacity);
+            batteryText.text = string.Format(CultureInfo.InvariantCulture, "Battery {0:0}%   {1:+0.0;-0.0;0.0} kW", charge * 100, simulation.Power.netKw);
+            batteryText.color = charge < 0.15 ? StatBar.ColorOf(Ui.UiDanger) : muted;
+            SetBar(batteryFill, charge);
+            double rate = SurvivalNeeds.MilliSievert(mission.Environment.radiationMicrograyPerHour) * MissionSettings.SolSeconds / 3600;
+            double budget = SurvivalNeeds.DoseBudgetFraction(s.astronaut);
+            bool flare = mission.Environment.solarEvent > 0.05;
+            string level = budget >= Ui.ShieldDangerFraction ? "danger" : budget >= Ui.ShieldWarnFraction || flare ? "high" : "safe";
+            radiationText.text = string.Format(CultureInfo.InvariantCulture, "Radiation {0}   {1:0.0} mSv/sol", level, rate);
+            radiationText.color = level == "safe" ? muted : StatBar.ColorOf(level == "danger" ? Ui.UiDanger : Ui.UiWarn);
+            SetBar(radiationFill, budget);
 
             AstronautState a = s.astronaut;
-            vitals[0].Show("Air", a.oxygen);
-            vitals[1].Show("Health", a.health);
-            vitals[2].Show("Water", a.hydration);
-            vitals[3].Show("Food", a.satiety);
-            vitals[4].Show("Rest", 100 - a.fatigue);
-            battery.Show("Battery kWh", s.resources.batteryKwh, simulation.BatteryCapacity);
-            powerText.text = string.Format(CultureInfo.InvariantCulture, "Solar {0:0.0} kW / Load {1:0.0} kW / Suit O2 {2:0} g",
-                simulation.Power.generatedKw, simulation.Power.loadKw, s.resources.suitOxygenGrams);
-            double rate = SurvivalNeeds.MilliSievert(mission.Environment.radiationMicrograyPerHour) * MissionSettings.SolSeconds / 3600;
-            double budget = SurvivalNeeds.DoseBudgetFraction(a);
-            sunZap.ShowDose(rate, SurvivalNeeds.MilliSievert(a.doseMicrogray));
-            sunZap.ShowState(budget >= Ui.ShieldCriticalFraction ? SuitShieldState.Critical : budget >= Ui.ShieldDangerFraction ? SuitShieldState.Danger
-                : budget >= Ui.ShieldWarnFraction || mission.Environment.solarEvent > 0.1 ? SuitShieldState.Warn : SuitShieldState.Safe);
+            double[] values = { a.oxygen, a.health, a.hydration, a.satiety, 100 - a.fatigue };
+            string[] labels = { "Oxygen", "Health", "Water", "Food", "Rest" };
+            for (int i = 0; i < 5; i++)
+            {
+                double v = Math.Max(0, Math.Min(100, values[i]));
+                vitalLabels[i].text = labels[i] + "  " + v.ToString("0", CultureInfo.InvariantCulture) + "%";
+                SetBar(vitalFills[i], v / 100);
+                bool low = v < 40;
+                vitalLabels[i].color = v < 20 ? StatBar.ColorOf(Ui.UiDanger) : low ? StatBar.ColorOf(Ui.UiWarn) : paper;
+                vitalGroups[i].alpha = low ? 1f : 0.62f;
+            }
             eatButton.interactable = a.satiety <= 95 && s.resources.food >= 1;
             drinkButton.interactable = a.hydration <= 95 && s.resources.cleanWaterLiters >= SurvivalNeeds.DrinkLitres;
 
-            // New warnings enter the banner queue once; the forecast line follows radiation events.
-            foreach (string warning in simulation.Warnings)
-                if (shownWarnings.Add(warning)) alerts.Enqueue(warning);
-            shownWarnings.RemoveWhere(w => !simulation.Warnings.Contains(w));
-            if (mission.Environment.solarEvent > 0.05) alerts.ShowCountdown(0); else alerts.HideCountdown();
+            // Warnings: one at a time; OK hides it until it clears and comes back.
+            dismissed.RemoveWhere(w => !simulation.Warnings.Contains(w));
+            warningQueue.Clear();
+            if (flare) warningQueue.Add("Solar flare now: go to the storm shelter.");
+            foreach (string warning in simulation.Warnings) if (!dismissed.Contains(warning)) warningQueue.Add(warning);
+            alertPlate.gameObject.SetActive(warningQueue.Count > 0);
+            if (warningQueue.Count > 0) alertText.text = warningQueue[0] + (warningQueue.Count > 1 ? "   (+" + (warningQueue.Count - 1) + ")" : "");
 
-            string warningText = simulation.Warnings.Count == 0 ? "" : simulation.Warnings[0];
-            notice.text = !string.IsNullOrEmpty(mission.Notice) ? mission.Notice : !string.IsNullOrEmpty(warningText) ? "Warning: " + warningText : "Objective: " + NextObjective(s);
-            guide.text = "Survive the sol > " + SurvivalGuide(s);
+            string message = mission.Notice ?? "";
+            if (message != lastNotice) { lastNotice = message; noticeChangedAt = Time.unscaledTime; }
+            notice.text = message;
+            guide.text = "Next: " + SurvivalGuide(s);
+        }
+
+        private void DismissWarning()
+        {
+            if (warningQueue.Count == 0) return;
+            if (!warningQueue[0].StartsWith("Solar flare")) dismissed.Add(warningQueue[0]);
+            warningQueue.RemoveAt(0);
+            alertPlate.gameObject.SetActive(warningQueue.Count > 0);
+            if (warningQueue.Count > 0) alertText.text = warningQueue[0];
+        }
+
+        /// <summary>A new message shows for a few seconds, then gives way to the next step.</summary>
+        private void FadeNotice()
+        {
+            if (notice == null) return;
+            float age = Time.unscaledTime - noticeChangedAt;
+            float a = string.IsNullOrEmpty(notice.text) ? 0f : Mathf.Clamp01((NoticeSeconds - age) / 0.6f);
+            notice.alpha = a;
+            guide.alpha = 1f - a;
         }
 
         private void ShowReport()
@@ -1005,7 +1055,7 @@ namespace MarsSurvival.UI
             return card;
         }
 
-        private void Heading(string value) { LabelInFlow(content, Title(value.ToLowerInvariant()), Ui.UiHeading, accent); }
+        private void Heading(string value) { LabelInFlow(content, Sentence(value), 28, accent); }
         private void Paragraph(string value, int size = 23) { LabelInFlow(content, value, size, paper); }
         private void LiveParagraph(Func<string> value, int size = 23) { LiveLabel(content, value, size); }
         private void LiveLabel(Transform parent, Func<string> value, int size)
@@ -1015,7 +1065,7 @@ namespace MarsSurvival.UI
         }
 
         /// <summary>Console text sizes were authored for the legacy font; the UI kit's font reads best a little larger.</summary>
-        private static float Size(float legacy) { return legacy >= Ui.UiHeading ? legacy : Mathf.Round(legacy * 1.15f); }
+        private static float Size(float legacy) { return legacy; }
 
         private TMP_Text LabelInFlow(Transform parent, string value, float size, Color color)
         {
@@ -1024,12 +1074,12 @@ namespace MarsSurvival.UI
             return label;
         }
 
-        private TMP_Text Label(Transform parent, string value, float size, Color color)
+        private TMP_Text Label(Transform parent, string value, float size, Color color, bool exact = false)
         {
             TextMeshProUGUI label = NewRect("Text", parent).gameObject.AddComponent<TextMeshProUGUI>();
             label.font = font;
             label.text = value;
-            label.fontSize = Size(size);
+            label.fontSize = exact ? size : Size(size);
             label.color = color;
             label.alignment = TextAlignmentOptions.MidlineLeft;
             label.enableWordWrapping = true;
@@ -1053,7 +1103,7 @@ namespace MarsSurvival.UI
         private Button Button(Transform parent, string text, UnityAction action)
         {
             RectTransform rect = Box(text, parent, StatBar.ColorOf(Ui.UiButtonColor));
-            Height(rect, 52);
+            Height(rect, 46);
             Image image = rect.GetComponent<Image>();
             image.raycastTarget = true;
             Button button = rect.gameObject.AddComponent<Button>();
@@ -1066,7 +1116,7 @@ namespace MarsSurvival.UI
             button.colors = colors;
             button.navigation = new Navigation { mode = Navigation.Mode.Automatic };
             button.onClick.AddListener(action);
-            TMP_Text label = Label(rect, Title(text), 20, paper);
+            TMP_Text label = Label(rect, text, 19, paper);
             label.alignment = TextAlignmentOptions.Center;
             label.margin = new Vector4(Ui.UiGap, 0, Ui.UiGap, 0);
             Stretch(label.rectTransform);
@@ -1081,27 +1131,66 @@ namespace MarsSurvival.UI
             return button;
         }
 
-        private Button KitButton(Transform parent, string text, ResourceSymbol symbol, UnityAction action)
+        /// <summary>A small, quiet text button (key hints, eat/drink, OK).</summary>
+        private Button HintButton(Transform parent, string text, UnityAction action)
         {
-            Button button = StatBar.Button(parent, text, action);
-            ResourceGlyph.Decorate(button, symbol);
-            TMP_Text label = button.GetComponentInChildren<TMP_Text>();
-            label.fontSize = Ui.UiBody * 0.62f;
-            label.enableWordWrapping = false;
+            RectTransform rect = NewRect(text, parent);
+            Image image = rect.gameObject.AddComponent<Image>();
+            image.color = WithAlpha(ink, 0.55f);
+            Button button = rect.gameObject.AddComponent<Button>();
+            button.targetGraphic = image;
+            ColorBlock colors = button.colors;
+            colors.highlightedColor = new Color(1.4f, 1.3f, 1.2f);
+            colors.pressedColor = StatBar.ColorOf(Ui.UiCopper);
+            colors.disabledColor = new Color(1f, 1f, 1f, 0.4f);
+            button.colors = colors;
+            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            button.onClick.AddListener(action);
+            TMP_Text label = Label(rect, text, Tiny, paper, true);
+            label.alignment = TextAlignmentOptions.Center;
+            label.margin = new Vector4(10, 0, 10, 0);
+            Stretch(label.rectTransform);
+            LayoutElement element = rect.gameObject.AddComponent<LayoutElement>();
+            element.preferredWidth = label.GetPreferredValues(text).x + 24;
             return button;
         }
 
-        private Button SupplyButton(Transform parent, string text, ResourceSymbol symbol, UnityAction action)
+        /// <summary>A translucent backing so small text stays readable over the bright ground.</summary>
+        private RectTransform Plate(Transform parent, string name, float x0, float y0, float x1, float y1)
         {
-            Button button = StatBar.Button(parent, text, action);
-            ResourceGlyph glyphIcon = ResourceGlyph.Create(button.transform, symbol, Ui.UiBadgeDiameter);
-            RectTransform glyph = glyphIcon.rectTransform;
-            glyph.anchorMin = glyph.anchorMax = new Vector2(.5f, .7f); glyph.pivot = new Vector2(.5f, .5f); glyph.anchoredPosition = Vector2.zero;
-            RectTransform label = button.GetComponentInChildren<TMP_Text>().rectTransform;
-            label.anchorMin = Vector2.zero; label.anchorMax = new Vector2(1, .45f);
-            label.offsetMin = label.offsetMax = Vector2.zero;
-            button.GetComponentInChildren<TMP_Text>().fontSize = Ui.UiBody * 0.75f;
-            return button;
+            RectTransform rect = StatBar.Frame(parent, name, x0, y0, x1, y1);
+            Image image = rect.gameObject.AddComponent<Image>();
+            image.color = WithAlpha(ink, 0.6f);
+            image.raycastTarget = false;
+            return rect;
+        }
+
+        private TMP_Text Text(Transform parent, string value, float size, Color color, float x0, float y0, float x1, float y1)
+        {
+            TMP_Text text = Label(parent, value, size, color, true);
+            text.enableWordWrapping = false;
+            text.overflowMode = TextOverflowModes.Ellipsis;
+            Place(text.rectTransform, x0, y0, x1, y1);
+            return text;
+        }
+
+        /// <summary>A thin progress bar; returns the fill to resize with <see cref="SetBar"/>.</summary>
+        private static Image Bar(Transform parent, float x0, float y0, float x1, float y1, Color color)
+        {
+            RectTransform track = NewRect("Bar", parent);
+            Place(track, x0, y0, x1, y1);
+            track.gameObject.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.12f);
+            RectTransform fill = NewRect("Fill", track);
+            Stretch(fill);
+            Image image = fill.gameObject.AddComponent<Image>();
+            image.color = color;
+            image.raycastTarget = false;
+            return image;
+        }
+
+        private static void SetBar(Image fill, double fraction)
+        {
+            fill.rectTransform.anchorMax = new Vector2(Mathf.Clamp01((float)fraction), 1);
         }
 
         private Slider Slider(Transform parent, float initial, UnityAction<float> changed)
@@ -1146,9 +1235,12 @@ namespace MarsSurvival.UI
             return row;
         }
 
-        private static string Title(string text)
+        /// <summary>Sentence case: "KEEP THE OUTPOST WORKING" reads as "Keep the outpost working".</summary>
+        private static string Sentence(string text)
         {
-            return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(text).Replace("Kwh", "kWh").Replace("Msv", "mSv");
+            if (string.IsNullOrEmpty(text)) return text;
+            string lower = text.ToLowerInvariant().Replace("houston", "Houston").Replace("mars", "Mars").Replace(" sol", " sol");
+            return char.ToUpperInvariant(lower[0]) + lower.Substring(1);
         }
 
         private static void Height(RectTransform rect, float value)

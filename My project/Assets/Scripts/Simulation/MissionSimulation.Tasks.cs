@@ -22,9 +22,32 @@ namespace MarsSurvival.Simulation
             return true;
         }
 
+        /// <summary>
+        /// True when the astronaut has left the place a task needs (gone outside during an inside task, boarded
+        /// the rover, walked away from the site or the solar array). Moving about in place only pauses a task.
+        /// </summary>
+        private bool LeftTaskPlace(PlayerContext ctx)
+        {
+            TaskState task = State.task;
+            if (task.kind == TaskKind.None || task.kind == TaskKind.Transmit) return false;
+            if (ctx.driving) return true;
+            if (!task.fieldPower && !IsIndoors(ctx)) return true;
+            if (task.kind == TaskKind.SampleSoil || task.kind == TaskKind.PlaceMarker || task.kind == TaskKind.Photograph)
+                return ctx.nearbySiteId != task.targetId;
+            if (task.kind == TaskKind.DustPanels) return ctx.distanceFromBase > 100;
+            return false;
+        }
+
         private void TickTask(double seconds, PlayerContext ctx)
         {
             TaskState task = State.task;
+            if (LeftTaskPlace(ctx))
+            {
+                // A task left behind would otherwise wait forever and keep the tools busy.
+                CancelTask();
+                Log("Stopped " + task.kind + " because you left its place. Unused supplies were returned.");
+                return;
+            }
             if (task.kind == TaskKind.None || !TaskLocationValid(ctx)) return;
             if (task.kind == TaskKind.Transmit)
             {

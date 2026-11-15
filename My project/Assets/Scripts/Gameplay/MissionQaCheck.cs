@@ -443,11 +443,11 @@ namespace MarsSurvival.Gameplay
             var hud = FindObjectOfType<MarsMissionHud>();
             var field = typeof(MarsMissionHud).GetField("guide", BindingFlags.NonPublic | BindingFlags.Instance);
             var text = field != null ? field.GetValue(hud) as TMPro.TMP_Text : null;
-            Check(text != null && text.text.StartsWith("Survive the sol"), "HUD shows the survival guide", text != null ? text.text : "missing");
-            Check(text != null && text.font != null && text.font.name.Contains("CounterStrike"), "HUD uses the Counter-Strike UI font", text != null && text.font != null ? text.font.name : "no font");
-            var vitals = typeof(MarsMissionHud).GetField("vitals", BindingFlags.NonPublic | BindingFlags.Instance);
-            var bars = vitals != null ? vitals.GetValue(hud) as MarsTrainer.UI.StatBar[] : null;
-            Check(bars != null && bars.Length == 5, "HUD shows the five suit vitals (oxygen first)");
+            Check(text != null && text.text.StartsWith("Next: "), "HUD shows the next-step guide", text != null ? text.text : "missing");
+            Check(text != null && text.font != null && text.font.name.Contains("Electrolize"), "HUD uses the Electrolize font", text != null && text.font != null ? text.font.name : "no font");
+            var vitals = typeof(MarsMissionHud).GetField("vitalLabels", BindingFlags.NonPublic | BindingFlags.Instance);
+            var bars = vitals != null ? vitals.GetValue(hud) as TMPro.TMP_Text[] : null;
+            Check(bars != null && bars.Length == 5 && bars[0].text.StartsWith("Oxygen"), "HUD shows the five suit vitals (oxygen first)");
             Check(FindObjectOfType<MarsTrainer.UI.PauseMenu>(true) != null && FindObjectOfType<MarsTrainer.UI.EndScreen>(true) != null, "Pause menu and mission report screens exist");
             Check(FindObjectOfType<MarsToolHud>() != null, "Tool hotbar HUD exists");
             Check(mission.Simulation.Settings.leafyWaterLitersPerSol > 0.5 && mission.Simulation.Settings.leafyWaterLitersPerSol < 1.5,

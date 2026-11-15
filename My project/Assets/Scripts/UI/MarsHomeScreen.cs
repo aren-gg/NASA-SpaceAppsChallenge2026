@@ -161,7 +161,7 @@ namespace MarsSurvival.UI
             Cursor.visible = true;
 
             // MarsTrainer UI typeface (Counter-Strike UI SDF), shared with the mission HUD.
-            font = Resources.Load<TMP_FontAsset>(MarsTrainer.UI.UiTypeface.ResourcePath);
+            font = MarsTrainer.UI.UiTypeface.Font;
             if (font == null) font = TMP_Settings.defaultFontAsset;
             roundFill = RoundedSprite(64, 22f, 0f);
             roundRing = RoundedSprite(64, 22f, 3f);
@@ -395,11 +395,11 @@ namespace MarsSurvival.UI
             taglineText.lineSpacing = 10f;
             Place(taglineText.rectTransform, ref y, 700f, 84f, 56f, index++);
 
-            RectTransform start = MakeButton(column, "START MISSION", ButtonStyle.Primary, StartMission);
+            RectTransform start = MakeButton(column, "Start mission", ButtonStyle.Primary, StartMission);
             Place(start, ref y, 460f, 92f, 18f, index++);
-            RectTransform how = MakeButton(column, "HOW TO PLAY", ButtonStyle.Secondary, () => SetHelp(true));
+            RectTransform how = MakeButton(column, "How to play", ButtonStyle.Secondary, () => SetHelp(true));
             Place(how, ref y, 460f, 76f, 10f, index++);
-            RectTransform quit = MakeButton(column, "QUIT", ButtonStyle.Ghost, Quit);
+            RectTransform quit = MakeButton(column, "Quit", ButtonStyle.Ghost, Quit);
             Place(quit, ref y, 460f, 60f, 0f, index++);
 
             // Footer: data credit bottom-left, start hint bottom-right.
@@ -443,7 +443,7 @@ namespace MarsSurvival.UI
             card.type = Image.Type.Sliced;
             card.color = WithAlpha(Color.Lerp(purple, MarsPalette.Mauve, 0.12f), 0.97f);
 
-            TMP_Text heading = NewText(helpCard, "HOW TO PLAY", 40, MarsPalette.WarmOrange, FontStyle.Bold, TextAnchor.UpperLeft);
+            TMP_Text heading = NewText(helpCard, "How to play", 40, MarsPalette.WarmOrange, FontStyle.Bold, TextAnchor.UpperLeft);
             TopLeft(heading.rectTransform, new Vector2(64f, -56f), new Vector2(700f, 50f));
 
             string[,] rows =
@@ -481,7 +481,7 @@ namespace MarsSurvival.UI
                 TopLeft(action.rectTransform, new Vector2(262f, rowY), new Vector2(540f, 38f));
             }
 
-            RectTransform close = MakeButton(helpCard, "GOT IT", ButtonStyle.Primary, () => SetHelp(false));
+            RectTransform close = MakeButton(helpCard, "Got it", ButtonStyle.Primary, () => SetHelp(false));
             close.anchorMin = close.anchorMax = close.pivot = new Vector2(1f, 0f);
             close.sizeDelta = new Vector2(240f, 72f);
             close.anchoredPosition = new Vector2(-56f, 48f);
@@ -577,7 +577,7 @@ namespace MarsSurvival.UI
             text.font = font;
             text.text = content;
             text.fontSize = size;
-            text.fontStyle = style == FontStyle.Bold ? FontStyles.Bold : FontStyles.Normal;
+            text.fontStyle = FontStyles.Normal;
             text.color = color;
             text.alignment = anchor == TextAnchor.UpperLeft ? TextAlignmentOptions.TopLeft
                 : anchor == TextAnchor.MiddleCenter ? TextAlignmentOptions.Center

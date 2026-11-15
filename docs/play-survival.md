@@ -6,7 +6,17 @@ Open `My project/Assets/Scenes/Mars.unity` in Unity 2022.3.62f3 and press Play. 
 
 ## The HUD
 
-The HUD uses the MarsTrainer UI kit and Counter-Strike UI font from the backend branch. Bottom left are the suit vitals, oxygen first: Air, Health, Water, Food and Rest. These needs are tracked by the MarsTrainer survival model (`SurvivalSystem` and `HealthSystem`). Bottom right are the battery, the Sun-Zap radiation meter (dose against the NASA-STD-3001 budget) and the quick Eat [F] and Drink [G] buttons. Warnings queue in the banner at the top. Escape opens the pause menu with controls, sound and text size. When a mission ends, a mission report appears.
+The interface uses the Electrolize typeface (SIL OFL 1.1, `Assets/Fonts/Electrolize-OFL.txt`) and stays minimal:
+
+- **Top left:** the sol counter, with battery charge and radiation directly underneath.
+- **Top centre:** where you are.
+- **Top right:** small key hints (Tab console, H help, Esc menu).
+- **Warnings:** one warning at a time, only when there is one; OK hides it until the problem returns.
+- **Bottom left:** suit vitals, oxygen first (the MarsTrainer survival model). They stay dim while fine and brighten when low.
+- **Bottom right:** small Eat (F) and Drink (G) buttons.
+- **Above the hotbar:** one line shows the latest message, then fades to the next step.
+
+A task stops by itself if you leave its place (for example walking outside during an inside task). X stops a task at any time.
 
 ## Daily routine and power
 
@@ -50,6 +60,7 @@ Radio reports go to simulated Houston mission control. Both listening and transm
 | E | Pick up the tool you are looking at; board or leave the rover |
 | Q / B | Put the selected tool / all tools back (inside) |
 | F / G | Eat / drink |
+| X | Stop the task in progress |
 | Tab | Outpost console |
 | H | Daily task help |
 | P | Pause/resume |

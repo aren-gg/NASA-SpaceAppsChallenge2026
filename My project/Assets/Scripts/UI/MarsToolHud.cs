@@ -22,8 +22,8 @@ namespace MarsSurvival.UI
     {
         private const int WaypointCount = 4;
         private const int PopupCount = 6;
-        private const float SlotSize = 88f;
-        private const float SlotGap = 12f;
+        private const float SlotSize = 74f;
+        private const float SlotGap = 10f;
 
         private MarsExpedition expedition;
         private MarsToolBelt belt;
@@ -55,7 +55,7 @@ namespace MarsSurvival.UI
         {
             expedition = GetComponent<MarsExpedition>();
             belt = GetComponent<MarsToolBelt>();
-            font = Resources.Load<TMP_FontAsset>(MarsTrainer.UI.UiTypeface.ResourcePath);
+            font = MarsTrainer.UI.UiTypeface.Font;
             if (font == null) font = TMP_Settings.defaultFontAsset;
             round = RoundedSprite(64, 18f, 0f);
             ring = RoundedSprite(64, 18f, 3f);
@@ -106,7 +106,7 @@ namespace MarsSurvival.UI
                 RectTransform marker = NewRect("Waypoint", canvasRect, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(360f, 70f));
                 Image icon = Panel(marker, "Pin", disc, new Vector2(0.5f, 0.5f), new Vector2(0f, 14f), new Vector2(22f, 22f), orange);
                 Panel(icon.rectTransform, "Dot", disc, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(8f, 8f), purple);
-                TMP_Text label = Label(marker, "", 20, pink, FontStyle.Bold, TextAnchor.UpperCenter);
+                TMP_Text label = Label(marker, "", 16, pink, FontStyle.Bold, TextAnchor.UpperCenter);
                 Place(label.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, -12f), new Vector2(360f, 26f));
                 AddShadow(label);
                 waypoints.Add(marker);
@@ -131,10 +131,10 @@ namespace MarsSurvival.UI
             progressRing = fill;
 
             promptRect = NewRect("Prompt", canvasRect, new Vector2(0.5f, 0.5f), new Vector2(0f, -64f), new Vector2(1000f, 36f));
-            prompt = Label(promptRect, "", 26, pink, FontStyle.Normal, TextAnchor.MiddleCenter);
+            prompt = Label(promptRect, "", 20, pink, FontStyle.Normal, TextAnchor.MiddleCenter);
             Stretch(prompt.rectTransform);
             AddShadow(prompt);
-            secondary = Label(canvasRect, "", 21, WithAlpha(pink, 0.85f), FontStyle.Normal, TextAnchor.MiddleCenter);
+            secondary = Label(canvasRect, "", 16, WithAlpha(pink, 0.85f), FontStyle.Normal, TextAnchor.MiddleCenter);
             Place(secondary.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, -98f), new Vector2(1000f, 28f));
             AddShadow(secondary);
 
@@ -142,9 +142,9 @@ namespace MarsSurvival.UI
             Image look = Panel(canvasRect, "Look Card", round, new Vector2(0.5f, 0.5f), new Vector2(70f, 20f), new Vector2(420f, 100f), WithAlpha(purple, 0.82f));
             look.rectTransform.pivot = new Vector2(0f, 0.5f);
             lookCard = look.rectTransform;
-            lookTitle = Label(lookCard, "", 22, orange, FontStyle.Bold, TextAnchor.UpperLeft);
+            lookTitle = Label(lookCard, "", 18, orange, FontStyle.Bold, TextAnchor.UpperLeft);
             Place(lookTitle.rectTransform, new Vector2(0f, 1f), new Vector2(18f, -12f), new Vector2(390f, 28f), new Vector2(0f, 1f));
-            lookBody = Label(lookCard, "", 20, pink, FontStyle.Normal, TextAnchor.UpperLeft);
+            lookBody = Label(lookCard, "", 16, pink, FontStyle.Normal, TextAnchor.UpperLeft);
             lookBody.enableWordWrapping = true;
             lookBody.lineSpacing = 8f;
             Place(lookBody.rectTransform, new Vector2(0f, 1f), new Vector2(18f, -42f), new Vector2(384f, 200f), new Vector2(0f, 1f));
@@ -177,27 +177,27 @@ namespace MarsSurvival.UI
                 slots[i] = slot;
             }
 
-            toolName = Label(canvasRect, "", 30, pink, FontStyle.Bold, TextAnchor.LowerCenter);
-            Place(toolName.rectTransform, new Vector2(0.5f, 0f), new Vector2(0f, 166f), new Vector2(1000f, 38f));
+            toolName = Label(canvasRect, "", 22, pink, FontStyle.Bold, TextAnchor.LowerCenter);
+            Place(toolName.rectTransform, new Vector2(0.5f, 0f), new Vector2(0f, 164f), new Vector2(1000f, 30f));
             AddShadow(toolName);
-            toolHint = Label(canvasRect, "", 21, WithAlpha(pink, 0.9f), FontStyle.Normal, TextAnchor.LowerCenter);
-            Place(toolHint.rectTransform, new Vector2(0.5f, 0f), new Vector2(0f, 134f), new Vector2(1200f, 30f));
+            toolHint = Label(canvasRect, "", 16, WithAlpha(pink, 0.9f), FontStyle.Normal, TextAnchor.LowerCenter);
+            Place(toolHint.rectTransform, new Vector2(0.5f, 0f), new Vector2(0f, 138f), new Vector2(1200f, 24f));
             AddShadow(toolHint);
 
             // Tool readout, right side above the mission HUD's power panel.
             Image readout = Panel(canvasRect, "Readout", round, new Vector2(1f, 0.535f), new Vector2(-28f, 0f), new Vector2(420f, 120f), WithAlpha(purple, 0.82f));
             readout.rectTransform.pivot = new Vector2(1f, 0f);
             readoutCard = readout.rectTransform;
-            readoutTitle = Label(readoutCard, "", 19, orange, FontStyle.Bold, TextAnchor.UpperLeft);
+            readoutTitle = Label(readoutCard, "", 16, orange, FontStyle.Bold, TextAnchor.UpperLeft);
             Place(readoutTitle.rectTransform, new Vector2(0f, 1f), new Vector2(20f, -14f), new Vector2(380f, 24f), new Vector2(0f, 1f));
-            readoutBody = Label(readoutCard, "", 20, pink, FontStyle.Normal, TextAnchor.UpperLeft);
+            readoutBody = Label(readoutCard, "", 15, pink, FontStyle.Normal, TextAnchor.UpperLeft);
             readoutBody.lineSpacing = 10f;
             Place(readoutBody.rectTransform, new Vector2(0f, 1f), new Vector2(20f, -44f), new Vector2(380f, 200f), new Vector2(0f, 1f));
 
             // Floating "+research" pop-ups.
             for (int i = 0; i < PopupCount; i++)
             {
-                TMP_Text popup = Label(canvasRect, "", 32, orange, FontStyle.Bold, TextAnchor.MiddleCenter);
+                TMP_Text popup = Label(canvasRect, "", 24, orange, FontStyle.Bold, TextAnchor.MiddleCenter);
                 Place(popup.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(500f, 40f));
                 AddShadow(popup);
                 popups.Add(popup);
@@ -252,7 +252,7 @@ namespace MarsSurvival.UI
             {
                 bool moving = MarsExpedition.Mission != null && (MarsExpedition.Mission.Context.moving || MarsExpedition.Mission.Context.driving);
                 prompt.text = Capitalize(MarsTool.TaskName(state.task.kind)) + "  " + Mathf.RoundToInt(taskProgress * 100f) + "%" +
-                              (moving ? "  (paused while you move)" : "  (stand still)");
+                              (moving ? "  (paused while you move)" : "  (stand still)") + "   X to stop";
                 prompt.color = moving ? WithAlpha(pink, 0.7f) : orange;
             }
             else if (plan == null)
@@ -266,13 +266,13 @@ namespace MarsSurvival.UI
             }
             else
             {
-                prompt.text = "<b><color=" + orangeHex + ">CLICK</color></b>  to " + plan.Label;
+                prompt.text = "<color=" + orangeHex + ">Click</color>  to " + plan.Label;
                 prompt.color = pink;
             }
             float shake = Mathf.Clamp01(1f - (now - belt.RefusedAt) / 0.35f);
             promptRect.anchoredPosition = new Vector2(Mathf.Sin(now * 60f) * 10f * shake, -64f);
             secondary.text = belt.SecondaryLabel != null && !working
-                ? "<b><color=" + orangeHex + ">R</color></b>  to " + belt.SecondaryLabel : "";
+                ? "<color=" + orangeHex + ">R</color>  to " + belt.SecondaryLabel : "";
 
             // What the crosshair is on.
             string title = null, body = null;
@@ -314,7 +314,7 @@ namespace MarsSurvival.UI
             readoutCard.gameObject.SetActive(!string.IsNullOrEmpty(readout));
             if (!string.IsNullOrEmpty(readout))
             {
-                readoutTitle.text = tool.Name.ToUpperInvariant();
+                readoutTitle.text = tool.Name;
                 readoutBody.text = readout;
                 readoutCard.sizeDelta = new Vector2(420f, 60f + readoutBody.preferredHeight);
             }
@@ -444,7 +444,7 @@ namespace MarsSurvival.UI
             text.font = font;
             text.text = content;
             text.fontSize = size;
-            text.fontStyle = style == FontStyle.Bold ? FontStyles.Bold : FontStyles.Normal;
+            text.fontStyle = FontStyles.Normal;
             text.color = color;
             text.alignment = anchor == TextAnchor.UpperLeft ? TextAlignmentOptions.TopLeft
                 : anchor == TextAnchor.UpperCenter ? TextAlignmentOptions.Top
