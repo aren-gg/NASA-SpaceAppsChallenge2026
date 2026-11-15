@@ -28,7 +28,7 @@ namespace MarsSurvival.UI
         public string eyebrow = "GALE CRATER  ·  4.6° S  137.4° E";
         public string titleTop = "MARS";
         public string titleBottom = "OUTPOST";
-        [TextArea] public string tagline = "Keep your astronaut alive on the real surface of Mars.";
+        [TextArea] public string tagline = "Explore real Mars terrain, collect rock samples and keep your camp running.";
         public string credit = "Terrain from NASA / USGS elevation data of Gale Crater  ·  NASA Space Apps Challenge 2026";
 
         [Header("Background camera (real metres)")]
@@ -54,7 +54,6 @@ namespace MarsSurvival.UI
         private MarsTerrainFlyCamera flyCamera;
         private bool flyCameraWasEnabled;
         private MarsTerrainDataOverlay dataOverlay;
-        private bool dataOverlayWasVisible;
         private MarsClockHud clockHud;
         private bool clockHudWasVisible;
         private MarsTerrain terrain;
@@ -134,7 +133,6 @@ namespace MarsSurvival.UI
             dataOverlay = FindObjectOfType<MarsTerrainDataOverlay>();
             if (dataOverlay != null)
             {
-                dataOverlayWasVisible = dataOverlay.visible;
                 dataOverlay.visible = false;
             }
             clockHud = FindObjectOfType<MarsClockHud>();
@@ -281,7 +279,8 @@ namespace MarsSurvival.UI
             cam.transform.SetPositionAndRotation(camPosition, camRotation);
             cam.fieldOfView = camFov;
             if (flyCamera != null) flyCamera.enabled = flyCameraWasEnabled;
-            if (dataOverlay != null) dataOverlay.visible = dataOverlayWasVisible;
+            // The terrain data panel stays hidden in play (F3 shows it) so the corner is free for the mission card.
+            if (dataOverlay != null) dataOverlay.visible = false;
             if (clockHud != null) clockHud.visible = clockHudWasVisible;
             Destroy(menuCanvas);
             IsOpen = false;
@@ -438,7 +437,7 @@ namespace MarsSurvival.UI
             dimButton.onClick.AddListener(() => SetHelp(false));
 
             helpCard = NewRect("Card", overlay);
-            helpCard.sizeDelta = new Vector2(860f, 790f);
+            helpCard.sizeDelta = new Vector2(860f, 830f);
             Image card = helpCard.gameObject.AddComponent<Image>();
             card.sprite = roundFill;
             card.type = Image.Type.Sliced;
@@ -449,21 +448,24 @@ namespace MarsSurvival.UI
 
             string[,] rows =
             {
-                { "W A S D", "Walk" },
+                { "W A S D", "Walk around" },
                 { "Mouse", "Look around" },
-                { "Shift", "Sprint" },
+                { "Shift", "Run" },
                 { "Space", "Jump (gravity is low on Mars!)" },
-                { "1 – 5", "Change the weather" },
-                { "[  ]", "Move the Mars clock an hour" },
+                { "1 – 9, 0", "Pick a tool" },
+                { "Left click", "Use the tool" },
+                { "R", "The tool's extra action" },
                 { "Esc", "Free the mouse pointer" },
                 { "F2", "Fly camera" },
                 { "F3", "Terrain data" },
+                { "F5 – F9", "Change the weather (testing)" },
+                { "[  ]", "Move the Mars clock an hour" },
             };
             for (int i = 0; i < rows.GetLength(0); i++)
             {
-                float rowY = -140f - i * 56f;
+                float rowY = -136f - i * 46f;
                 RectTransform chip = NewRect("Key", helpCard);
-                TopLeft(chip, new Vector2(64f, rowY), new Vector2(170f, 44f));
+                TopLeft(chip, new Vector2(64f, rowY), new Vector2(170f, 38f));
                 Image chipImage = chip.gameObject.AddComponent<Image>();
                 chipImage.sprite = roundRing;
                 chipImage.type = Image.Type.Sliced;
@@ -473,7 +475,7 @@ namespace MarsSurvival.UI
                 Stretch(key.rectTransform);
 
                 Text action = NewText(helpCard, rows[i, 1], 27, WithAlpha(pink, 0.92f), FontStyle.Normal, TextAnchor.MiddleLeft);
-                TopLeft(action.rectTransform, new Vector2(262f, rowY), new Vector2(540f, 44f));
+                TopLeft(action.rectTransform, new Vector2(262f, rowY), new Vector2(540f, 38f));
             }
 
             RectTransform close = MakeButton(helpCard, "GOT IT", ButtonStyle.Primary, () => SetHelp(false));

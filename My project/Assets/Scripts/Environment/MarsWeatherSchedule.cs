@@ -32,7 +32,7 @@ namespace MarsSurvival.TimeAndWeather
 
         [Tooltip("Turn off to drive the weather by hand.")]
         public bool automatic = true;
-        [Tooltip("After something else changes the weather (keys 1-5), wait this long before taking over again.")]
+        [Tooltip("After something else changes the weather (keys F5-F9), wait this long before taking over again.")]
         public float manualHoldSeconds = 45f;
 
         [Header("DONKI solar events")]
@@ -134,7 +134,7 @@ namespace MarsSurvival.TimeAndWeather
         private void Apply()
         {
             if (weather == null || !automatic) return;
-            // Someone else (the 1-5 test keys, another script) changed the weather: let it stand for a while.
+            // Someone else (the F5-F9 test keys, another script) changed the weather: let it stand for a while.
             if (hasApplied && weather.Current != lastApplied) holdUntil = Time.time + manualHoldSeconds;
             if (Time.time < holdUntil)
             {

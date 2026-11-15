@@ -94,7 +94,7 @@ The lead defines these before workers start:
 
 - Keep the `MarsWeather` namespace and separate runtime/editor assemblies.
 - Keep `WeatherController.Activate`, `StopWeather`, and the transition weights stable for integration.
-- Use one preview scene with event selection; keep preview controls and props (`WeatherPreview`, the preview stage) out of the gameplay scene and separate from the reusable prefab.
+- Preview weather in the Mars scene (test keys F5–F9); there is no separate preview scene. Keep the reusable prefab free of scene-specific props.
 - Assign scene-specific lights through serialized references. Never search for and disable teammates' lights.
 - Prefer detailed particle layering, smooth geometry, fog and lighting over high-cost assets or image generation. (Smooth geometry differs from the low-poly art direction; see Open questions.)
 - Document artistic assumptions: these events do not calculate radiation dose or reproduce measured Mars weather. Solar events stand for radiation exposure and heat events for thermal stress; the glow is an artistic alert.
@@ -103,7 +103,7 @@ The lead defines these before workers start:
 ### Atmosphere ownership
 
 - Only one controller owns global atmosphere (sky, fog, ambient light) at a time, and it restores the captured settings on disable.
-- In the combined scene the weather controller owns it. `MarsWorldWeatherLink` turns off the terrain's own fog and sky, leaves the terrain in charge of the camera far clip, rescales weather fog density from the 60 m preview stage to the 1:1 map, and keeps weather effects centred on the camera.
+- In the combined scene the weather controller owns it. `MarsWorldWeatherLink` turns off the terrain's own fog and sky, leaves the terrain in charge of the camera far clip, rescales weather fog density (originally tuned on a 60 m test stage) to the 1:1 map, and keeps weather effects centred on the camera.
 - Set up a combined scene with **Mars → Terrain → Create Gale Crater Terrain**, then **Mars → Add Weather To Terrain Scene**.
 
 ## Feature implementation
@@ -170,7 +170,7 @@ Exit: a desktop build completes the demonstration, works offline, and remains co
 - Prioritize functioning mechanics over extra assets, animations, procedural worlds, or additional NASA integrations.
 - Use focused checks for resource conservation, time-step consistency, event reproducibility, and state reset.
 - Verify terrain scale and radiation units against source metadata.
-- For weather changes, verify compilation, event switching, timed expiration, cleanup (settings restored on disable), and preview appearance.
+- For weather changes, verify compilation, event switching, timed expiration, cleanup (settings restored on disable), and appearance in the Mars scene.
 - Check the actual Unity scene as well as isolated C# logic. Report unavailable editor, build, or hardware verification honestly.
 - Keep a concise handoff: completed work, changed files, evidence, unresolved issues, next owner.
 - Finish when required features meet their acceptance checks and integration is demonstrated. Avoid adding new systems without user direction.
