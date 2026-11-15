@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Failed(Child)" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-15 07:14:30Z" end-time="2026-11-15 07:14:32Z" duration="1.5406179">
+  <test-suite type="TestSuite" id="1000" name="My project" fullname="My project" runstate="Runnable" testcasecount="6" result="Failed" site="Child" start-time="2026-11-15 07:14:30Z" end-time="2026-11-15 07:14:32Z" duration="1.540618" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+    <properties />
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1014" name="MarsTrainer.Tests.UI.PlayMode.dll" fullname="/private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-final-d037c_dh/Library/ScriptAssemblies/MarsTrainer.Tests.UI.PlayMode.dll" runstate="Runnable" testcasecount="5" result="Failed" site="Child" start-time="2026-11-15 07:14:30Z" end-time="2026-11-15 07:14:32Z" duration="1.533149" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="48802" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestSuite" id="1015" name="MarsTrainer" fullname="MarsTrainer" runstate="Runnable" testcasecount="5" result="Failed" site="Child" start-time="2026-11-15 07:14:30Z" end-time="2026-11-15 07:14:32Z" duration="1.532191" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-suite type="TestSuite" id="1016" name="Tests" fullname="MarsTrainer.Tests" runstate="Runnable" testcasecount="5" result="Failed" site="Child" start-time="2026-11-15 07:14:30Z" end-time="2026-11-15 07:14:32Z" duration="1.531467" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <failure>
+            <message><![CDATA[One or more child tests had errors]]></message>
+          </failure>
+          <test-suite type="TestFixture" id="1012" name="PlayableGameTests" fullname="MarsTrainer.Tests.PlayableGameTests" classname="MarsTrainer.Tests.PlayableGameTests" runstate="Runnable" testcasecount="1" result="Failed" site="Child" start-time="2026-11-15 07:14:30Z" end-time="2026-11-15 07:14:32Z" duration="1.530003" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <failure>
+              <message><![CDATA[One or more child tests had errors]]></message>
+            </failure>
+            <test-case id="1013" name="MainConnectsTerrainFarmActionsRecallAndReplay" fullname="MarsTrainer.Tests.PlayableGameTests.MainConnectsTerrainFarmActionsRecallAndReplay" methodname="MainConnectsTerrainFarmActionsRecallAndReplay" classname="MarsTrainer.Tests.PlayableGameTests" runstate="Runnable" seed="750578364" result="Failed" start-time="2026-11-15 07:14:30Z" end-time="2026-11-15 07:14:32Z" duration="1.518919" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+              </properties>
+              <failure>
+                <message><![CDATA[  Enter must start the briefing, not select the hidden HUD.
+  Expected: same as <Begin mission (UnityEngine.GameObject)>
+  But was:  <Menu [Escape] (UnityEngine.GameObject)>
+]]></message>
+                <stack-trace><![CDATA[at MarsTrainer.Tests.PlayableGameTests+<MainConnectsTerrainFarmActionsRecallAndReplay>d__1.MoveNext () [0x00208] in /private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-final-d037c_dh/Assets/Tests/PlayMode/UI/PlayableGameTests.cs:46
+at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0003a] in ./Library/PackageCache/com.unity.test-framework@1.1.33/UnityEngine.TestRunner/NUnitExtensions/Attributes/TestEnumerator.cs:46
+]]></stack-trace>
+              </failure>
+              <output><![CDATA[P12_READY bundledData=True; seed=1739896151; rows=668; crops=3
+]]></output>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

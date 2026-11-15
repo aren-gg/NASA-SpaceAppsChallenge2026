@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-15 08:04:25Z" end-time="2026-11-15 08:04:28Z" duration="2.6357408">
+  <test-suite type="TestSuite" id="1000" name="My project" fullname="My project" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-11-15 08:04:25Z" end-time="2026-11-15 08:04:28Z" duration="2.635741" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties />
+    <test-suite type="Assembly" id="1016" name="MarsTrainer.Tests.UI.PlayMode.dll" fullname="/private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Library/ScriptAssemblies/MarsTrainer.Tests.UI.PlayMode.dll" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-11-15 08:04:25Z" end-time="2026-11-15 08:04:28Z" duration="2.633100" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="57945" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+      </properties>
+      <test-suite type="TestSuite" id="1017" name="MarsTrainer" fullname="MarsTrainer" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-11-15 08:04:25Z" end-time="2026-11-15 08:04:28Z" duration="2.632752" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1018" name="Tests" fullname="MarsTrainer.Tests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-11-15 08:04:25Z" end-time="2026-11-15 08:04:28Z" duration="2.632421" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1012" name="OpenWorldTraversalTests" fullname="MarsTrainer.Tests.OpenWorldTraversalTests" classname="MarsTrainer.Tests.OpenWorldTraversalTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-11-15 08:04:25Z" end-time="2026-11-15 08:04:28Z" duration="2.631839" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1013" name="MainWalksBeyondTheOldArenaOnOriginalElevationAndKitBlocksMovement" fullname="MarsTrainer.Tests.OpenWorldTraversalTests.MainWalksBeyondTheOldArenaOnOriginalElevationAndKitBlocksMovement" methodname="MainWalksBeyondTheOldArenaOnOriginalElevationAndKitBlocksMovement" classname="MarsTrainer.Tests.OpenWorldTraversalTests" runstate="Runnable" seed="410964539" result="Passed" start-time="2026-11-15 08:04:25Z" end-time="2026-11-15 08:04:28Z" duration="2.627426" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+              </properties>
+              <output><![CDATA[P12_READY bundledData=True; seed=1742890464; rows=668; crops=3
+OPEN_WORLD_WALK distance=458.211; allocations=0; terrainTriangles=28032
+]]></output>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

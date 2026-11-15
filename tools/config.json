@@ -1,0 +1,83 @@
+{
+  "sols": 668,
+  "seed": 668,
+  "epoch": "2024-01-01",
+  "secondsPerSol": 88775.244,
+  "timeoutSeconds": 3,
+  "maxBytes": 8000000,
+  "radUrl": "",
+  "remsUrl": "https://mars.nasa.gov/rss/api/?feed=weather&category=msl&feedtype=json",
+  "gcrBaseline": 210,
+  "gcrVariation": 18,
+  "minTemp": -85,
+  "tempSeasonAmplitude": 12,
+  "tempNoise": 4,
+  "dailyTempSpan": 65,
+  "pressurePa": 800,
+  "pressureAmplitude": 80,
+  "clearTau": 0.35,
+  "dustTau": 1.2,
+  "tauNoise": 0.15,
+  "clearUv": 5,
+  "uvCategories": {
+    "low": 2.5,
+    "moderate": 1.5,
+    "high": 0.5,
+    "very_high": 0.2
+  },
+  "flarePeriod": 53,
+  "flareClusterLength": 4,
+  "ranges": {
+    "temp": [
+      -150,
+      50
+    ],
+    "tau": [
+      0,
+      10
+    ],
+    "gcr": [
+      0,
+      2000
+    ],
+    "pressure": [
+      100,
+      1500
+    ]
+  },
+  "crops": [
+    {
+      "id": "romaine",
+      "name": "Outredgeous red romaine",
+      "daysToHarvest": 33,
+      "kcalPerHarvest": 17,
+      "parSat": 400,
+      "waterLPerDay": 0.12,
+      "co2Ppm": 1000,
+      "lightHours": 16,
+      "needsVerification": true
+    },
+    {
+      "id": "mizuna",
+      "name": "Mizuna mustard",
+      "daysToHarvest": 28,
+      "kcalPerHarvest": 20,
+      "parSat": 450,
+      "waterLPerDay": 0.1,
+      "co2Ppm": 1000,
+      "lightHours": 16,
+      "needsVerification": true
+    },
+    {
+      "id": "tokyo_bekana",
+      "name": "Tokyo Bekana cabbage",
+      "daysToHarvest": 28,
+      "kcalPerHarvest": 15,
+      "parSat": 400,
+      "waterLPerDay": 0.12,
+      "co2Ppm": 1000,
+      "lightHours": 16,
+      "needsVerification": true
+    }
+  ]
+}

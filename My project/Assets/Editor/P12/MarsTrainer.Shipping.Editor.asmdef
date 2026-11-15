@@ -1,0 +1,12 @@
+{
+  "name": "MarsTrainer.Shipping.Editor",
+  "references": [
+    "MarsTrainer.UI",
+    "MarsTrainer.Gameplay.World",
+    "MarsTrainer.Sim",
+    "MarsTrainer.Terrain"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ]
+}

@@ -1,0 +1,663 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="162" result="Passed" total="162" passed="162" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:24Z" duration="4.2867413">
+  <test-suite type="TestSuite" id="1212" name="My project" fullname="My project" runstate="Runnable" testcasecount="163" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:24Z" duration="4.286741" total="162" passed="162" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties />
+    <test-suite type="Assembly" id="1392" name="MarsTrainer.Tests.EditMode.dll" fullname="/private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Library/ScriptAssemblies/MarsTrainer.Tests.EditMode.dll" runstate="Runnable" testcasecount="147" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:22Z" duration="1.764973" total="146" passed="146" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="13834" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <test-suite type="TestSuite" id="1393" name="MarsTrainer" fullname="MarsTrainer" runstate="Runnable" testcasecount="147" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:22Z" duration="1.755016" total="146" passed="146" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1394" name="Tests" fullname="MarsTrainer.Tests" runstate="Runnable" testcasecount="147" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:22Z" duration="1.749978" total="146" passed="146" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1213" name="DataRepositoryTests" fullname="MarsTrainer.Tests.DataRepositoryTests" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" testcasecount="18" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:21Z" duration="0.678348" total="18" passed="18" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1214" name="BundledFilesLoad668ValidSolsAndCrops" fullname="MarsTrainer.Tests.DataRepositoryTests.BundledFilesLoad668ValidSolsAndCrops" methodname="BundledFilesLoad668ValidSolsAndCrops" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" seed="1961744059" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:20Z" duration="0.265986" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+              </properties>
+            </test-case>
+            <test-case id="1233" name="DuplicateCropIdsResetOnlyCrops" fullname="MarsTrainer.Tests.DataRepositoryTests.DuplicateCropIdsResetOnlyCrops" methodname="DuplicateCropIdsResetOnlyCrops" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" seed="1152383882" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:20Z" duration="0.006142" asserts="0">
+              <properties />
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1231" name="InvalidCropsUseDefaults" fullname="MarsTrainer.Tests.DataRepositoryTests.InvalidCropsUseDefaults" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:20Z" duration="0.013355" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1227" name="InvalidCropsUseDefaults(&quot;null&quot;)" fullname="MarsTrainer.Tests.DataRepositoryTests.InvalidCropsUseDefaults(&quot;null&quot;)" methodname="InvalidCropsUseDefaults" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" seed="196437786" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:20Z" duration="0.001340" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1228" name="InvalidCropsUseDefaults(&quot;[]&quot;)" fullname="MarsTrainer.Tests.DataRepositoryTests.InvalidCropsUseDefaults(&quot;[]&quot;)" methodname="InvalidCropsUseDefaults" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" seed="247212984" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:20Z" duration="0.000632" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1229" name="InvalidCropsUseDefaults(&quot;[{}]&quot;)" fullname="MarsTrainer.Tests.DataRepositoryTests.InvalidCropsUseDefaults(&quot;[{}]&quot;)" methodname="InvalidCropsUseDefaults" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" seed="1595241501" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:20Z" duration="0.003671" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1230" name="InvalidCropsUseDefaults(&quot;[{\&quot;id\&quot;:\&quot;x\&quot;,\&quot;name\&quot;:\&quot;x\&quot;,\&quot;daysToHarvest\&quot;:1,\&quot;kcalPerHarvest\&quot;:1,\&quot;parSat\&quot;:1,\&quot;waterLPerDay\&quot;:1,\&quot;co2Ppm\&quot;:1,\&quot;lightHours\&quot;:25,\&quot;needsVerification\&quot;:true}]&quot;)" fullname="MarsTrainer.Tests.DataRepositoryTests.InvalidCropsUseDefaults(&quot;[{\&quot;id\&quot;:\&quot;x\&quot;,\&quot;name\&quot;:\&quot;x\&quot;,\&quot;daysToHarvest\&quot;:1,\&quot;kcalPerHarvest\&quot;:1,\&quot;parSat\&quot;:1,\&quot;waterLPerDay\&quot;:1,\&quot;co2Ppm\&quot;:1,\&quot;lightHours\&quot;:25,\&quot;needsVerification\&quot;:true}]&quot;)" methodname="InvalidCropsUseDefaults" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" seed="1651931435" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:20Z" duration="0.002412" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-suite type="ParameterizedMethod" id="1226" name="InvalidRangesRejectEntireSchedule" fullname="MarsTrainer.Tests.DataRepositoryTests.InvalidRangesRejectEntireSchedule" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:20Z" duration="0.259968" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1221" name="InvalidRangesRejectEntireSchedule(&quot;\&quot;gcrDose_uGy\&quot;: 210&quot;,&quot;\&quot;gcrDose_uGy\&quot;: -1&quot;)" fullname="MarsTrainer.Tests.DataRepositoryTests.InvalidRangesRejectEntireSchedule(&quot;\&quot;gcrDose_uGy\&quot;: 210&quot;,&quot;\&quot;gcrDose_uGy\&quot;: -1&quot;)" methodname="InvalidRangesRejectEntireSchedule" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" seed="327492777" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:20Z" duration="0.113757" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1222" name="InvalidRangesRejectEntireSchedule(&quot;\&quot;minTemp\&quot;: -85&quot;,&quot;\&quot;minTemp\&quot;: 90&quot;)" fullname="MarsTrainer.Tests.DataRepositoryTests.InvalidRangesRejectEntireSchedule(&quot;\&quot;minTemp\&quot;: -85&quot;,&quot;\&quot;minTemp\&quot;: 90&quot;)" methodname="InvalidRangesRejectEntireSchedule" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" seed="1779389399" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:20Z" duration="0.032107" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1223" name="InvalidRangesRejectEntireSchedule(&quot;\&quot;ls\&quot;: 0&quot;,&quot;\&quot;ls\&quot;: 360&quot;)" fullname="MarsTrainer.Tests.DataRepositoryTests.InvalidRangesRejectEntireSchedule(&quot;\&quot;ls\&quot;: 0&quot;,&quot;\&quot;ls\&quot;: 360&quot;)" methodname="InvalidRangesRejectEntireSchedule" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" seed="1262298859" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:20Z" duration="0.033828" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1224" name="InvalidRangesRejectEntireSchedule(&quot;\&quot;flareLevel\&quot;: 0&quot;,&quot;\&quot;flareLevel\&quot;: 4&quot;)" fullname="MarsTrainer.Tests.DataRepositoryTests.InvalidRangesRejectEntireSchedule(&quot;\&quot;flareLevel\&quot;: 0&quot;,&quot;\&quot;flareLevel\&quot;: 4&quot;)" methodname="InvalidRangesRejectEntireSchedule" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" seed="400564987" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:20Z" duration="0.034488" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1225" name="InvalidRangesRejectEntireSchedule(&quot;\&quot;dustOpacity\&quot;: 0.35&quot;,&quot;\&quot;dustOpacity\&quot;: \&quot;NaN\&quot;&quot;)" fullname="MarsTrainer.Tests.DataRepositoryTests.InvalidRangesRejectEntireSchedule(&quot;\&quot;dustOpacity\&quot;: 0.35&quot;,&quot;\&quot;dustOpacity\&quot;: \&quot;NaN\&quot;&quot;)" methodname="InvalidRangesRejectEntireSchedule" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" seed="601203789" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:20Z" duration="0.032592" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-suite type="ParameterizedMethod" id="1220" name="MalformedScheduleWarnsAndResets" fullname="MarsTrainer.Tests.DataRepositoryTests.MalformedScheduleWarnsAndResets" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:20Z" duration="0.012019" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1216" name="MalformedScheduleWarnsAndResets(&quot;null&quot;)" fullname="MarsTrainer.Tests.DataRepositoryTests.MalformedScheduleWarnsAndResets(&quot;null&quot;)" methodname="MalformedScheduleWarnsAndResets" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" seed="66150614" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:20Z" duration="0.002177" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1217" name="MalformedScheduleWarnsAndResets(&quot;[]&quot;)" fullname="MarsTrainer.Tests.DataRepositoryTests.MalformedScheduleWarnsAndResets(&quot;[]&quot;)" methodname="MalformedScheduleWarnsAndResets" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" seed="1852386041" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:20Z" duration="0.001793" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1218" name="MalformedScheduleWarnsAndResets(&quot;[{}]&quot;)" fullname="MarsTrainer.Tests.DataRepositoryTests.MalformedScheduleWarnsAndResets(&quot;[{}]&quot;)" methodname="MalformedScheduleWarnsAndResets" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" seed="1676553690" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:20Z" duration="0.001612" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1219" name="MalformedScheduleWarnsAndResets(&quot;garbage&quot;)" fullname="MarsTrainer.Tests.DataRepositoryTests.MalformedScheduleWarnsAndResets(&quot;garbage&quot;)" methodname="MalformedScheduleWarnsAndResets" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" seed="120363018" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:20Z" duration="0.002406" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-case id="1215" name="MissingFilesUseDefaultsAndWarn" fullname="MarsTrainer.Tests.DataRepositoryTests.MissingFilesUseDefaultsAndWarn" methodname="MissingFilesUseDefaultsAndWarn" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" seed="1465571228" result="Passed" start-time="2026-11-15 16:45:20Z" end-time="2026-11-15 16:45:21Z" duration="0.035431" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+              </properties>
+              <output><![CDATA[Schedule unavailable or invalid; using defaults.
+Crops unavailable or invalid; using defaults.
+]]></output>
+            </test-case>
+            <test-case id="1232" name="MissingRequiredFieldRejectsFullYear" fullname="MarsTrainer.Tests.DataRepositoryTests.MissingRequiredFieldRejectsFullYear" methodname="MissingRequiredFieldRejectsFullYear" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" seed="7276126" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.015404" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1234" name="RemotePathsAreRejectedWithoutNetwork" fullname="MarsTrainer.Tests.DataRepositoryTests.RemotePathsAreRejectedWithoutNetwork" methodname="RemotePathsAreRejectedWithoutNetwork" classname="MarsTrainer.Tests.DataRepositoryTests" runstate="Runnable" seed="421811350" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.026764" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1235" name="EnergyScheduleTests" fullname="MarsTrainer.Tests.EnergyScheduleTests" classname="MarsTrainer.Tests.EnergyScheduleTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.021951" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1236" name="ScheduleRowsDriveDustOrbitAndHeatingPerSol" fullname="MarsTrainer.Tests.EnergyScheduleTests.ScheduleRowsDriveDustOrbitAndHeatingPerSol" methodname="ScheduleRowsDriveDustOrbitAndHeatingPerSol" classname="MarsTrainer.Tests.EnergyScheduleTests" runstate="Runnable" seed="1810877362" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.014049" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1237" name="EnergyTests" fullname="MarsTrainer.Tests.EnergyTests" classname="MarsTrainer.Tests.EnergyTests" runstate="Runnable" testcasecount="15" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.106034" total="15" passed="15" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1245" name="BatteryClampsRatesCapacityAndRoundTripLoss" fullname="MarsTrainer.Tests.EnergyTests.BatteryClampsRatesCapacityAndRoundTripLoss" methodname="BatteryClampsRatesCapacityAndRoundTripLoss" classname="MarsTrainer.Tests.EnergyTests" runstate="Runnable" seed="400597199" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.002557" asserts="0">
+              <properties />
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1243" name="NightGeneratesNothing" fullname="MarsTrainer.Tests.EnergyTests.NightGeneratesNothing" classname="MarsTrainer.Tests.EnergyTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.007544" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1238" name="NightGeneratesNothing(0)" fullname="MarsTrainer.Tests.EnergyTests.NightGeneratesNothing(0)" methodname="NightGeneratesNothing" classname="MarsTrainer.Tests.EnergyTests" runstate="Runnable" seed="328831187" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000528" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1239" name="NightGeneratesNothing(0.2d)" fullname="MarsTrainer.Tests.EnergyTests.NightGeneratesNothing(0.2d)" methodname="NightGeneratesNothing" classname="MarsTrainer.Tests.EnergyTests" runstate="Runnable" seed="2133532468" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000196" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1240" name="NightGeneratesNothing(0.25d)" fullname="MarsTrainer.Tests.EnergyTests.NightGeneratesNothing(0.25d)" methodname="NightGeneratesNothing" classname="MarsTrainer.Tests.EnergyTests" runstate="Runnable" seed="204048762" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000153" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1241" name="NightGeneratesNothing(0.75d)" fullname="MarsTrainer.Tests.EnergyTests.NightGeneratesNothing(0.75d)" methodname="NightGeneratesNothing" classname="MarsTrainer.Tests.EnergyTests" runstate="Runnable" seed="525165313" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000156" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1242" name="NightGeneratesNothing(0.9d)" fullname="MarsTrainer.Tests.EnergyTests.NightGeneratesNothing(0.9d)" methodname="NightGeneratesNothing" classname="MarsTrainer.Tests.EnergyTests" runstate="Runnable" seed="2144173447" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000225" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-case id="1244" name="NoonOrbitDustAndUpgradesMatchFormula" fullname="MarsTrainer.Tests.EnergyTests.NoonOrbitDustAndUpgradesMatchFormula" methodname="NoonOrbitDustAndUpgradesMatchFormula" classname="MarsTrainer.Tests.EnergyTests" runstate="Runnable" seed="667013285" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.002584" asserts="0">
+              <properties />
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1251" name="ShedsInSpecifiedOrder" fullname="MarsTrainer.Tests.EnergyTests.ShedsInSpecifiedOrder" classname="MarsTrainer.Tests.EnergyTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.041261" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1246" name="ShedsInSpecifiedOrder(4.5d,Lights)" fullname="MarsTrainer.Tests.EnergyTests.ShedsInSpecifiedOrder(4.5d,Lights)" methodname="ShedsInSpecifiedOrder" classname="MarsTrainer.Tests.EnergyTests" runstate="Runnable" seed="1792038774" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.033430" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1247" name="ShedsInSpecifiedOrder(3.5d,Lights, Heating)" fullname="MarsTrainer.Tests.EnergyTests.ShedsInSpecifiedOrder(3.5d,Lights, Heating)" methodname="ShedsInSpecifiedOrder" classname="MarsTrainer.Tests.EnergyTests" runstate="Runnable" seed="1756017174" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000418" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1248" name="ShedsInSpecifiedOrder(2.5d,Lights, Heating, Medbay)" fullname="MarsTrainer.Tests.EnergyTests.ShedsInSpecifiedOrder(2.5d,Lights, Heating, Medbay)" methodname="ShedsInSpecifiedOrder" classname="MarsTrainer.Tests.EnergyTests" runstate="Runnable" seed="704549995" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000215" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1249" name="ShedsInSpecifiedOrder(1.5d,Lights, Heating, Medbay, Shield)" fullname="MarsTrainer.Tests.EnergyTests.ShedsInSpecifiedOrder(1.5d,Lights, Heating, Medbay, Shield)" methodname="ShedsInSpecifiedOrder" classname="MarsTrainer.Tests.EnergyTests" runstate="Runnable" seed="1603172304" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000259" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1250" name="ShedsInSpecifiedOrder(0.5d,Lights, Heating, Medbay, Shield, LifeSupport)" fullname="MarsTrainer.Tests.EnergyTests.ShedsInSpecifiedOrder(0.5d,Lights, Heating, Medbay, Shield, LifeSupport)" methodname="ShedsInSpecifiedOrder" classname="MarsTrainer.Tests.EnergyTests" runstate="Runnable" seed="972878704" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000241" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-case id="1253" name="SolarEnergyAndStorageAreIndependentOfTickPartition" fullname="MarsTrainer.Tests.EnergyTests.SolarEnergyAndStorageAreIndependentOfTickPartition" methodname="SolarEnergyAndStorageAreIndependentOfTickPartition" classname="MarsTrainer.Tests.EnergyTests" runstate="Runnable" seed="790525213" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000968" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1254" name="TenClearSolsMatchAnalyticOrbitAndChargingLedger" fullname="MarsTrainer.Tests.EnergyTests.TenClearSolsMatchAnalyticOrbitAndChargingLedger" methodname="TenClearSolsMatchAnalyticOrbitAndChargingLedger" classname="MarsTrainer.Tests.EnergyTests" runstate="Runnable" seed="604699530" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.003393" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1252" name="TenSolScriptMatchesHandLedgerAndEmitsReportsAndBrownouts" fullname="MarsTrainer.Tests.EnergyTests.TenSolScriptMatchesHandLedgerAndEmitsReportsAndBrownouts" methodname="TenSolScriptMatchesHandLedgerAndEmitsReportsAndBrownouts" classname="MarsTrainer.Tests.EnergyTests" runstate="Runnable" seed="193367486" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.004834" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1255" name="FarmInteractTests" fullname="MarsTrainer.Tests.FarmInteractTests" classname="MarsTrainer.Tests.FarmInteractTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.043207" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1256" name="PlotActionsUseLoadedCropsClockAndRealPowerStore" fullname="MarsTrainer.Tests.FarmInteractTests.PlotActionsUseLoadedCropsClockAndRealPowerStore" methodname="PlotActionsUseLoadedCropsClockAndRealPowerStore" classname="MarsTrainer.Tests.FarmInteractTests" runstate="Runnable" seed="763857587" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.033468" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1257" name="FarmTests" fullname="MarsTrainer.Tests.FarmTests" classname="MarsTrainer.Tests.FarmTests" runstate="Runnable" testcasecount="9" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.087558" total="9" passed="9" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1258" name="GrowthMultipliesLightWaterCo2AndTemperatureFactors" fullname="MarsTrainer.Tests.FarmTests.GrowthMultipliesLightWaterCo2AndTemperatureFactors" methodname="GrowthMultipliesLightWaterCo2AndTemperatureFactors" classname="MarsTrainer.Tests.FarmTests" runstate="Runnable" seed="402995012" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001286" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1266" name="HarvestAddsNamedSnacksOnceAndPlotCanBeReplantedAndUpgraded" fullname="MarsTrainer.Tests.FarmTests.HarvestAddsNamedSnacksOnceAndPlotCanBeReplantedAndUpgraded" methodname="HarvestAddsNamedSnacksOnceAndPlotCanBeReplantedAndUpgraded" classname="MarsTrainer.Tests.FarmTests" runstate="Runnable" seed="899858387" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.022891" asserts="0">
+              <properties />
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1265" name="LampsPayForEnergyAndBlackoutStopsArtificialLight" fullname="MarsTrainer.Tests.FarmTests.LampsPayForEnergyAndBlackoutStopsArtificialLight" classname="MarsTrainer.Tests.FarmTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.007752" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1263" name="LampsPayForEnergyAndBlackoutStopsArtificialLight(True)" fullname="MarsTrainer.Tests.FarmTests.LampsPayForEnergyAndBlackoutStopsArtificialLight(True)" methodname="LampsPayForEnergyAndBlackoutStopsArtificialLight" classname="MarsTrainer.Tests.FarmTests" runstate="Runnable" seed="482188087" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.002223" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1264" name="LampsPayForEnergyAndBlackoutStopsArtificialLight(False)" fullname="MarsTrainer.Tests.FarmTests.LampsPayForEnergyAndBlackoutStopsArtificialLight(False)" methodname="LampsPayForEnergyAndBlackoutStopsArtificialLight" classname="MarsTrainer.Tests.FarmTests" runstate="Runnable" seed="1067353534" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001496" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-case id="1268" name="ThirtySolScriptFromBundledCropDataFeedsOneAstronaut" fullname="MarsTrainer.Tests.FarmTests.ThirtySolScriptFromBundledCropDataFeedsOneAstronaut" methodname="ThirtySolScriptFromBundledCropDataFeedsOneAstronaut" classname="MarsTrainer.Tests.FarmTests" runstate="Runnable" seed="673315027" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.004317" asserts="0">
+              <properties />
+              <output><![CDATA[30-sol harvest: 80000 kcal; lamp energy: 1792 kWh
+]]></output>
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1262" name="UnlitPlotsRespondToLightStarvationAndDust" fullname="MarsTrainer.Tests.FarmTests.UnlitPlotsRespondToLightStarvationAndDust" classname="MarsTrainer.Tests.FarmTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.005961" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1259" name="UnlitPlotsRespondToLightStarvationAndDust(0,0,0)" fullname="MarsTrainer.Tests.FarmTests.UnlitPlotsRespondToLightStarvationAndDust(0,0,0)" methodname="UnlitPlotsRespondToLightStarvationAndDust" classname="MarsTrainer.Tests.FarmTests" runstate="Runnable" seed="1069691877" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001265" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1260" name="UnlitPlotsRespondToLightStarvationAndDust(400,0,0.5d)" fullname="MarsTrainer.Tests.FarmTests.UnlitPlotsRespondToLightStarvationAndDust(400,0,0.5d)" methodname="UnlitPlotsRespondToLightStarvationAndDust" classname="MarsTrainer.Tests.FarmTests" runstate="Runnable" seed="848603143" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000187" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1261" name="UnlitPlotsRespondToLightStarvationAndDust(400,2,0.0676676416183064d)" fullname="MarsTrainer.Tests.FarmTests.UnlitPlotsRespondToLightStarvationAndDust(400,2,0.0676676416183064d)" methodname="UnlitPlotsRespondToLightStarvationAndDust" classname="MarsTrainer.Tests.FarmTests" runstate="Runnable" seed="1769984511" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000768" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-case id="1267" name="WaterLimitedGrowthAndLampCostDoNotDependOnTickPartition" fullname="MarsTrainer.Tests.FarmTests.WaterLimitedGrowthAndLampCostDoNotDependOnTickPartition" methodname="WaterLimitedGrowthAndLampCostDoNotDependOnTickPartition" classname="MarsTrainer.Tests.FarmTests" runstate="Runnable" seed="163898582" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000862" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1269" name="GameServicesTests" fullname="MarsTrainer.Tests.GameServicesTests" classname="MarsTrainer.Tests.GameServicesTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.003533" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1270" name="BootstrapServicesAreUnassigned" fullname="MarsTrainer.Tests.GameServicesTests.BootstrapServicesAreUnassigned" methodname="BootstrapServicesAreUnassigned" classname="MarsTrainer.Tests.GameServicesTests" runstate="Runnable" seed="210231989" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000791" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1271" name="LookPresentationTests" fullname="MarsTrainer.Tests.LookPresentationTests" classname="MarsTrainer.Tests.LookPresentationTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.079261" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1273" name="ColdRequiresNightStormRampsAndAtmosphereRestoresOnDisable" fullname="MarsTrainer.Tests.LookPresentationTests.ColdRequiresNightStormRampsAndAtmosphereRestoresOnDisable" methodname="ColdRequiresNightStormRampsAndAtmosphereRestoresOnDisable" classname="MarsTrainer.Tests.LookPresentationTests" runstate="Runnable" seed="1097901520" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.071165" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1272" name="SuitShellUsesSharedPaletteMaterialForRadiationState" fullname="MarsTrainer.Tests.LookPresentationTests.SuitShellUsesSharedPaletteMaterialForRadiationState" methodname="SuitShellUsesSharedPaletteMaterialForRadiationState" classname="MarsTrainer.Tests.LookPresentationTests" runstate="Runnable" seed="1029621775" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.006350" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1274" name="MissionBalanceTests" fullname="MarsTrainer.Tests.MissionBalanceTests" classname="MarsTrainer.Tests.MissionBalanceTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.082813" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1276" name="IdleStartsWithTheSameBaseShieldingAsThePlayer" fullname="MarsTrainer.Tests.MissionBalanceTests.IdleStartsWithTheSameBaseShieldingAsThePlayer" methodname="IdleStartsWithTheSameBaseShieldingAsThePlayer" classname="MarsTrainer.Tests.MissionBalanceTests" runstate="Runnable" seed="1462751244" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.029585" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1275" name="MissingDataRemainsPlayableAndReportsFallback" fullname="MarsTrainer.Tests.MissionBalanceTests.MissingDataRemainsPlayableAndReportsFallback" methodname="MissingDataRemainsPlayableAndReportsFallback" classname="MarsTrainer.Tests.MissionBalanceTests" runstate="Runnable" seed="1480061329" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.002158" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1277" name="MissionIncludesEverySurvivalSystemAndReplaysItsSeed" fullname="MarsTrainer.Tests.MissionBalanceTests.MissionIncludesEverySurvivalSystemAndReplaysItsSeed" methodname="MissionIncludesEverySurvivalSystemAndReplaysItsSeed" classname="MarsTrainer.Tests.MissionBalanceTests" runstate="Runnable" seed="1557197733" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.044457" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1279" name="OpenWorldPacingTests" fullname="MarsTrainer.Tests.OpenWorldPacingTests" classname="MarsTrainer.Tests.OpenWorldPacingTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.012153" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1280" name="ExplorationDurationDoesNotChangeTheDefaultMissionClock" fullname="MarsTrainer.Tests.OpenWorldPacingTests.ExplorationDurationDoesNotChangeTheDefaultMissionClock" methodname="ExplorationDurationDoesNotChangeTheDefaultMissionClock" classname="MarsTrainer.Tests.OpenWorldPacingTests" runstate="Runnable" seed="1560008082" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.005616" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1281" name="ExplorationTankUsesItsOwnCapacityAndRefillsOnlyAtBase" fullname="MarsTrainer.Tests.OpenWorldPacingTests.ExplorationTankUsesItsOwnCapacityAndRefillsOnlyAtBase" methodname="ExplorationTankUsesItsOwnCapacityAndRefillsOnlyAtBase" classname="MarsTrainer.Tests.OpenWorldPacingTests" runstate="Runnable" seed="1060865563" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001645" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1282" name="PlayableMissionTests" fullname="MarsTrainer.Tests.PlayableMissionTests" classname="MarsTrainer.Tests.PlayableMissionTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.116365" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1284" name="FarmViewBorrowsMissionInventoryAndDoesNotRegisterAnotherFarm" fullname="MarsTrainer.Tests.PlayableMissionTests.FarmViewBorrowsMissionInventoryAndDoesNotRegisterAnotherFarm" methodname="FarmViewBorrowsMissionInventoryAndDoesNotRegisterAnotherFarm" classname="MarsTrainer.Tests.PlayableMissionTests" runstate="Runnable" seed="1296867300" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.003052" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1283" name="MissionElevationReadsNorthFirstSignedSamplesAndInterpolates" fullname="MarsTrainer.Tests.PlayableMissionTests.MissionElevationReadsNorthFirstSignedSamplesAndInterpolates" methodname="MissionElevationReadsNorthFirstSignedSamplesAndInterpolates" classname="MarsTrainer.Tests.PlayableMissionTests" runstate="Runnable" seed="887419389" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.008731" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1285" name="PlayableWorldConnectsRecallToItsShelters" fullname="MarsTrainer.Tests.PlayableMissionTests.PlayableWorldConnectsRecallToItsShelters" methodname="PlayableWorldConnectsRecallToItsShelters" classname="MarsTrainer.Tests.PlayableMissionTests" runstate="Runnable" seed="552306605" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.100837" asserts="0">
+              <properties />
+              <output><![CDATA[P9 heightmap missing or unreadable; using seeded terrain noise.
+]]></output>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1286" name="PlayerActionsTests" fullname="MarsTrainer.Tests.PlayerActionsTests" classname="MarsTrainer.Tests.PlayerActionsTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.025358" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1292" name="DeadPlayerCannotHealOrConsumeSupplies" fullname="MarsTrainer.Tests.PlayerActionsTests.DeadPlayerCannotHealOrConsumeSupplies" methodname="DeadPlayerCannotHealOrConsumeSupplies" classname="MarsTrainer.Tests.PlayerActionsTests" runstate="Runnable" seed="1134206794" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.003695" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1287" name="EatAndDrinkSpendOnlyWhatFitsInReserves" fullname="MarsTrainer.Tests.PlayerActionsTests.EatAndDrinkSpendOnlyWhatFitsInReserves" methodname="EatAndDrinkSpendOnlyWhatFitsInReserves" classname="MarsTrainer.Tests.PlayerActionsTests" runstate="Runnable" seed="1430476489" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001543" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1289" name="ExerciseCostsFoodWaterPowerAndTimeAndMaintainsFitness" fullname="MarsTrainer.Tests.PlayerActionsTests.ExerciseCostsFoodWaterPowerAndTimeAndMaintainsFitness" methodname="ExerciseCostsFoodWaterPowerAndTimeAndMaintainsFitness" classname="MarsTrainer.Tests.PlayerActionsTests" runstate="Runnable" seed="436411889" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.004134" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1291" name="FailedExerciseIsAtomicAndPausedActionsDoNotSpendOrPassTime" fullname="MarsTrainer.Tests.PlayerActionsTests.FailedExerciseIsAtomicAndPausedActionsDoNotSpendOrPassTime" methodname="FailedExerciseIsAtomicAndPausedActionsDoNotSpendOrPassTime" classname="MarsTrainer.Tests.PlayerActionsTests" runstate="Runnable" seed="1939590588" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001171" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1290" name="MedbayConvertsPaidPowerToHpUpToFitnessMaximum" fullname="MarsTrainer.Tests.PlayerActionsTests.MedbayConvertsPaidPowerToHpUpToFitnessMaximum" methodname="MedbayConvertsPaidPowerToHpUpToFitnessMaximum" classname="MarsTrainer.Tests.PlayerActionsTests" runstate="Runnable" seed="1392203943" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000940" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1293" name="SensibleDailyRoutineSurvivesEntireMission" fullname="MarsTrainer.Tests.PlayerActionsTests.SensibleDailyRoutineSurvivesEntireMission" methodname="SensibleDailyRoutineSurvivesEntireMission" classname="MarsTrainer.Tests.PlayerActionsTests" runstate="Runnable" seed="689097397" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.007004" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1288" name="SleepAdvancesSimulationAndRecoversTiredness" fullname="MarsTrainer.Tests.PlayerActionsTests.SleepAdvancesSimulationAndRecoversTiredness" methodname="SleepAdvancesSimulationAndRecoversTiredness" classname="MarsTrainer.Tests.PlayerActionsTests" runstate="Runnable" seed="1625864418" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001091" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1294" name="RadiationTests" fullname="MarsTrainer.Tests.RadiationTests" classname="MarsTrainer.Tests.RadiationTests" runstate="Runnable" testcasecount="13" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.022526" total="13" passed="13" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1295" name="DoseMathStacksShieldingAndClampsAtNinetyPercent" fullname="MarsTrainer.Tests.RadiationTests.DoseMathStacksShieldingAndClampsAtNinetyPercent" methodname="DoseMathStacksShieldingAndClampsAtNinetyPercent" classname="MarsTrainer.Tests.RadiationTests" runstate="Runnable" seed="1930963487" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001019" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1308" name="DroneComponentChoosesNearestShelterPaysOnceAndPausesFlight" fullname="MarsTrainer.Tests.RadiationTests.DroneComponentChoosesNearestShelterPaysOnceAndPausesFlight" methodname="DroneComponentChoosesNearestShelterPaysOnceAndPausesFlight" classname="MarsTrainer.Tests.RadiationTests" runstate="Runnable" seed="2093037017" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.004156" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1304" name="DroneRetriesUnavailableLaunchAndRespectsCooldownAcrossAlerts" fullname="MarsTrainer.Tests.RadiationTests.DroneRetriesUnavailableLaunchAndRespectsCooldownAcrossAlerts" methodname="DroneRetriesUnavailableLaunchAndRespectsCooldownAcrossAlerts" classname="MarsTrainer.Tests.RadiationTests" runstate="Runnable" seed="568824307" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001044" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1301" name="HealthDrainIncreasesWithDoseAndIsTickIndependent" fullname="MarsTrainer.Tests.RadiationTests.HealthDrainIncreasesWithDoseAndIsTickIndependent" methodname="HealthDrainIncreasesWithDoseAndIsTickIndependent" classname="MarsTrainer.Tests.RadiationTests" runstate="Runnable" seed="1512121003" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000681" asserts="0">
+              <properties />
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1307" name="PowerLossRemovesOnlyTheUnpoweredSuitBonus" fullname="MarsTrainer.Tests.RadiationTests.PowerLossRemovesOnlyTheUnpoweredSuitBonus" classname="MarsTrainer.Tests.RadiationTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.002723" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1305" name="PowerLossRemovesOnlyTheUnpoweredSuitBonus(0,0)" fullname="MarsTrainer.Tests.RadiationTests.PowerLossRemovesOnlyTheUnpoweredSuitBonus(0,0)" methodname="PowerLossRemovesOnlyTheUnpoweredSuitBonus" classname="MarsTrainer.Tests.RadiationTests" runstate="Runnable" seed="900675758" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001133" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1306" name="PowerLossRemovesOnlyTheUnpoweredSuitBonus(0.25d,0.5d)" fullname="MarsTrainer.Tests.RadiationTests.PowerLossRemovesOnlyTheUnpoweredSuitBonus(0.25d,0.5d)" methodname="PowerLossRemovesOnlyTheUnpoweredSuitBonus" classname="MarsTrainer.Tests.RadiationTests" runstate="Runnable" seed="290938255" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000232" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-case id="1303" name="ScriptedFlareSolCalculatesDoseAndFiresDroneOnce" fullname="MarsTrainer.Tests.RadiationTests.ScriptedFlareSolCalculatesDoseAndFiresDroneOnce" methodname="ScriptedFlareSolCalculatesDoseAndFiresDroneOnce" classname="MarsTrainer.Tests.RadiationTests" runstate="Runnable" seed="362045264" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001416" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1302" name="ShelterBonusEndsOnDisableAndOverlappingZonesKeepTheirBonus" fullname="MarsTrainer.Tests.RadiationTests.ShelterBonusEndsOnDisableAndOverlappingZonesKeepTheirBonus" methodname="ShelterBonusEndsOnDisableAndOverlappingZonesKeepTheirBonus" classname="MarsTrainer.Tests.RadiationTests" runstate="Runnable" seed="271819186" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.002241" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1309" name="ShieldDrawsEnergyAndRecallCostUsesTheSameBattery" fullname="MarsTrainer.Tests.RadiationTests.ShieldDrawsEnergyAndRecallCostUsesTheSameBattery" methodname="ShieldDrawsEnergyAndRecallCostUsesTheSameBattery" classname="MarsTrainer.Tests.RadiationTests" runstate="Runnable" seed="1004114128" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000576" asserts="0">
+              <properties />
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1300" name="ThresholdEventsFireOnlyOnChange" fullname="MarsTrainer.Tests.RadiationTests.ThresholdEventsFireOnlyOnChange" classname="MarsTrainer.Tests.RadiationTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.002743" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1296" name="ThresholdEventsFireOnlyOnChange(0.499d,Safe)" fullname="MarsTrainer.Tests.RadiationTests.ThresholdEventsFireOnlyOnChange(0.499d,Safe)" methodname="ThresholdEventsFireOnlyOnChange" classname="MarsTrainer.Tests.RadiationTests" runstate="Runnable" seed="1017300053" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000560" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1297" name="ThresholdEventsFireOnlyOnChange(0.5d,Warn)" fullname="MarsTrainer.Tests.RadiationTests.ThresholdEventsFireOnlyOnChange(0.5d,Warn)" methodname="ThresholdEventsFireOnlyOnChange" classname="MarsTrainer.Tests.RadiationTests" runstate="Runnable" seed="1770077677" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000187" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1298" name="ThresholdEventsFireOnlyOnChange(0.8d,Danger)" fullname="MarsTrainer.Tests.RadiationTests.ThresholdEventsFireOnlyOnChange(0.8d,Danger)" methodname="ThresholdEventsFireOnlyOnChange" classname="MarsTrainer.Tests.RadiationTests" runstate="Runnable" seed="984339629" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000094" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1299" name="ThresholdEventsFireOnlyOnChange(1,Critical)" fullname="MarsTrainer.Tests.RadiationTests.ThresholdEventsFireOnlyOnChange(1,Critical)" methodname="ThresholdEventsFireOnlyOnChange" classname="MarsTrainer.Tests.RadiationTests" runstate="Runnable" seed="2132598299" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000136" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+          </test-suite>
+          <test-suite type="TestFixture" id="1310" name="ResearchTests" fullname="MarsTrainer.Tests.ResearchTests" classname="MarsTrainer.Tests.ResearchTests" runstate="Runnable" testcasecount="8" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.041798" total="8" passed="8" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1317" name="BundledCatalogHasSixNodesPerPathAndAllCanBeBoughtInTierOrder" fullname="MarsTrainer.Tests.ResearchTests.BundledCatalogHasSixNodesPerPathAndAllCanBeBoughtInTierOrder" methodname="BundledCatalogHasSixNodesPerPathAndAllCanBeBoughtInTierOrder" classname="MarsTrainer.Tests.ResearchTests" runstate="Runnable" seed="39575151" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.025535" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1318" name="BuyingBundledSolarNodeRaisesActualEnergySystemGeneration" fullname="MarsTrainer.Tests.ResearchTests.BuyingBundledSolarNodeRaisesActualEnergySystemGeneration" methodname="BuyingBundledSolarNodeRaisesActualEnergySystemGeneration" classname="MarsTrainer.Tests.ResearchTests" runstate="Runnable" seed="1442373752" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.006679" asserts="0">
+              <properties />
+              <output><![CDATA[Solar purchase: 11.199152596019 -> 13.4389831152229 kWh/sol (+20%).
+]]></output>
+            </test-case>
+            <test-case id="1316" name="CatalogRejectsMissingPrerequisitesAndUngatedHigherTiers" fullname="MarsTrainer.Tests.ResearchTests.CatalogRejectsMissingPrerequisitesAndUngatedHigherTiers" methodname="CatalogRejectsMissingPrerequisitesAndUngatedHigherTiers" classname="MarsTrainer.Tests.ResearchTests" runstate="Runnable" seed="86258050" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001726" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1314" name="FractionalPassiveRPReachesAnExactPurchasePrice" fullname="MarsTrainer.Tests.ResearchTests.FractionalPassiveRPReachesAnExactPurchasePrice" methodname="FractionalPassiveRPReachesAnExactPurchasePrice" classname="MarsTrainer.Tests.ResearchTests" runstate="Runnable" seed="1099815038" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000804" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1312" name="InsufficientFundsLeaveModifiersAndBalanceUnchanged" fullname="MarsTrainer.Tests.ResearchTests.InsufficientFundsLeaveModifiersAndBalanceUnchanged" methodname="InsufficientFundsLeaveModifiersAndBalanceUnchanged" classname="MarsTrainer.Tests.ResearchTests" runstate="Runnable" seed="1481417843" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000577" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1315" name="MultipleOperationsOnSameStatAndDifferentNodesStackOnce" fullname="MarsTrainer.Tests.ResearchTests.MultipleOperationsOnSameStatAndDifferentNodesStackOnce" methodname="MultipleOperationsOnSameStatAndDifferentNodesStackOnce" classname="MarsTrainer.Tests.ResearchTests" runstate="Runnable" seed="378528275" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000544" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1313" name="PassiveRPUsesSimTimeAndPickupsCanGrantRP" fullname="MarsTrainer.Tests.ResearchTests.PassiveRPUsesSimTimeAndPickupsCanGrantRP" methodname="PassiveRPUsesSimTimeAndPickupsCanGrantRP" classname="MarsTrainer.Tests.ResearchTests" runstate="Runnable" seed="1572234602" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001007" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1311" name="PrerequisitesCostAndDuplicatePurchaseAreAtomic" fullname="MarsTrainer.Tests.ResearchTests.PrerequisitesCostAndDuplicatePurchaseAreAtomic" methodname="PrerequisitesCostAndDuplicatePurchaseAreAtomic" classname="MarsTrainer.Tests.ResearchTests" runstate="Runnable" seed="706163973" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000806" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1319" name="SimulationTests" fullname="MarsTrainer.Tests.SimulationTests" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" testcasecount="14" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.015483" total="14" passed="14" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1321" name="ClockClampsAtMissionEnd" fullname="MarsTrainer.Tests.SimulationTests.ClockClampsAtMissionEnd" methodname="ClockClampsAtMissionEnd" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="1859690138" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000589" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1320" name="ClockUsesRunDurationAndSupportsSpeedsAndPause" fullname="MarsTrainer.Tests.SimulationTests.ClockUsesRunDurationAndSupportsSpeedsAndPause" methodname="ClockUsesRunDurationAndSupportsSpeedsAndPause" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="1233706907" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000818" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1330" name="FractionalOxygenDeadlineAtLaterSolDoesNotStall" fullname="MarsTrainer.Tests.SimulationTests.FractionalOxygenDeadlineAtLaterSolDoesNotStall" methodname="FractionalOxygenDeadlineAtLaterSolDoesNotStall" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="570228028" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001375" asserts="0">
+              <properties>
+                <property name="Timeout" value="1000" />
+              </properties>
+            </test-case>
+            <test-case id="1333" name="HeadlessMissionCompletesUnderOneSecondWithEverySolEmittedOnce" fullname="MarsTrainer.Tests.SimulationTests.HeadlessMissionCompletesUnderOneSecondWithEverySolEmittedOnce" methodname="HeadlessMissionCompletesUnderOneSecondWithEverySolEmittedOnce" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="2026770346" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001303" asserts="0">
+              <properties />
+              <output><![CDATA[99-day run: 0.3978 ms
+]]></output>
+            </test-case>
+            <test-case id="1326" name="HealthDeathIsImmediateAndEmittedOnceEvenWhilePaused" fullname="MarsTrainer.Tests.SimulationTests.HealthDeathIsImmediateAndEmittedOnceEvenWhilePaused" methodname="HealthDeathIsImmediateAndEmittedOnceEvenWhilePaused" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="1607109206" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000486" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1329" name="LargeTickStopsExactlyAtOxygenDeadline" fullname="MarsTrainer.Tests.SimulationTests.LargeTickStopsExactlyAtOxygenDeadline" methodname="LargeTickStopsExactlyAtOxygenDeadline" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="77721219" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000238" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1322" name="MissionWinsExactlyAtDay99AndStopsAdvancing" fullname="MarsTrainer.Tests.SimulationTests.MissionWinsExactlyAtDay99AndStopsAdvancing" methodname="MissionWinsExactlyAtDay99AndStopsAdvancing" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="674765229" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000757" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1324" name="ModifiersStackReplaceAndRemoveBySourceAndStat" fullname="MarsTrainer.Tests.SimulationTests.ModifiersStackReplaceAndRemoveBySourceAndStat" methodname="ModifiersStackReplaceAndRemoveBySourceAndStat" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="459347330" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000588" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1327" name="OxygenLossUsesContinuousSolTimeAndResetsOnRecovery" fullname="MarsTrainer.Tests.SimulationTests.OxygenLossUsesContinuousSolTimeAndResetsOnRecovery" methodname="OxygenLossUsesContinuousSolTimeAndResetsOnRecovery" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="84410855" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000502" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1328" name="PausingAndSpeedControlSystemTimeAndOxygenGrace" fullname="MarsTrainer.Tests.SimulationTests.PausingAndSpeedControlSystemTimeAndOxygenGrace" methodname="PausingAndSpeedControlSystemTimeAndOxygenGrace" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="254077778" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000383" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1323" name="StateClampsVitalStats" fullname="MarsTrainer.Tests.SimulationTests.StateClampsVitalStats" methodname="StateClampsVitalStats" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="1580129069" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000396" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1331" name="SystemDeathTakesPriorityOverMissionCompletion" fullname="MarsTrainer.Tests.SimulationTests.SystemDeathTakesPriorityOverMissionCompletion" methodname="SystemDeathTakesPriorityOverMissionCompletion" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="640926583" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000546" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1325" name="SystemsRunInStableOrderWithSolTimeAndDefaultSlots" fullname="MarsTrainer.Tests.SimulationTests.SystemsRunInStableOrderWithSolTimeAndDefaultSlots" methodname="SystemsRunInStableOrderWithSolTimeAndDefaultSlots" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="39320141" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001673" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1332" name="TypedEventsReportTransitionsAndEventIds" fullname="MarsTrainer.Tests.SimulationTests.TypedEventsReportTransitionsAndEventIds" methodname="TypedEventsReportTransitionsAndEventIds" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="1566566963" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000760" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1334" name="SurvivalTests" fullname="MarsTrainer.Tests.SurvivalTests" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" testcasecount="24" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.017682" total="24" passed="24" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1346" name="CombinedDrainsAreCappedAndZeroTimeDoesNothing" fullname="MarsTrainer.Tests.SurvivalTests.CombinedDrainsAreCappedAndZeroTimeDoesNothing" methodname="CombinedDrainsAreCappedAndZeroTimeDoesNothing" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="561407951" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000350" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1348" name="CriticalEventsReportBothBandsAndRearmOnRecovery" fullname="MarsTrainer.Tests.SurvivalTests.CriticalEventsReportBothBandsAndRearmOnRecovery" methodname="CriticalEventsReportBothBandsAndRearmOnRecovery" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="9155909" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000387" asserts="0">
+              <properties />
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1345" name="EachHazardDrainsHealth" fullname="MarsTrainer.Tests.SurvivalTests.EachHazardDrainsHealth" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.003706" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1340" name="EachHazardDrainsHealth(&quot;starvation&quot;,8)" fullname="MarsTrainer.Tests.SurvivalTests.EachHazardDrainsHealth(&quot;starvation&quot;,8)" methodname="EachHazardDrainsHealth" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="1559850556" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000634" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1341" name="EachHazardDrainsHealth(&quot;dehydration&quot;,20)" fullname="MarsTrainer.Tests.SurvivalTests.EachHazardDrainsHealth(&quot;dehydration&quot;,20)" methodname="EachHazardDrainsHealth" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="2068250391" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000097" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1342" name="EachHazardDrainsHealth(&quot;hypoxia&quot;,40)" fullname="MarsTrainer.Tests.SurvivalTests.EachHazardDrainsHealth(&quot;hypoxia&quot;,40)" methodname="EachHazardDrainsHealth" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="18015663" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000083" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1343" name="EachHazardDrainsHealth(&quot;temperature&quot;,15)" fullname="MarsTrainer.Tests.SurvivalTests.EachHazardDrainsHealth(&quot;temperature&quot;,15)" methodname="EachHazardDrainsHealth" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="1394860092" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000097" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1344" name="EachHazardDrainsHealth(&quot;radiation&quot;,4)" fullname="MarsTrainer.Tests.SurvivalTests.EachHazardDrainsHealth(&quot;radiation&quot;,4)" methodname="EachHazardDrainsHealth" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="839737661" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000118" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-case id="1350" name="ExistingSystemsShareTheTotalHealthDrainCap" fullname="MarsTrainer.Tests.SurvivalTests.ExistingSystemsShareTheTotalHealthDrainCap" methodname="ExistingSystemsShareTheTotalHealthDrainCap" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="1378016293" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000310" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1349" name="InactivityLowersFitnessAndMaximumHealth" fullname="MarsTrainer.Tests.SurvivalTests.InactivityLowersFitnessAndMaximumHealth" methodname="InactivityLowersFitnessAndMaximumHealth" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="422012940" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000199" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1361" name="InvalidDeltaDoesNotMutateHealth" fullname="MarsTrainer.Tests.SurvivalTests.InvalidDeltaDoesNotMutateHealth" methodname="InvalidDeltaDoesNotMutateHealth" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="1339441665" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000256" asserts="0">
+              <properties />
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1360" name="LethalHazardReportsItsCause" fullname="MarsTrainer.Tests.SurvivalTests.LethalHazardReportsItsCause" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.002308" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1355" name="LethalHazardReportsItsCause(&quot;starvation&quot;)" fullname="MarsTrainer.Tests.SurvivalTests.LethalHazardReportsItsCause(&quot;starvation&quot;)" methodname="LethalHazardReportsItsCause" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="499439946" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000437" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1356" name="LethalHazardReportsItsCause(&quot;dehydration&quot;)" fullname="MarsTrainer.Tests.SurvivalTests.LethalHazardReportsItsCause(&quot;dehydration&quot;)" methodname="LethalHazardReportsItsCause" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="376395866" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000089" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1357" name="LethalHazardReportsItsCause(&quot;hypoxia&quot;)" fullname="MarsTrainer.Tests.SurvivalTests.LethalHazardReportsItsCause(&quot;hypoxia&quot;)" methodname="LethalHazardReportsItsCause" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="2097421448" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000080" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1358" name="LethalHazardReportsItsCause(&quot;radiation&quot;)" fullname="MarsTrainer.Tests.SurvivalTests.LethalHazardReportsItsCause(&quot;radiation&quot;)" methodname="LethalHazardReportsItsCause" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="2111807911" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000075" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1359" name="LethalHazardReportsItsCause(&quot;temperature&quot;)" fullname="MarsTrainer.Tests.SurvivalTests.LethalHazardReportsItsCause(&quot;temperature&quot;)" methodname="LethalHazardReportsItsCause" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="988121221" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000077" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-case id="1351" name="LifeSupportUsesTheRealBatteryAndDoesNotDoubleCharge" fullname="MarsTrainer.Tests.SurvivalTests.LifeSupportUsesTheRealBatteryAndDoesNotDoubleCharge" methodname="LifeSupportUsesTheRealBatteryAndDoesNotDoubleCharge" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="32348724" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000686" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1339" name="NeedsConsumeReservesAndLifeSupportPaysFromEnergy" fullname="MarsTrainer.Tests.SurvivalTests.NeedsConsumeReservesAndLifeSupportPaysFromEnergy" methodname="NeedsConsumeReservesAndLifeSupportPaysFromEnergy" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="1186506266" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000398" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1347" name="NeglectKillsAtExpectedTimeAndReportsCauseOnce" fullname="MarsTrainer.Tests.SurvivalTests.NeglectKillsAtExpectedTimeAndReportsCauseOnce" methodname="NeglectKillsAtExpectedTimeAndReportsCauseOnce" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="1017724259" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000509" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1354" name="NeglectTimingIsIndependentOfRenderTickPartition" fullname="MarsTrainer.Tests.SurvivalTests.NeglectTimingIsIndependentOfRenderTickPartition" methodname="NeglectTimingIsIndependentOfRenderTickPartition" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="1897693968" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.002017" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1352" name="PartialLifeSupportAndPowerRecoveryAffectOxygenWithoutFalseHypoxia" fullname="MarsTrainer.Tests.SurvivalTests.PartialLifeSupportAndPowerRecoveryAffectOxygenWithoutFalseHypoxia" methodname="PartialLifeSupportAndPowerRecoveryAffectOxygenWithoutFalseHypoxia" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="1139934406" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000272" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1353" name="RadiationDamageIsCountedOnceByHealthSystem" fullname="MarsTrainer.Tests.SurvivalTests.RadiationDamageIsCountedOnceByHealthSystem" methodname="RadiationDamageIsCountedOnceByHealthSystem" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="2008653764" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000342" asserts="0">
+              <properties />
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1338" name="TirednessControlsWorkEfficiency" fullname="MarsTrainer.Tests.SurvivalTests.TirednessControlsWorkEfficiency" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001686" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1335" name="TirednessControlsWorkEfficiency(0,1)" fullname="MarsTrainer.Tests.SurvivalTests.TirednessControlsWorkEfficiency(0,1)" methodname="TirednessControlsWorkEfficiency" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="1782836284" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000202" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1336" name="TirednessControlsWorkEfficiency(50,0.8d)" fullname="MarsTrainer.Tests.SurvivalTests.TirednessControlsWorkEfficiency(50,0.8d)" methodname="TirednessControlsWorkEfficiency" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="357994752" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000068" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1337" name="TirednessControlsWorkEfficiency(100,0.6d)" fullname="MarsTrainer.Tests.SurvivalTests.TirednessControlsWorkEfficiency(100,0.6d)" methodname="TirednessControlsWorkEfficiency" classname="MarsTrainer.Tests.SurvivalTests" runstate="Runnable" seed="670920932" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000066" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+          </test-suite>
+          <test-suite type="TestFixture" id="1362" name="WeatherIntegrationTests" fullname="MarsTrainer.Tests.WeatherIntegrationTests" classname="MarsTrainer.Tests.WeatherIntegrationTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.007383" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1366" name="AuroraOnlyWarnsWithoutInventingScheduledRadiationOrHealthDamage" fullname="MarsTrainer.Tests.WeatherIntegrationTests.AuroraOnlyWarnsWithoutInventingScheduledRadiationOrHealthDamage" methodname="AuroraOnlyWarnsWithoutInventingScheduledRadiationOrHealthDamage" classname="MarsTrainer.Tests.WeatherIntegrationTests" runstate="Runnable" seed="1232116766" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001039" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1364" name="CoarseAndFineTicksProduceSameExposureAndOrderedSignals" fullname="MarsTrainer.Tests.WeatherIntegrationTests.CoarseAndFineTicksProduceSameExposureAndOrderedSignals" methodname="CoarseAndFineTicksProduceSameExposureAndOrderedSignals" classname="MarsTrainer.Tests.WeatherIntegrationTests" runstate="Runnable" seed="1391595000" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001533" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1363" name="EnergyConsumesWeatherDustAndProtectedTemperature" fullname="MarsTrainer.Tests.WeatherIntegrationTests.EnergyConsumesWeatherDustAndProtectedTemperature" methodname="EnergyConsumesWeatherDustAndProtectedTemperature" classname="MarsTrainer.Tests.WeatherIntegrationTests" runstate="Runnable" seed="888085671" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000759" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1367" name="PauseDoesNotConsumeWeatherTransitions" fullname="MarsTrainer.Tests.WeatherIntegrationTests.PauseDoesNotConsumeWeatherTransitions" methodname="PauseDoesNotConsumeWeatherTransitions" classname="MarsTrainer.Tests.WeatherIntegrationTests" runstate="Runnable" seed="399940073" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000458" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1365" name="PlayerCanTakeShelterAtWarningBeforeFlareStarts" fullname="MarsTrainer.Tests.WeatherIntegrationTests.PlayerCanTakeShelterAtWarningBeforeFlareStarts" methodname="PlayerCanTakeShelterAtWarningBeforeFlareStarts" classname="MarsTrainer.Tests.WeatherIntegrationTests" runstate="Runnable" seed="453776885" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000405" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1368" name="WeatherPresenterTests" fullname="MarsTrainer.Tests.WeatherPresenterTests" classname="MarsTrainer.Tests.WeatherPresenterTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.004570" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1371" name="ForwardsTypeAndSeverityAndRebindsWithoutDuplicateSubscriptions" fullname="MarsTrainer.Tests.WeatherPresenterTests.ForwardsTypeAndSeverityAndRebindsWithoutDuplicateSubscriptions" methodname="ForwardsTypeAndSeverityAndRebindsWithoutDuplicateSubscriptions" classname="MarsTrainer.Tests.WeatherPresenterTests" runstate="Runnable" seed="387858284" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001478" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1369" name="LateBindingRestoresHazardsAndUsesClockWithoutAdvancingIt" fullname="MarsTrainer.Tests.WeatherPresenterTests.LateBindingRestoresHazardsAndUsesClockWithoutAdvancingIt" methodname="LateBindingRestoresHazardsAndUsesClockWithoutAdvancingIt" classname="MarsTrainer.Tests.WeatherPresenterTests" runstate="Runnable" seed="890063985" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000733" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1370" name="OverlappingWeatherEndsIndependentlyAndDisableClearsVisualState" fullname="MarsTrainer.Tests.WeatherPresenterTests.OverlappingWeatherEndsIndependentlyAndDisableClearsVisualState" methodname="OverlappingWeatherEndsIndependentlyAndDisableClearsVisualState" classname="MarsTrainer.Tests.WeatherPresenterTests" runstate="Runnable" seed="562659431" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.000656" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1372" name="WeatherTests" fullname="MarsTrainer.Tests.WeatherTests" classname="MarsTrainer.Tests.WeatherTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.091759" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1376" name="DustRampsOverDaysAndFeedsSolarAndVisibility" fullname="MarsTrainer.Tests.WeatherTests.DustRampsOverDaysAndFeedsSolarAndVisibility" methodname="DustRampsOverDaysAndFeedsSolarAndVisibility" classname="MarsTrainer.Tests.WeatherTests" runstate="Runnable" seed="647284650" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001189" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1373" name="MapsAdjacentHazardDaysToTypedEventsWithPeakAndSeverity" fullname="MarsTrainer.Tests.WeatherTests.MapsAdjacentHazardDaysToTypedEventsWithPeakAndSeverity" methodname="MapsAdjacentHazardDaysToTypedEventsWithPeakAndSeverity" classname="MarsTrainer.Tests.WeatherTests" runstate="Runnable" seed="1560772406" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001219" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1379" name="MissionRunMapsTheFullScheduleAndOnlyDispatchesHazardsThroughDay99" fullname="MarsTrainer.Tests.WeatherTests.MissionRunMapsTheFullScheduleAndOnlyDispatchesHazardsThroughDay99" methodname="MissionRunMapsTheFullScheduleAndOnlyDispatchesHazardsThroughDay99" classname="MarsTrainer.Tests.WeatherTests" runstate="Runnable" seed="1545688229" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.080633" asserts="0">
+              <properties />
+              <output><![CDATA[solar-flare: start=0 peak=0.5 end=4 severity=1 warning=0
+solar-flare: start=53 peak=53.5 end=57 severity=2 warning=52
+heat-storm: start=60 peak=60.5 end=61 severity=1 warning=59
+heat-storm: start=69 peak=69.5 end=70 severity=1 warning=68
+heat-storm: start=73 peak=73.5 end=74 severity=1 warning=72
+heat-storm: start=78 peak=78.5 end=79 severity=1 warning=77
+heat-storm: start=84 peak=85.5 end=86 severity=1 warning=83
+heat-storm: start=88 peak=88.5 end=89 severity=1 warning=87
+heat-storm: start=93 peak=93.5 end=94 severity=1 warning=92
+heat-storm: start=96 peak=96.5 end=98 severity=1 warning=95
+heat-storm: start=99 peak=99.5 end=100 severity=1 warning=98
+]]></output>
+            </test-case>
+            <test-case id="1375" name="ResearchReducesSeverityAndExtendsWarningWithoutMovingSchedule" fullname="MarsTrainer.Tests.WeatherTests.ResearchReducesSeverityAndExtendsWarningWithoutMovingSchedule" methodname="ResearchReducesSeverityAndExtendsWarningWithoutMovingSchedule" classname="MarsTrainer.Tests.WeatherTests" runstate="Runnable" seed="2032118204" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001248" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1378" name="SeedIsRepeatableAndOnlyPerturbsMagnitude" fullname="MarsTrainer.Tests.WeatherTests.SeedIsRepeatableAndOnlyPerturbsMagnitude" methodname="SeedIsRepeatableAndOnlyPerturbsMagnitude" classname="MarsTrainer.Tests.WeatherTests" runstate="Runnable" seed="1839214530" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001006" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1377" name="ShelterPreventsFlareAndColdHealthLossAndColdFeedsHeatingAndFatigue" fullname="MarsTrainer.Tests.WeatherTests.ShelterPreventsFlareAndColdHealthLossAndColdFeedsHeatingAndFatigue" methodname="ShelterPreventsFlareAndColdHealthLossAndColdFeedsHeatingAndFatigue" classname="MarsTrainer.Tests.WeatherTests" runstate="Runnable" seed="163332998" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001247" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1374" name="WarningPrecedesFlareDamageAndDoseAndPhasesFireOnce" fullname="MarsTrainer.Tests.WeatherTests.WarningPrecedesFlareDamageAndDoseAndPhasesFireOnce" methodname="WarningPrecedesFlareDamageAndDoseAndPhasesFireOnce" classname="MarsTrainer.Tests.WeatherTests" runstate="Runnable" seed="203345396" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.002003" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1380" name="WorldGeometryTests" fullname="MarsTrainer.Tests.WorldGeometryTests" classname="MarsTrainer.Tests.WorldGeometryTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:22Z" duration="0.233263" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1381" name="FlatMeshDuplicatesVerticesAndUsesHardNormals" fullname="MarsTrainer.Tests.WorldGeometryTests.FlatMeshDuplicatesVerticesAndUsesHardNormals" methodname="FlatMeshDuplicatesVerticesAndUsesHardNormals" classname="MarsTrainer.Tests.WorldGeometryTests" runstate="Runnable" seed="1864068706" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.005179" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1384" name="PickupCreditsResearchOnlyOnceAndRejectsPausedCollection" fullname="MarsTrainer.Tests.WorldGeometryTests.PickupCreditsResearchOnlyOnceAndRejectsPausedCollection" methodname="PickupCreditsResearchOnlyOnceAndRejectsPausedCollection" classname="MarsTrainer.Tests.WorldGeometryTests" runstate="Runnable" seed="27903057" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.002194" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1382" name="RockFacesPointOutward" fullname="MarsTrainer.Tests.WorldGeometryTests.RockFacesPointOutward" methodname="RockFacesPointOutward" classname="MarsTrainer.Tests.WorldGeometryTests" runstate="Runnable" seed="666032801" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:21Z" duration="0.001124" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1383" name="ScatterIsSeededSpacedAndKeepsBaseAndCavesClear" fullname="MarsTrainer.Tests.WorldGeometryTests.ScatterIsSeededSpacedAndKeepsBaseAndCavesClear" methodname="ScatterIsSeededSpacedAndKeepsBaseAndCavesClear" classname="MarsTrainer.Tests.WorldGeometryTests" runstate="Runnable" seed="1682236470" result="Passed" start-time="2026-11-15 16:45:21Z" end-time="2026-11-15 16:45:22Z" duration="0.144459" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1385" name="TerrainHasContinuousChunksClearBaseAndBoundedTriangles" fullname="MarsTrainer.Tests.WorldGeometryTests.TerrainHasContinuousChunksClearBaseAndBoundedTriangles" methodname="TerrainHasContinuousChunksClearBaseAndBoundedTriangles" classname="MarsTrainer.Tests.WorldGeometryTests" runstate="Runnable" seed="1422236016" result="Passed" start-time="2026-11-15 16:45:22Z" end-time="2026-11-15 16:45:22Z" duration="0.076088" asserts="0">
+              <properties />
+              <output><![CDATA[P9 heightmap missing or unreadable; using seeded terrain noise.
+P9 complete world triangles: 35396
+]]></output>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1386" name="WorldTests" fullname="MarsTrainer.Tests.WorldTests" classname="MarsTrainer.Tests.WorldTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-11-15 16:45:22Z" end-time="2026-11-15 16:45:22Z" duration="0.005942" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1388" name="BaseRefillsTankAndPausedClockDoesNotSpendSprintResources" fullname="MarsTrainer.Tests.WorldTests.BaseRefillsTankAndPausedClockDoesNotSpendSprintResources" methodname="BaseRefillsTankAndPausedClockDoesNotSpendSprintResources" classname="MarsTrainer.Tests.WorldTests" runstate="Runnable" seed="1310080283" result="Passed" start-time="2026-11-15 16:45:22Z" end-time="2026-11-15 16:45:22Z" duration="0.000618" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1391" name="ExhaustedTankCausesHypoxiaAndClockSpeedScalesExposure" fullname="MarsTrainer.Tests.WorldTests.ExhaustedTankCausesHypoxiaAndClockSpeedScalesExposure" methodname="ExhaustedTankCausesHypoxiaAndClockSpeedScalesExposure" classname="MarsTrainer.Tests.WorldTests" runstate="Runnable" seed="432340893" result="Passed" start-time="2026-11-15 16:45:22Z" end-time="2026-11-15 16:45:22Z" duration="0.000507" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1387" name="PoweredSurvivalCannotRefillAnOutdoorTank" fullname="MarsTrainer.Tests.WorldTests.PoweredSurvivalCannotRefillAnOutdoorTank" methodname="PoweredSurvivalCannotRefillAnOutdoorTank" classname="MarsTrainer.Tests.WorldTests" runstate="Runnable" seed="1379511391" result="Passed" start-time="2026-11-15 16:45:22Z" end-time="2026-11-15 16:45:22Z" duration="0.000341" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1389" name="SprintCostsPowerAndFatigueAndCannotOverdraw" fullname="MarsTrainer.Tests.WorldTests.SprintCostsPowerAndFatigueAndCannotOverdraw" methodname="SprintCostsPowerAndFatigueAndCannotOverdraw" classname="MarsTrainer.Tests.WorldTests" runstate="Runnable" seed="297361702" result="Passed" start-time="2026-11-15 16:45:22Z" end-time="2026-11-15 16:45:22Z" duration="0.000534" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1390" name="SprintPaymentPersistsInTheSharedBattery" fullname="MarsTrainer.Tests.WorldTests.SprintPaymentPersistsInTheSharedBattery" methodname="SprintPaymentPersistsInTheSharedBattery" classname="MarsTrainer.Tests.WorldTests" runstate="Runnable" seed="2020650099" result="Passed" start-time="2026-11-15 16:45:22Z" end-time="2026-11-15 16:45:22Z" duration="0.000576" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+    <test-suite type="Assembly" id="1416" name="MarsTrainer.Tests.UI.dll" fullname="/private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Library/ScriptAssemblies/MarsTrainer.Tests.UI.dll" runstate="Runnable" testcasecount="16" result="Passed" start-time="2026-11-15 16:45:22Z" end-time="2026-11-15 16:45:24Z" duration="2.469288" total="16" passed="16" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="13834" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <test-suite type="TestSuite" id="1417" name="MarsTrainer" fullname="MarsTrainer" runstate="Runnable" testcasecount="16" result="Passed" start-time="2026-11-15 16:45:22Z" end-time="2026-11-15 16:45:24Z" duration="2.468260" total="16" passed="16" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1418" name="Tests" fullname="MarsTrainer.Tests" runstate="Runnable" testcasecount="16" result="Passed" start-time="2026-11-15 16:45:22Z" end-time="2026-11-15 16:45:24Z" duration="2.463855" total="16" passed="16" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1395" name="HudScreenTests" fullname="MarsTrainer.Tests.HudScreenTests" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-11-15 16:45:22Z" end-time="2026-11-15 16:45:23Z" duration="1.812780" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="ParameterizedMethod" id="1400" name="AllScreenTextFitsItsAllocatedSpace" fullname="MarsTrainer.Tests.HudScreenTests.AllScreenTextFitsItsAllocatedSpace" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-11-15 16:45:22Z" end-time="2026-11-15 16:45:23Z" duration="1.320052" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1396" name="AllScreenTextFitsItsAllocatedSpace(1280,720,False)" fullname="MarsTrainer.Tests.HudScreenTests.AllScreenTextFitsItsAllocatedSpace(1280,720,False)" methodname="AllScreenTextFitsItsAllocatedSpace" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="806285565" result="Passed" start-time="2026-11-15 16:45:22Z" end-time="2026-11-15 16:45:22Z" duration="0.693111" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1397" name="AllScreenTextFitsItsAllocatedSpace(1920,1080,False)" fullname="MarsTrainer.Tests.HudScreenTests.AllScreenTextFitsItsAllocatedSpace(1920,1080,False)" methodname="AllScreenTextFitsItsAllocatedSpace" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="401765601" result="Passed" start-time="2026-11-15 16:45:22Z" end-time="2026-11-15 16:45:23Z" duration="0.202583" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1398" name="AllScreenTextFitsItsAllocatedSpace(1280,720,True)" fullname="MarsTrainer.Tests.HudScreenTests.AllScreenTextFitsItsAllocatedSpace(1280,720,True)" methodname="AllScreenTextFitsItsAllocatedSpace" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="14048635" result="Passed" start-time="2026-11-15 16:45:23Z" end-time="2026-11-15 16:45:23Z" duration="0.255240" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1399" name="AllScreenTextFitsItsAllocatedSpace(1920,1080,True)" fullname="MarsTrainer.Tests.HudScreenTests.AllScreenTextFitsItsAllocatedSpace(1920,1080,True)" methodname="AllScreenTextFitsItsAllocatedSpace" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="1797274675" result="Passed" start-time="2026-11-15 16:45:23Z" end-time="2026-11-15 16:45:23Z" duration="0.160555" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-case id="1401" name="AuthoredResearchCardsHaveReadableDetailsAndPurchasesUpdateState" fullname="MarsTrainer.Tests.HudScreenTests.AuthoredResearchCardsHaveReadableDetailsAndPurchasesUpdateState" methodname="AuthoredResearchCardsHaveReadableDetailsAndPurchasesUpdateState" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="969811636" result="Passed" start-time="2026-11-15 16:45:23Z" end-time="2026-11-15 16:45:23Z" duration="0.347740" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1403" name="PauseMenuRestoresThePreviousPauseState" fullname="MarsTrainer.Tests.HudScreenTests.PauseMenuRestoresThePreviousPauseState" methodname="PauseMenuRestoresThePreviousPauseState" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="821387940" result="Passed" start-time="2026-11-15 16:45:23Z" end-time="2026-11-15 16:45:23Z" duration="0.071331" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1402" name="RebindingDoesNotKeepOldEventSubscriptions" fullname="MarsTrainer.Tests.HudScreenTests.RebindingDoesNotKeepOldEventSubscriptions" methodname="RebindingDoesNotKeepOldEventSubscriptions" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="795540296" result="Passed" start-time="2026-11-15 16:45:23Z" end-time="2026-11-15 16:45:23Z" duration="0.068399" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1404" name="MinimalHudTests" fullname="MarsTrainer.Tests.MinimalHudTests" classname="MarsTrainer.Tests.MinimalHudTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-11-15 16:45:23Z" end-time="2026-11-15 16:45:24Z" duration="0.066926" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1405" name="DefaultHudKeepsDetailedActionsAndMetersOffTheWorldView" fullname="MarsTrainer.Tests.MinimalHudTests.DefaultHudKeepsDetailedActionsAndMetersOffTheWorldView" methodname="DefaultHudKeepsDetailedActionsAndMetersOffTheWorldView" classname="MarsTrainer.Tests.MinimalHudTests" runstate="Runnable" seed="203631212" result="Passed" start-time="2026-11-15 16:45:23Z" end-time="2026-11-15 16:45:24Z" duration="0.061455" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1406" name="ResourceHudTests" fullname="MarsTrainer.Tests.ResourceHudTests" classname="MarsTrainer.Tests.ResourceHudTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-11-15 16:45:24Z" end-time="2026-11-15 16:45:24Z" duration="0.216557" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1408" name="OxygenIsFirstAndFoodWaterAreDirectHudActions" fullname="MarsTrainer.Tests.ResourceHudTests.OxygenIsFirstAndFoodWaterAreDirectHudActions" methodname="OxygenIsFirstAndFoodWaterAreDirectHudActions" classname="MarsTrainer.Tests.ResourceHudTests" runstate="Runnable" seed="716557289" result="Passed" start-time="2026-11-15 16:45:24Z" end-time="2026-11-15 16:45:24Z" duration="0.081170" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1407" name="QuickSuppliesConsumeSharedInventoryOnEvaAndExplainFullMeters" fullname="MarsTrainer.Tests.ResourceHudTests.QuickSuppliesConsumeSharedInventoryOnEvaAndExplainFullMeters" methodname="QuickSuppliesConsumeSharedInventoryOnEvaAndExplainFullMeters" classname="MarsTrainer.Tests.ResourceHudTests" runstate="Runnable" seed="1477112358" result="Passed" start-time="2026-11-15 16:45:24Z" end-time="2026-11-15 16:45:24Z" duration="0.131999" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1409" name="ShipUiTests" fullname="MarsTrainer.Tests.ShipUiTests" classname="MarsTrainer.Tests.ShipUiTests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-11-15 16:45:24Z" end-time="2026-11-15 16:45:24Z" duration="0.362213" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1413" name="BriefingStopsTheClockUntilBegin" fullname="MarsTrainer.Tests.ShipUiTests.BriefingStopsTheClockUntilBegin" methodname="BriefingStopsTheClockUntilBegin" classname="MarsTrainer.Tests.ShipUiTests" runstate="Runnable" seed="1465449232" result="Passed" start-time="2026-11-15 16:45:24Z" end-time="2026-11-15 16:45:24Z" duration="0.081610" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1412" name="EvaCanUseCarriedFoodAndWaterButCannotWorkAtBaseRemotely" fullname="MarsTrainer.Tests.ShipUiTests.EvaCanUseCarriedFoodAndWaterButCannotWorkAtBaseRemotely" methodname="EvaCanUseCarriedFoodAndWaterButCannotWorkAtBaseRemotely" classname="MarsTrainer.Tests.ShipUiTests" runstate="Runnable" seed="2054608485" result="Passed" start-time="2026-11-15 16:45:24Z" end-time="2026-11-15 16:45:24Z" duration="0.090426" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1411" name="SavedPrefabActionsUseTheBoundInventoryAndBattery" fullname="MarsTrainer.Tests.ShipUiTests.SavedPrefabActionsUseTheBoundInventoryAndBattery" methodname="SavedPrefabActionsUseTheBoundInventoryAndBattery" classname="MarsTrainer.Tests.ShipUiTests" runstate="Runnable" seed="1906439996" result="Passed" start-time="2026-11-15 16:45:24Z" end-time="2026-11-15 16:45:24Z" duration="0.026814" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1414" name="SavedPrefabWiresSkipAndSettingsButtons" fullname="MarsTrainer.Tests.ShipUiTests.SavedPrefabWiresSkipAndSettingsButtons" methodname="SavedPrefabWiresSkipAndSettingsButtons" classname="MarsTrainer.Tests.ShipUiTests" runstate="Runnable" seed="1070169231" result="Passed" start-time="2026-11-15 16:45:24Z" end-time="2026-11-15 16:45:24Z" duration="0.026728" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1415" name="SettingsChangeActualAudioAndTextWithoutCompounding" fullname="MarsTrainer.Tests.ShipUiTests.SettingsChangeActualAudioAndTextWithoutCompounding" methodname="SettingsChangeActualAudioAndTextWithoutCompounding" classname="MarsTrainer.Tests.ShipUiTests" runstate="Runnable" seed="1693714440" result="Passed" start-time="2026-11-15 16:45:24Z" end-time="2026-11-15 16:45:24Z" duration="0.065548" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1410" name="TutorialGuidesFiveSolsAndSkipHidesItImmediately" fullname="MarsTrainer.Tests.ShipUiTests.TutorialGuidesFiveSolsAndSkipHidesItImmediately" methodname="TutorialGuidesFiveSolsAndSkipHidesItImmediately" classname="MarsTrainer.Tests.ShipUiTests" runstate="Runnable" seed="877690539" result="Passed" start-time="2026-11-15 16:45:24Z" end-time="2026-11-15 16:45:24Z" duration="0.063617" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

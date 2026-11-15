@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5894d49020334b058dea3b62c1f6ccfb, type: 3}
+  m_Name: Solar_5_sun_collectors
+  m_EditorClassIdentifier:
+  id: solar.sun_collectors
+  path: 1
+  costRP: 20
+  prereqs:
+  - solar.bright_ideas
+  - solar.sun_garden
+  tier: 3
+  modifiers:
+  - statId: panel.efficiency
+    op: 1
+    value: 1.2
+  title: Sun Collectors
+  description: Collect even more power from every sunny patch.
+  iconId: research_sun_collectors

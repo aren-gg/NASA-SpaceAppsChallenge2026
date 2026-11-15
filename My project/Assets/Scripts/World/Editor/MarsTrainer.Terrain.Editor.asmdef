@@ -1,0 +1,5 @@
+{
+  "name": "MarsTrainer.Terrain.Editor",
+  "references": ["MarsTrainer.Terrain", "MarsTrainer.Integration", "MarsWeather.Runtime"],
+  "includePlatforms": ["Editor"]
+}

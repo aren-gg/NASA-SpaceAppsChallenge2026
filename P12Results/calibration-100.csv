@@ -1,0 +1,4 @@
+policy,runs,survival_percent,death_causes,mean_final_dose_mSv,mean_energy_margin_kWh_per_sol
+idle,100,0.000,dehydration:100,4.397,69.542
+naive,100,32.000,radiation:68,398.699,53.260
+good,100,96.000,radiation:4,327.972,68.462

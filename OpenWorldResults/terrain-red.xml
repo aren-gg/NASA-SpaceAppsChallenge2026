@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Failed(Child)" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-15 07:40:02Z" end-time="2026-11-15 07:40:04Z" duration="1.3475075">
+  <test-suite type="TestSuite" id="1000" name="My project" fullname="My project" runstate="Runnable" testcasecount="7" result="Failed" site="Child" start-time="2026-11-15 07:40:02Z" end-time="2026-11-15 07:40:04Z" duration="1.347508" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+    <properties />
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1016" name="MarsTrainer.Tests.UI.PlayMode.dll" fullname="/private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Library/ScriptAssemblies/MarsTrainer.Tests.UI.PlayMode.dll" runstate="Runnable" testcasecount="6" result="Failed" site="Child" start-time="2026-11-15 07:40:02Z" end-time="2026-11-15 07:40:04Z" duration="1.343518" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="54025" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestSuite" id="1017" name="MarsTrainer" fullname="MarsTrainer" runstate="Runnable" testcasecount="6" result="Failed" site="Child" start-time="2026-11-15 07:40:02Z" end-time="2026-11-15 07:40:04Z" duration="1.342714" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-suite type="TestSuite" id="1018" name="Tests" fullname="MarsTrainer.Tests" runstate="Runnable" testcasecount="6" result="Failed" site="Child" start-time="2026-11-15 07:40:02Z" end-time="2026-11-15 07:40:04Z" duration="1.341994" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <failure>
+            <message><![CDATA[One or more child tests had errors]]></message>
+          </failure>
+          <test-suite type="TestFixture" id="1012" name="OpenWorldTraversalTests" fullname="MarsTrainer.Tests.OpenWorldTraversalTests" classname="MarsTrainer.Tests.OpenWorldTraversalTests" runstate="Runnable" testcasecount="1" result="Failed" site="Child" start-time="2026-11-15 07:40:02Z" end-time="2026-11-15 07:40:04Z" duration="1.340223" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <failure>
+              <message><![CDATA[One or more child tests had errors]]></message>
+            </failure>
+            <test-case id="1013" name="MainUsesTheOriginalStreamedTile" fullname="MarsTrainer.Tests.OpenWorldTraversalTests.MainUsesTheOriginalStreamedTile" methodname="MainUsesTheOriginalStreamedTile" classname="MarsTrainer.Tests.OpenWorldTraversalTests" runstate="Runnable" seed="1877622187" result="Failed" start-time="2026-11-15 07:40:02Z" end-time="2026-11-15 07:40:04Z" duration="1.326115" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+              </properties>
+              <failure>
+                <message><![CDATA[  The main mission must use the original terrain streamer instead of the compressed arena.
+  Expected: not null
+  But was:  null
+]]></message>
+                <stack-trace><![CDATA[at MarsTrainer.Tests.OpenWorldTraversalTests+<MainUsesTheOriginalStreamedTile>d__0.MoveNext () [0x000dd] in /private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Assets/Tests/PlayMode/UI/OpenWorldTraversalTests.cs:28
+at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0003a] in ./Library/PackageCache/com.unity.test-framework@1.1.33/UnityEngine.TestRunner/NUnitExtensions/Attributes/TestEnumerator.cs:46
+]]></stack-trace>
+              </failure>
+              <output><![CDATA[P12_READY bundledData=True; seed=1741428108; rows=668; crops=3
+]]></output>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

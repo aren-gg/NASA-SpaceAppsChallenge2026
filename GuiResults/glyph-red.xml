@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="2" result="Failed(Child)" total="2" passed="1" failed="1" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-15 15:48:25Z" end-time="2026-11-15 15:48:25Z" duration="0.1678896">
+  <test-suite type="TestSuite" id="1211" name="My project" fullname="My project" runstate="Runnable" testcasecount="162" result="Failed" site="Child" start-time="2026-11-15 15:48:25Z" end-time="2026-11-15 15:48:25Z" duration="0.167890" total="2" passed="1" failed="1" inconclusive="0" skipped="0" asserts="0">
+    <properties />
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1414" name="MarsTrainer.Tests.UI.dll" fullname="/private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Library/ScriptAssemblies/MarsTrainer.Tests.UI.dll" runstate="Runnable" testcasecount="16" result="Failed" site="Child" start-time="2026-11-15 15:48:25Z" end-time="2026-11-15 15:48:25Z" duration="0.154913" total="2" passed="1" failed="1" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="3810" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestSuite" id="1415" name="MarsTrainer" fullname="MarsTrainer" runstate="Runnable" testcasecount="16" result="Failed" site="Child" start-time="2026-11-15 15:48:25Z" end-time="2026-11-15 15:48:25Z" duration="0.154319" total="2" passed="1" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-suite type="TestSuite" id="1416" name="Tests" fullname="MarsTrainer.Tests" runstate="Runnable" testcasecount="16" result="Failed" site="Child" start-time="2026-11-15 15:48:25Z" end-time="2026-11-15 15:48:25Z" duration="0.153851" total="2" passed="1" failed="1" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <failure>
+            <message><![CDATA[One or more child tests had errors]]></message>
+          </failure>
+          <test-suite type="TestFixture" id="1404" name="ResourceHudTests" fullname="MarsTrainer.Tests.ResourceHudTests" classname="MarsTrainer.Tests.ResourceHudTests" runstate="Runnable" testcasecount="2" result="Failed" site="Child" start-time="2026-11-15 15:48:25Z" end-time="2026-11-15 15:48:25Z" duration="0.152807" total="2" passed="1" failed="1" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <failure>
+              <message><![CDATA[One or more child tests had errors]]></message>
+            </failure>
+            <test-case id="1406" name="OxygenIsFirstAndFoodWaterAreDirectHudActions" fullname="MarsTrainer.Tests.ResourceHudTests.OxygenIsFirstAndFoodWaterAreDirectHudActions" methodname="OxygenIsFirstAndFoodWaterAreDirectHudActions" classname="MarsTrainer.Tests.ResourceHudTests" runstate="Runnable" seed="92666395" result="Failed" start-time="2026-11-15 15:48:25Z" end-time="2026-11-15 15:48:25Z" duration="0.101075" asserts="0">
+              <properties />
+              <failure>
+                <message><![CDATA[  Backpack badge must render its procedural mesh.
+  Expected: not null
+  But was:  null
+]]></message>
+                <stack-trace><![CDATA[at MarsTrainer.Tests.ResourceHudTests.OxygenIsFirstAndFoodWaterAreDirectHudActions () [0x0004a] in /private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Assets/Tests/EditMode/UI/ResourceHudTests.cs:47
+]]></stack-trace>
+              </failure>
+            </test-case>
+            <test-case id="1405" name="QuickSuppliesConsumeSharedInventoryOnEvaAndExplainFullMeters" fullname="MarsTrainer.Tests.ResourceHudTests.QuickSuppliesConsumeSharedInventoryOnEvaAndExplainFullMeters" methodname="QuickSuppliesConsumeSharedInventoryOnEvaAndExplainFullMeters" classname="MarsTrainer.Tests.ResourceHudTests" runstate="Runnable" seed="1496373209" result="Passed" start-time="2026-11-15 15:48:25Z" end-time="2026-11-15 15:48:25Z" duration="0.042022" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

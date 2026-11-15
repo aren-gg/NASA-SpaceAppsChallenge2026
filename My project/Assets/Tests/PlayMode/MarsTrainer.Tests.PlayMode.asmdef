@@ -1,0 +1,13 @@
+{
+  "name": "MarsTrainer.Tests.PlayMode",
+  "references": [
+    "MarsTrainer.Gameplay.World",
+    "MarsTrainer.Gameplay.Player",
+    "MarsTrainer.Sim",
+    "MarsTrainer.Sim.World",
+    "MarsTrainer.Sim.Research"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

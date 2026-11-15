@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="15" result="Failed(Child)" total="15" passed="11" failed="4" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-15 15:38:43Z" end-time="2026-11-15 15:38:44Z" duration="0.9216749">
+  <test-suite type="TestSuite" id="1210" name="My project" fullname="My project" runstate="Runnable" testcasecount="161" result="Failed" site="Child" start-time="2026-11-15 15:38:43Z" end-time="2026-11-15 15:38:44Z" duration="0.921675" total="15" passed="11" failed="4" inconclusive="0" skipped="0" asserts="0">
+    <properties />
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1412" name="MarsTrainer.Tests.UI.dll" fullname="/private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Library/ScriptAssemblies/MarsTrainer.Tests.UI.dll" runstate="Runnable" testcasecount="15" result="Failed" site="Child" start-time="2026-11-15 15:38:43Z" end-time="2026-11-15 15:38:44Z" duration="0.895192" total="15" passed="11" failed="4" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="1989" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestSuite" id="1413" name="MarsTrainer" fullname="MarsTrainer" runstate="Runnable" testcasecount="15" result="Failed" site="Child" start-time="2026-11-15 15:38:43Z" end-time="2026-11-15 15:38:44Z" duration="0.894183" total="15" passed="11" failed="4" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-suite type="TestSuite" id="1414" name="Tests" fullname="MarsTrainer.Tests" runstate="Runnable" testcasecount="15" result="Failed" site="Child" start-time="2026-11-15 15:38:43Z" end-time="2026-11-15 15:38:44Z" duration="0.893640" total="15" passed="11" failed="4" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <failure>
+            <message><![CDATA[One or more child tests had errors]]></message>
+          </failure>
+          <test-suite type="TestFixture" id="1392" name="HudScreenTests" fullname="MarsTrainer.Tests.HudScreenTests" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" testcasecount="7" result="Failed" site="Child" start-time="2026-11-15 15:38:43Z" end-time="2026-11-15 15:38:44Z" duration="0.708559" total="7" passed="3" failed="4" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <failure>
+              <message><![CDATA[One or more child tests had errors]]></message>
+            </failure>
+            <test-suite type="ParameterizedMethod" id="1397" name="AllScreenTextFitsItsAllocatedSpace" fullname="MarsTrainer.Tests.HudScreenTests.AllScreenTextFitsItsAllocatedSpace" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" testcasecount="4" result="Failed" site="Child" start-time="2026-11-15 15:38:43Z" end-time="2026-11-15 15:38:44Z" duration="0.595219" total="4" passed="0" failed="4" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <failure>
+                <message><![CDATA[One or more child tests had errors]]></message>
+              </failure>
+              <test-case id="1393" name="AllScreenTextFitsItsAllocatedSpace(1280,720,False)" fullname="MarsTrainer.Tests.HudScreenTests.AllScreenTextFitsItsAllocatedSpace(1280,720,False)" methodname="AllScreenTextFitsItsAllocatedSpace" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="771386583" result="Failed" start-time="2026-11-15 15:38:43Z" end-time="2026-11-15 15:38:44Z" duration="0.476989" asserts="0">
+                <properties />
+                <failure>
+                  <message><![CDATA[  Expected: <empty>
+  But was:  < "Navigation vertical overflow: 72 > 70.19995" >
+]]></message>
+                  <stack-trace><![CDATA[at MarsTrainer.Tests.HudScreenTests.AllScreenTextFitsItsAllocatedSpace (System.Int32 width, System.Int32 height, System.Boolean largeText) [0x00361] in /private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Assets/Tests/EditMode/UI/HudScreenTests.cs:65
+]]></stack-trace>
+                </failure>
+              </test-case>
+              <test-case id="1394" name="AllScreenTextFitsItsAllocatedSpace(1920,1080,False)" fullname="MarsTrainer.Tests.HudScreenTests.AllScreenTextFitsItsAllocatedSpace(1920,1080,False)" methodname="AllScreenTextFitsItsAllocatedSpace" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="140850705" result="Failed" start-time="2026-11-15 15:38:44Z" end-time="2026-11-15 15:38:44Z" duration="0.031684" asserts="0">
+                <properties />
+                <failure>
+                  <message><![CDATA[  Expected: <empty>
+  But was:  < "Navigation vertical overflow: 72 > 70.19995" >
+]]></message>
+                  <stack-trace><![CDATA[at MarsTrainer.Tests.HudScreenTests.AllScreenTextFitsItsAllocatedSpace (System.Int32 width, System.Int32 height, System.Boolean largeText) [0x00361] in /private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Assets/Tests/EditMode/UI/HudScreenTests.cs:65
+]]></stack-trace>
+                </failure>
+              </test-case>
+              <test-case id="1395" name="AllScreenTextFitsItsAllocatedSpace(1280,720,True)" fullname="MarsTrainer.Tests.HudScreenTests.AllScreenTextFitsItsAllocatedSpace(1280,720,True)" methodname="AllScreenTextFitsItsAllocatedSpace" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="1720227657" result="Failed" start-time="2026-11-15 15:38:44Z" end-time="2026-11-15 15:38:44Z" duration="0.047502" asserts="0">
+                <properties />
+                <failure>
+                  <message><![CDATA[  Expected: <empty>
+  But was:  < "Navigation vertical overflow: 72 > 70.19995" >
+]]></message>
+                  <stack-trace><![CDATA[at MarsTrainer.Tests.HudScreenTests.AllScreenTextFitsItsAllocatedSpace (System.Int32 width, System.Int32 height, System.Boolean largeText) [0x00361] in /private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Assets/Tests/EditMode/UI/HudScreenTests.cs:65
+]]></stack-trace>
+                </failure>
+              </test-case>
+              <test-case id="1396" name="AllScreenTextFitsItsAllocatedSpace(1920,1080,True)" fullname="MarsTrainer.Tests.HudScreenTests.AllScreenTextFitsItsAllocatedSpace(1920,1080,True)" methodname="AllScreenTextFitsItsAllocatedSpace" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="1807145802" result="Failed" start-time="2026-11-15 15:38:44Z" end-time="2026-11-15 15:38:44Z" duration="0.033522" asserts="0">
+                <properties />
+                <failure>
+                  <message><![CDATA[  Expected: <empty>
+  But was:  < "Navigation vertical overflow: 72 > 70.19995" >
+]]></message>
+                  <stack-trace><![CDATA[at MarsTrainer.Tests.HudScreenTests.AllScreenTextFitsItsAllocatedSpace (System.Int32 width, System.Int32 height, System.Boolean largeText) [0x00361] in /private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Assets/Tests/EditMode/UI/HudScreenTests.cs:65
+]]></stack-trace>
+                </failure>
+              </test-case>
+            </test-suite>
+            <test-case id="1398" name="AuthoredResearchCardsHaveReadableDetailsAndPurchasesUpdateState" fullname="MarsTrainer.Tests.HudScreenTests.AuthoredResearchCardsHaveReadableDetailsAndPurchasesUpdateState" methodname="AuthoredResearchCardsHaveReadableDetailsAndPurchasesUpdateState" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="1780931626" result="Passed" start-time="2026-11-15 15:38:44Z" end-time="2026-11-15 15:38:44Z" duration="0.068054" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1400" name="PauseMenuRestoresThePreviousPauseState" fullname="MarsTrainer.Tests.HudScreenTests.PauseMenuRestoresThePreviousPauseState" methodname="PauseMenuRestoresThePreviousPauseState" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="1276261103" result="Passed" start-time="2026-11-15 15:38:44Z" end-time="2026-11-15 15:38:44Z" duration="0.018010" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1399" name="RebindingDoesNotKeepOldEventSubscriptions" fullname="MarsTrainer.Tests.HudScreenTests.RebindingDoesNotKeepOldEventSubscriptions" methodname="RebindingDoesNotKeepOldEventSubscriptions" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="1347344667" result="Passed" start-time="2026-11-15 15:38:44Z" end-time="2026-11-15 15:38:44Z" duration="0.020606" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1401" name="MinimalHudTests" fullname="MarsTrainer.Tests.MinimalHudTests" classname="MarsTrainer.Tests.MinimalHudTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-11-15 15:38:44Z" end-time="2026-11-15 15:38:44Z" duration="0.019481" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1402" name="DefaultHudKeepsDetailedActionsAndMetersOffTheWorldView" fullname="MarsTrainer.Tests.MinimalHudTests.DefaultHudKeepsDetailedActionsAndMetersOffTheWorldView" methodname="DefaultHudKeepsDetailedActionsAndMetersOffTheWorldView" classname="MarsTrainer.Tests.MinimalHudTests" runstate="Runnable" seed="1978707453" result="Passed" start-time="2026-11-15 15:38:44Z" end-time="2026-11-15 15:38:44Z" duration="0.017146" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1403" name="ResourceHudTests" fullname="MarsTrainer.Tests.ResourceHudTests" classname="MarsTrainer.Tests.ResourceHudTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-11-15 15:38:44Z" end-time="2026-11-15 15:38:44Z" duration="0.021587" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1404" name="OxygenIsFirstAndFoodWaterAreDirectHudActions" fullname="MarsTrainer.Tests.ResourceHudTests.OxygenIsFirstAndFoodWaterAreDirectHudActions" methodname="OxygenIsFirstAndFoodWaterAreDirectHudActions" classname="MarsTrainer.Tests.ResourceHudTests" runstate="Runnable" seed="536627044" result="Passed" start-time="2026-11-15 15:38:44Z" end-time="2026-11-15 15:38:44Z" duration="0.020176" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1405" name="ShipUiTests" fullname="MarsTrainer.Tests.ShipUiTests" classname="MarsTrainer.Tests.ShipUiTests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-11-15 15:38:44Z" end-time="2026-11-15 15:38:44Z" duration="0.141932" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1409" name="BriefingStopsTheClockUntilBegin" fullname="MarsTrainer.Tests.ShipUiTests.BriefingStopsTheClockUntilBegin" methodname="BriefingStopsTheClockUntilBegin" classname="MarsTrainer.Tests.ShipUiTests" runstate="Runnable" seed="1415470132" result="Passed" start-time="2026-11-15 15:38:44Z" end-time="2026-11-15 15:38:44Z" duration="0.037308" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1408" name="EvaCanUseCarriedFoodAndWaterButCannotWorkAtBaseRemotely" fullname="MarsTrainer.Tests.ShipUiTests.EvaCanUseCarriedFoodAndWaterButCannotWorkAtBaseRemotely" methodname="EvaCanUseCarriedFoodAndWaterButCannotWorkAtBaseRemotely" classname="MarsTrainer.Tests.ShipUiTests" runstate="Runnable" seed="730642247" result="Passed" start-time="2026-11-15 15:38:44Z" end-time="2026-11-15 15:38:44Z" duration="0.024959" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1407" name="SavedPrefabActionsUseTheBoundInventoryAndBattery" fullname="MarsTrainer.Tests.ShipUiTests.SavedPrefabActionsUseTheBoundInventoryAndBattery" methodname="SavedPrefabActionsUseTheBoundInventoryAndBattery" classname="MarsTrainer.Tests.ShipUiTests" runstate="Runnable" seed="2050394643" result="Passed" start-time="2026-11-15 15:38:44Z" end-time="2026-11-15 15:38:44Z" duration="0.010107" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1410" name="SavedPrefabWiresSkipAndSettingsButtons" fullname="MarsTrainer.Tests.ShipUiTests.SavedPrefabWiresSkipAndSettingsButtons" methodname="SavedPrefabWiresSkipAndSettingsButtons" classname="MarsTrainer.Tests.ShipUiTests" runstate="Runnable" seed="1334058415" result="Passed" start-time="2026-11-15 15:38:44Z" end-time="2026-11-15 15:38:44Z" duration="0.008767" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1411" name="SettingsChangeActualAudioAndTextWithoutCompounding" fullname="MarsTrainer.Tests.ShipUiTests.SettingsChangeActualAudioAndTextWithoutCompounding" methodname="SettingsChangeActualAudioAndTextWithoutCompounding" classname="MarsTrainer.Tests.ShipUiTests" runstate="Runnable" seed="702243767" result="Passed" start-time="2026-11-15 15:38:44Z" end-time="2026-11-15 15:38:44Z" duration="0.018483" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1406" name="TutorialGuidesFiveSolsAndSkipHidesItImmediately" fullname="MarsTrainer.Tests.ShipUiTests.TutorialGuidesFiveSolsAndSkipHidesItImmediately" methodname="TutorialGuidesFiveSolsAndSkipHidesItImmediately" classname="MarsTrainer.Tests.ShipUiTests" runstate="Runnable" seed="291957500" result="Passed" start-time="2026-11-15 15:38:44Z" end-time="2026-11-15 15:38:44Z" duration="0.018934" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

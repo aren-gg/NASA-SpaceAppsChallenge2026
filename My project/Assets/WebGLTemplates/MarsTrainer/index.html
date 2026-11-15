@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Mars Outpost</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #261e1b; }
+    body { display: grid; place-items: center; }
+    #trainer { position: relative; width: min(100vw, 177.777778vh); height: min(100vh, 56.25vw); }
+    canvas { display: block; width: 100%; height: 100%; outline: none; }
+    #status { position: absolute; inset: 0; display: grid; place-items: center; padding: 1rem;
+      color: #fff2db; background: #261e1b; font: 1.25rem system-ui, sans-serif; text-align: center; }
+    #status[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <main id="trainer">
+    <canvas id="unity-canvas" width="1280" height="720" tabindex="0" aria-label="Mars outpost survival trainer"></canvas>
+    <div id="status" role="status">Loading Mars Outpost…</div>
+  </main>
+  <script src="Build/{{{ LOADER_FILENAME }}}"></script>
+  <script>
+    const canvas = document.getElementById("unity-canvas");
+    const status = document.getElementById("status");
+    createUnityInstance(canvas, {
+      dataUrl: "Build/{{{ DATA_FILENAME }}}",
+      frameworkUrl: "Build/{{{ FRAMEWORK_FILENAME }}}",
+#if USE_THREADS
+      workerUrl: "Build/{{{ WORKER_FILENAME }}}",
+#endif
+#if USE_WASM
+      codeUrl: "Build/{{{ CODE_FILENAME }}}",
+#endif
+#if MEMORY_FILENAME
+      memoryUrl: "Build/{{{ MEMORY_FILENAME }}}",
+#endif
+#if SYMBOLS_FILENAME
+      symbolsUrl: "Build/{{{ SYMBOLS_FILENAME }}}",
+#endif
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+      productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+      productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}}
+    }, progress => { status.textContent = "Loading Mars Outpost " + Math.round(progress * 100) + "%"; })
+      .then(() => { status.hidden = true; canvas.focus(); })
+      .catch(error => {
+        status.textContent = "Could not start Mars Outpost. Reload this page and check that WebGL is available.";
+        console.error(error);
+      });
+  </script>
+</body>
+</html>

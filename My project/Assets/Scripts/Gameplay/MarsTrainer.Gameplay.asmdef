@@ -1,0 +1,10 @@
+{
+  "name": "MarsTrainer.Gameplay",
+  "rootNamespace": "MarsTrainer.Gameplay",
+  "references": [
+    "MarsTrainer.Sim",
+    "MarsTrainer.Data",
+    "MarsWeather.Runtime"
+  ],
+  "noEngineReferences": false
+}

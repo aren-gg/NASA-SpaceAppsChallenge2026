@@ -9,3 +9,17 @@
 /My project/*.csproj
 /My project/*.sln
 __pycache__/
+/Tools/cache/
+/P12Builds/
+/P12Results/*.log
+
+# Integrated playable game builds and Unity logs
+/IntegratedBuilds/
+/IntegrationResults/*.log
+
+/OpenWorldBuilds/
+
+/OpenWorldResults/*.log
+
+/GuiBuilds/
+/GuiResults/*.log

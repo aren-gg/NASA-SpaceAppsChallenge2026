@@ -1,0 +1,5 @@
+{
+  "name": "MarsTrainer.Gameplay.World.Editor",
+  "references": ["MarsTrainer.Gameplay.World"],
+  "includePlatforms": ["Editor"]
+}

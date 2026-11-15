@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="7" result="Passed" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-15 16:04:35Z" end-time="2026-11-15 16:04:41Z" duration="6.008978">
+  <test-suite type="TestSuite" id="1000" name="My project" fullname="My project" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-11-15 16:04:35Z" end-time="2026-11-15 16:04:41Z" duration="6.008978" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties />
+    <test-suite type="Assembly" id="1003" name="MarsTrainer.Tests.PlayMode.dll" fullname="/private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Library/ScriptAssemblies/MarsTrainer.Tests.PlayMode.dll" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-11-15 16:04:35Z" end-time="2026-11-15 16:04:38Z" duration="2.920626" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="7145" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+      </properties>
+      <test-suite type="TestSuite" id="1004" name="MarsTrainer" fullname="MarsTrainer" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-11-15 16:04:35Z" end-time="2026-11-15 16:04:38Z" duration="2.920353" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1005" name="Tests" fullname="MarsTrainer.Tests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-11-15 16:04:35Z" end-time="2026-11-15 16:04:38Z" duration="2.920139" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1001" name="WorldRouteTests" fullname="MarsTrainer.Tests.WorldRouteTests" classname="MarsTrainer.Tests.WorldRouteTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-11-15 16:04:35Z" end-time="2026-11-15 16:04:38Z" duration="2.919604" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1002" name="WalkFromBaseThroughCaveCollectResearchAndReturn" fullname="MarsTrainer.Tests.WorldRouteTests.WalkFromBaseThroughCaveCollectResearchAndReturn" methodname="WalkFromBaseThroughCaveCollectResearchAndReturn" classname="MarsTrainer.Tests.WorldRouteTests" runstate="Runnable" seed="1142944957" result="Passed" start-time="2026-11-15 16:04:35Z" end-time="2026-11-15 16:04:38Z" duration="2.915205" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+              </properties>
+              <output><![CDATA[P12_READY bundledData=True; seed=1768893224; rows=668; crops=3
+P9 route passed; frames=2993; max movement/sim allocation=0 B; max editor frame=0.02516542 s; profile=/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/p9-world-profile.raw
+]]></output>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+    <test-suite type="Assembly" id="1016" name="MarsTrainer.Tests.UI.PlayMode.dll" fullname="/private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Library/ScriptAssemblies/MarsTrainer.Tests.UI.PlayMode.dll" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-11-15 16:04:38Z" end-time="2026-11-15 16:04:41Z" duration="3.086071" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="7145" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+      </properties>
+      <test-suite type="TestSuite" id="1017" name="MarsTrainer" fullname="MarsTrainer" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-11-15 16:04:38Z" end-time="2026-11-15 16:04:41Z" duration="3.085766" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1018" name="Tests" fullname="MarsTrainer.Tests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-11-15 16:04:38Z" end-time="2026-11-15 16:04:41Z" duration="3.085434" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1006" name="HudInputTests" fullname="MarsTrainer.Tests.HudInputTests" classname="MarsTrainer.Tests.HudInputTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-11-15 16:04:38Z" end-time="2026-11-15 16:04:38Z" duration="0.370563" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1007" name="DisabledHudIgnoresEventsAndReenablePreservesWarnings" fullname="MarsTrainer.Tests.HudInputTests.DisabledHudIgnoresEventsAndReenablePreservesWarnings" methodname="DisabledHudIgnoresEventsAndReenablePreservesWarnings" classname="MarsTrainer.Tests.HudInputTests" runstate="Runnable" seed="1701794229" result="Passed" start-time="2026-11-15 16:04:38Z" end-time="2026-11-15 16:04:38Z" duration="0.020886" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+              </properties>
+            </test-case>
+            <test-case id="1009" name="KeyboardAndMouseAt1080p" fullname="MarsTrainer.Tests.HudInputTests.KeyboardAndMouseAt1080p" methodname="KeyboardAndMouseAt1080p" classname="MarsTrainer.Tests.HudInputTests" runstate="Runnable" seed="702262964" result="Passed" start-time="2026-11-15 16:04:38Z" end-time="2026-11-15 16:04:38Z" duration="0.225139" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+              </properties>
+            </test-case>
+            <test-case id="1008" name="KeyboardAndMouseAt720p" fullname="MarsTrainer.Tests.HudInputTests.KeyboardAndMouseAt720p" methodname="KeyboardAndMouseAt720p" classname="MarsTrainer.Tests.HudInputTests" runstate="Runnable" seed="1411525551" result="Passed" start-time="2026-11-15 16:04:38Z" end-time="2026-11-15 16:04:38Z" duration="0.123834" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1010" name="MissionHudBindingTests" fullname="MarsTrainer.Tests.MissionHudBindingTests" classname="MarsTrainer.Tests.MissionHudBindingTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-11-15 16:04:38Z" end-time="2026-11-15 16:04:38Z" duration="0.038274" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1011" name="HudLoadedAfterMissionBindsItsSavedActionButtons" fullname="MarsTrainer.Tests.MissionHudBindingTests.HudLoadedAfterMissionBindsItsSavedActionButtons" methodname="HudLoadedAfterMissionBindsItsSavedActionButtons" classname="MarsTrainer.Tests.MissionHudBindingTests" runstate="Runnable" seed="2119190484" result="Passed" start-time="2026-11-15 16:04:38Z" end-time="2026-11-15 16:04:38Z" duration="0.037809" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+              </properties>
+              <output><![CDATA[P9 heightmap missing or unreadable; using seeded terrain noise.
+P12_READY bundledData=True; seed=1768896297; rows=668; crops=3
+There are 2 audio listeners in the scene. Please ensure there is always exactly one audio listener in the scene.
+There are 2 audio listeners in the scene. Please ensure there is always exactly one audio listener in the scene.
+There are 2 audio listeners in the scene. Please ensure there is always exactly one audio listener in the scene.
+There are 2 audio listeners in the scene. Please ensure there is always exactly one audio listener in the scene.
+]]></output>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1012" name="OpenWorldTraversalTests" fullname="MarsTrainer.Tests.OpenWorldTraversalTests" classname="MarsTrainer.Tests.OpenWorldTraversalTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-11-15 16:04:38Z" end-time="2026-11-15 16:04:40Z" duration="2.371961" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1013" name="MainWalksBeyondTheOldArenaOnOriginalElevationAndKitBlocksMovement" fullname="MarsTrainer.Tests.OpenWorldTraversalTests.MainWalksBeyondTheOldArenaOnOriginalElevationAndKitBlocksMovement" methodname="MainWalksBeyondTheOldArenaOnOriginalElevationAndKitBlocksMovement" classname="MarsTrainer.Tests.OpenWorldTraversalTests" runstate="Runnable" seed="922093105" result="Passed" start-time="2026-11-15 16:04:38Z" end-time="2026-11-15 16:04:40Z" duration="2.371438" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+              </properties>
+              <output><![CDATA[P12_READY bundledData=True; seed=1768896456; rows=668; crops=3
+OPEN_WORLD_READY width=203891; depth=204800; scale=1
+OPEN_WORLD_WALK distance=458.211; allocations=0; terrainTriangles=28032
+]]></output>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1014" name="PlayableGameTests" fullname="MarsTrainer.Tests.PlayableGameTests" classname="MarsTrainer.Tests.PlayableGameTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-11-15 16:04:40Z" end-time="2026-11-15 16:04:41Z" duration="0.304158" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1015" name="MainConnectsTerrainFarmActionsRecallAndReplay" fullname="MarsTrainer.Tests.PlayableGameTests.MainConnectsTerrainFarmActionsRecallAndReplay" methodname="MainConnectsTerrainFarmActionsRecallAndReplay" classname="MarsTrainer.Tests.PlayableGameTests" runstate="Runnable" seed="369038813" result="Passed" start-time="2026-11-15 16:04:40Z" end-time="2026-11-15 16:04:41Z" duration="0.303652" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+              </properties>
+              <output><![CDATA[P12_READY bundledData=True; seed=1768898828; rows=668; crops=3
+OPEN_WORLD_READY width=203891; depth=204800; scale=1
+]]></output>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

@@ -1,0 +1,10 @@
+{
+  "name": "MarsTrainer.Core",
+  "rootNamespace": "MarsTrainer.Core",
+  "references": [
+    "MarsTrainer.Sim",
+    "MarsTrainer.Data",
+    "MarsTrainer.Sim.Research"
+  ],
+  "noEngineReferences": false
+}

@@ -1,0 +1,5 @@
+{
+  "name": "MarsTrainer.Terrain",
+  "rootNamespace": "MarsSurvival.World",
+  "references": ["Unity.Collections"]
+}

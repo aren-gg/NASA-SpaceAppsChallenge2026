@@ -1,0 +1,17 @@
+macOS build: Succeeded errors=0
+macOS launch exit: 0
+P12_READY bundledData=True; seed=1735727108; rows=668; crops=3
+P12_SMOKE_PASS
+
+WebGL build: Succeeded errors=0
+Browser: Chrome, http://127.0.0.1:8765/?p12=responsive
+Observed console: P12_READY bundledData=True; seed=-295955; rows=668; crops=3
+Observed controls: Volume 100% -> 50%; Text size standard -> large.
+Observed viewport: 16:9 canvas fits narrow browser without clipping.
+
+127.0.0.1 - - [15/Nov/2026 01:05:36] "GET /StreamingAssets/mars_year_schedule.json HTTP/1.1" 200 -
+127.0.0.1 - - [15/Nov/2026 01:05:37] "GET /StreamingAssets/crop_parameters.json HTTP/1.1" 200 -
+127.0.0.1 - - [15/Nov/2026 01:11:50] "GET /StreamingAssets/mars_year_schedule.json HTTP/1.1" 304 -
+127.0.0.1 - - [15/Nov/2026 01:11:51] "GET /StreamingAssets/crop_parameters.json HTTP/1.1" 304 -
+
+Engine diagnostics observed: unused HDRDebugView shader unsupported on this WebGL GPU; audio-context warnings before a user gesture. These did not prevent startup, data loading, or settings interaction.

@@ -1,0 +1,4 @@
+{
+  "name": "MarsTrainer.Integration",
+  "references": ["MarsTrainer.Terrain", "MarsWeather.Runtime"]
+}

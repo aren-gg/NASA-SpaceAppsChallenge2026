@@ -1,0 +1,21 @@
+{
+  "name": "MarsTrainer.Tests.UI.PlayMode",
+  "references": [
+    "MarsTrainer.UI",
+    "MarsTrainer.Core",
+    "MarsTrainer.Gameplay.World",
+    "MarsTrainer.Sim",
+    "MarsTrainer.Sim.Research",
+    "Unity.ugui",
+    "Unity.TextMeshPro",
+    "Unity.InputSystem",
+    "MarsTrainer.Data.Research",
+    "MarsTrainer.Gameplay",
+    "MarsTrainer.Gameplay.Player",
+    "MarsTrainer.Terrain",
+    "MarsTrainer.Sim.World"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

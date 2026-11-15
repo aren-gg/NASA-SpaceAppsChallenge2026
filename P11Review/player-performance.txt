@@ -1,0 +1,5 @@
+macOS development player, 1600x900, VSync off, uncapped. 2s warmup and 3s sample per state.
+day: max draws=99, mean=0.81ms, p95=1.21ms, mean fps=1230.5, particles=0
+storm: max draws=101, mean=0.90ms, p95=1.31ms, mean fps=1110.0, particles=483
+flare: max draws=101, mean=1.01ms, p95=1.51ms, mean fps=988.2, particles=194
+cold-night: max draws=99, mean=0.86ms, p95=1.30ms, mean fps=1156.5, particles=0

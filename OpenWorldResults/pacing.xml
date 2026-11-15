@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="20" result="Passed" total="20" passed="20" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.0618744">
+  <test-suite type="TestSuite" id="1208" name="My project" fullname="My project" runstate="Runnable" testcasecount="160" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.061874" total="20" passed="20" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties />
+    <test-suite type="Assembly" id="1387" name="MarsTrainer.Tests.EditMode.dll" fullname="/private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Library/ScriptAssemblies/MarsTrainer.Tests.EditMode.dll" runstate="Runnable" testcasecount="146" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.049590" total="20" passed="20" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="55535" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <test-suite type="TestSuite" id="1388" name="MarsTrainer" fullname="MarsTrainer" runstate="Runnable" testcasecount="146" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.048289" total="20" passed="20" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1389" name="Tests" fullname="MarsTrainer.Tests" runstate="Runnable" testcasecount="146" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.047006" total="20" passed="20" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1275" name="OpenWorldPacingTests" fullname="MarsTrainer.Tests.OpenWorldPacingTests" classname="MarsTrainer.Tests.OpenWorldPacingTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.013587" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1276" name="ExplorationDurationDoesNotChangeTheDefaultMissionClock" fullname="MarsTrainer.Tests.OpenWorldPacingTests.ExplorationDurationDoesNotChangeTheDefaultMissionClock" methodname="ExplorationDurationDoesNotChangeTheDefaultMissionClock" classname="MarsTrainer.Tests.OpenWorldPacingTests" runstate="Runnable" seed="22811495" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.007331" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1277" name="ExplorationTankUsesItsOwnCapacityAndRefillsOnlyAtBase" fullname="MarsTrainer.Tests.OpenWorldPacingTests.ExplorationTankUsesItsOwnCapacityAndRefillsOnlyAtBase" methodname="ExplorationTankUsesItsOwnCapacityAndRefillsOnlyAtBase" classname="MarsTrainer.Tests.OpenWorldPacingTests" runstate="Runnable" seed="513407095" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.000955" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1315" name="SimulationTests" fullname="MarsTrainer.Tests.SimulationTests" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" testcasecount="13" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.015085" total="13" passed="13" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1317" name="ClockClampsAtMissionEnd" fullname="MarsTrainer.Tests.SimulationTests.ClockClampsAtMissionEnd" methodname="ClockClampsAtMissionEnd" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="1624621091" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.000361" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1316" name="ClockUsesRunDurationAndSupportsSpeedsAndPause" fullname="MarsTrainer.Tests.SimulationTests.ClockUsesRunDurationAndSupportsSpeedsAndPause" methodname="ClockUsesRunDurationAndSupportsSpeedsAndPause" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="441754406" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.001240" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1325" name="FractionalOxygenDeadlineAtLaterSolDoesNotStall" fullname="MarsTrainer.Tests.SimulationTests.FractionalOxygenDeadlineAtLaterSolDoesNotStall" methodname="FractionalOxygenDeadlineAtLaterSolDoesNotStall" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="1132263628" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.000494" asserts="0">
+              <properties>
+                <property name="Timeout" value="1000" />
+              </properties>
+            </test-case>
+            <test-case id="1328" name="HeadlessMissionCompletesUnderOneSecondWithEverySolEmittedOnce" fullname="MarsTrainer.Tests.SimulationTests.HeadlessMissionCompletesUnderOneSecondWithEverySolEmittedOnce" methodname="HeadlessMissionCompletesUnderOneSecondWithEverySolEmittedOnce" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="1660710928" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.003978" asserts="0">
+              <properties />
+              <output><![CDATA[668-sol run: 3.0674 ms
+]]></output>
+            </test-case>
+            <test-case id="1321" name="HealthDeathIsImmediateAndEmittedOnceEvenWhilePaused" fullname="MarsTrainer.Tests.SimulationTests.HealthDeathIsImmediateAndEmittedOnceEvenWhilePaused" methodname="HealthDeathIsImmediateAndEmittedOnceEvenWhilePaused" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="1972731681" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.000202" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1324" name="LargeTickStopsExactlyAtOxygenDeadline" fullname="MarsTrainer.Tests.SimulationTests.LargeTickStopsExactlyAtOxygenDeadline" methodname="LargeTickStopsExactlyAtOxygenDeadline" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="838169794" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.000091" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1319" name="ModifiersStackReplaceAndRemoveBySourceAndStat" fullname="MarsTrainer.Tests.SimulationTests.ModifiersStackReplaceAndRemoveBySourceAndStat" methodname="ModifiersStackReplaceAndRemoveBySourceAndStat" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="618761777" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.000790" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1322" name="OxygenLossUsesContinuousSolTimeAndResetsOnRecovery" fullname="MarsTrainer.Tests.SimulationTests.OxygenLossUsesContinuousSolTimeAndResetsOnRecovery" methodname="OxygenLossUsesContinuousSolTimeAndResetsOnRecovery" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="437713962" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.000132" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1323" name="PausingAndSpeedControlSystemTimeAndOxygenGrace" fullname="MarsTrainer.Tests.SimulationTests.PausingAndSpeedControlSystemTimeAndOxygenGrace" methodname="PausingAndSpeedControlSystemTimeAndOxygenGrace" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="56623347" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.000128" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1318" name="StateClampsVitalStats" fullname="MarsTrainer.Tests.SimulationTests.StateClampsVitalStats" methodname="StateClampsVitalStats" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="1380196472" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.000170" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1326" name="SystemDeathTakesPriorityOverMissionCompletion" fullname="MarsTrainer.Tests.SimulationTests.SystemDeathTakesPriorityOverMissionCompletion" methodname="SystemDeathTakesPriorityOverMissionCompletion" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="336219422" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.000172" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1320" name="SystemsRunInStableOrderWithSolTimeAndDefaultSlots" fullname="MarsTrainer.Tests.SimulationTests.SystemsRunInStableOrderWithSolTimeAndDefaultSlots" methodname="SystemsRunInStableOrderWithSolTimeAndDefaultSlots" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="1530287850" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.000906" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1327" name="TypedEventsReportTransitionsAndEventIds" fullname="MarsTrainer.Tests.SimulationTests.TypedEventsReportTransitionsAndEventIds" methodname="TypedEventsReportTransitionsAndEventIds" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="294973231" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.000288" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1381" name="WorldTests" fullname="MarsTrainer.Tests.WorldTests" classname="MarsTrainer.Tests.WorldTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.010750" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1383" name="BaseRefillsTankAndPausedClockDoesNotSpendSprintResources" fullname="MarsTrainer.Tests.WorldTests.BaseRefillsTankAndPausedClockDoesNotSpendSprintResources" methodname="BaseRefillsTankAndPausedClockDoesNotSpendSprintResources" classname="MarsTrainer.Tests.WorldTests" runstate="Runnable" seed="1637908937" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.000383" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1386" name="ExhaustedTankCausesHypoxiaAndClockSpeedScalesExposure" fullname="MarsTrainer.Tests.WorldTests.ExhaustedTankCausesHypoxiaAndClockSpeedScalesExposure" methodname="ExhaustedTankCausesHypoxiaAndClockSpeedScalesExposure" classname="MarsTrainer.Tests.WorldTests" runstate="Runnable" seed="536994268" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.000797" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1382" name="PoweredSurvivalCannotRefillAnOutdoorTank" fullname="MarsTrainer.Tests.WorldTests.PoweredSurvivalCannotRefillAnOutdoorTank" methodname="PoweredSurvivalCannotRefillAnOutdoorTank" classname="MarsTrainer.Tests.WorldTests" runstate="Runnable" seed="383640697" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.000122" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1384" name="SprintCostsPowerAndFatigueAndCannotOverdraw" fullname="MarsTrainer.Tests.WorldTests.SprintCostsPowerAndFatigueAndCannotOverdraw" methodname="SprintCostsPowerAndFatigueAndCannotOverdraw" classname="MarsTrainer.Tests.WorldTests" runstate="Runnable" seed="230712224" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.000185" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1385" name="SprintPaymentPersistsInTheSharedBattery" fullname="MarsTrainer.Tests.WorldTests.SprintPaymentPersistsInTheSharedBattery" methodname="SprintPaymentPersistsInTheSharedBattery" classname="MarsTrainer.Tests.WorldTests" runstate="Runnable" seed="1641112136" result="Passed" start-time="2026-11-15 07:48:03Z" end-time="2026-11-15 07:48:03Z" duration="0.000796" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

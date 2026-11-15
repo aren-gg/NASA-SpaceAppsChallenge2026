@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="3" result="Failed(Child)" total="3" passed="0" failed="3" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-15 07:45:47Z" end-time="2026-11-15 07:45:47Z" duration="0.0878407">
+  <test-suite type="TestSuite" id="1208" name="My project" fullname="My project" runstate="Runnable" testcasecount="160" result="Failed" site="Child" start-time="2026-11-15 07:45:47Z" end-time="2026-11-15 07:45:47Z" duration="0.087841" total="3" passed="0" failed="3" inconclusive="0" skipped="0" asserts="0">
+    <properties />
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1387" name="MarsTrainer.Tests.EditMode.dll" fullname="/private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Library/ScriptAssemblies/MarsTrainer.Tests.EditMode.dll" runstate="Runnable" testcasecount="146" result="Failed" site="Child" start-time="2026-11-15 07:45:47Z" end-time="2026-11-15 07:45:47Z" duration="0.019255" total="2" passed="0" failed="2" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="55182" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestSuite" id="1388" name="MarsTrainer" fullname="MarsTrainer" runstate="Runnable" testcasecount="146" result="Failed" site="Child" start-time="2026-11-15 07:45:47Z" end-time="2026-11-15 07:45:47Z" duration="0.018261" total="2" passed="0" failed="2" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-suite type="TestSuite" id="1389" name="Tests" fullname="MarsTrainer.Tests" runstate="Runnable" testcasecount="146" result="Failed" site="Child" start-time="2026-11-15 07:45:47Z" end-time="2026-11-15 07:45:47Z" duration="0.017359" total="2" passed="0" failed="2" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <failure>
+            <message><![CDATA[One or more child tests had errors]]></message>
+          </failure>
+          <test-suite type="TestFixture" id="1275" name="OpenWorldPacingTests" fullname="MarsTrainer.Tests.OpenWorldPacingTests" classname="MarsTrainer.Tests.OpenWorldPacingTests" runstate="Runnable" testcasecount="2" result="Failed" site="Child" start-time="2026-11-15 07:45:47Z" end-time="2026-11-15 07:45:47Z" duration="0.010684" total="2" passed="0" failed="2" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <failure>
+              <message><![CDATA[One or more child tests had errors]]></message>
+            </failure>
+            <test-case id="1276" name="ExplorationDurationDoesNotChangeTheDefaultMissionClock" fullname="MarsTrainer.Tests.OpenWorldPacingTests.ExplorationDurationDoesNotChangeTheDefaultMissionClock" methodname="ExplorationDurationDoesNotChangeTheDefaultMissionClock" classname="MarsTrainer.Tests.OpenWorldPacingTests" runstate="Runnable" seed="797576867" result="Failed" label="Error" start-time="2026-11-15 07:45:47Z" end-time="2026-11-15 07:45:47Z" duration="0.004833" asserts="0">
+              <properties />
+              <failure>
+                <message><![CDATA[System.MissingMethodException : Constructor on type 'MarsTrainer.Core.MissionSession' not found.]]></message>
+                <stack-trace><![CDATA[  at System.RuntimeType.CreateInstanceImpl (System.Reflection.BindingFlags bindingAttr, System.Reflection.Binder binder, System.Object[] args, System.Globalization.CultureInfo culture, System.Object[] activationAttributes, System.Threading.StackCrawlMark& stackMark) [0x0022b] in <e307bbb467104258887a104f6151f183>:0 
+  at System.Activator.CreateInstance (System.Type type, System.Reflection.BindingFlags bindingAttr, System.Reflection.Binder binder, System.Object[] args, System.Globalization.CultureInfo culture, System.Object[] activationAttributes) [0x0009c] in <e307bbb467104258887a104f6151f183>:0 
+  at System.Activator.CreateInstance (System.Type type, System.Object[] args) [0x00000] in <e307bbb467104258887a104f6151f183>:0 
+  at MarsTrainer.Tests.OpenWorldPacingTests.ExplorationDurationDoesNotChangeTheDefaultMissionClock () [0x00000] in /private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Assets/Tests/EditMode/OpenWorldPacingTests.cs:15 
+  at (wrapper managed-to-native) System.Reflection.RuntimeMethodInfo.InternalInvoke(System.Reflection.RuntimeMethodInfo,object,object[],System.Exception&)
+  at System.Reflection.RuntimeMethodInfo.Invoke (System.Object obj, System.Reflection.BindingFlags invokeAttr, System.Reflection.Binder binder, System.Object[] parameters, System.Globalization.CultureInfo culture) [0x0006a] in <e307bbb467104258887a104f6151f183>:0 ]]></stack-trace>
+              </failure>
+            </test-case>
+            <test-case id="1277" name="ExplorationTankUsesItsOwnCapacityAndRefillsOnlyAtBase" fullname="MarsTrainer.Tests.OpenWorldPacingTests.ExplorationTankUsesItsOwnCapacityAndRefillsOnlyAtBase" methodname="ExplorationTankUsesItsOwnCapacityAndRefillsOnlyAtBase" classname="MarsTrainer.Tests.OpenWorldPacingTests" runstate="Runnable" seed="1185705875" result="Failed" label="Error" start-time="2026-11-15 07:45:47Z" end-time="2026-11-15 07:45:47Z" duration="0.000558" asserts="0">
+              <properties />
+              <failure>
+                <message><![CDATA[System.MissingMethodException : Constructor on type 'MarsTrainer.Sim.World.ExpeditionSystem' not found.]]></message>
+                <stack-trace><![CDATA[  at System.RuntimeType.CreateInstanceImpl (System.Reflection.BindingFlags bindingAttr, System.Reflection.Binder binder, System.Object[] args, System.Globalization.CultureInfo culture, System.Object[] activationAttributes, System.Threading.StackCrawlMark& stackMark) [0x0022b] in <e307bbb467104258887a104f6151f183>:0 
+  at System.Activator.CreateInstance (System.Type type, System.Reflection.BindingFlags bindingAttr, System.Reflection.Binder binder, System.Object[] args, System.Globalization.CultureInfo culture, System.Object[] activationAttributes) [0x0009c] in <e307bbb467104258887a104f6151f183>:0 
+  at System.Activator.CreateInstance (System.Type type, System.Object[] args) [0x00000] in <e307bbb467104258887a104f6151f183>:0 
+  at MarsTrainer.Tests.OpenWorldPacingTests.ExplorationTankUsesItsOwnCapacityAndRefillsOnlyAtBase () [0x00018] in /private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Assets/Tests/EditMode/OpenWorldPacingTests.cs:27 
+  at (wrapper managed-to-native) System.Reflection.RuntimeMethodInfo.InternalInvoke(System.Reflection.RuntimeMethodInfo,object,object[],System.Exception&)
+  at System.Reflection.RuntimeMethodInfo.Invoke (System.Object obj, System.Reflection.BindingFlags invokeAttr, System.Reflection.Binder binder, System.Object[] parameters, System.Globalization.CultureInfo culture) [0x0006a] in <e307bbb467104258887a104f6151f183>:0 ]]></stack-trace>
+              </failure>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+    <test-suite type="Assembly" id="1408" name="MarsTrainer.Tests.UI.dll" fullname="/private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Library/ScriptAssemblies/MarsTrainer.Tests.UI.dll" runstate="Runnable" testcasecount="14" result="Failed" site="Child" start-time="2026-11-15 07:45:47Z" end-time="2026-11-15 07:45:47Z" duration="0.058929" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="55182" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestSuite" id="1409" name="MarsTrainer" fullname="MarsTrainer" runstate="Runnable" testcasecount="14" result="Failed" site="Child" start-time="2026-11-15 07:45:47Z" end-time="2026-11-15 07:45:47Z" duration="0.058422" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-suite type="TestSuite" id="1410" name="Tests" fullname="MarsTrainer.Tests" runstate="Runnable" testcasecount="14" result="Failed" site="Child" start-time="2026-11-15 07:45:47Z" end-time="2026-11-15 07:45:47Z" duration="0.058068" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <failure>
+            <message><![CDATA[One or more child tests had errors]]></message>
+          </failure>
+          <test-suite type="TestFixture" id="1399" name="MinimalHudTests" fullname="MarsTrainer.Tests.MinimalHudTests" classname="MarsTrainer.Tests.MinimalHudTests" runstate="Runnable" testcasecount="1" result="Failed" site="Child" start-time="2026-11-15 07:45:47Z" end-time="2026-11-15 07:45:47Z" duration="0.057699" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <failure>
+              <message><![CDATA[One or more child tests had errors]]></message>
+            </failure>
+            <test-case id="1400" name="DefaultHudKeepsDetailedActionsAndMetersOffTheWorldView" fullname="MarsTrainer.Tests.MinimalHudTests.DefaultHudKeepsDetailedActionsAndMetersOffTheWorldView" methodname="DefaultHudKeepsDetailedActionsAndMetersOffTheWorldView" classname="MarsTrainer.Tests.MinimalHudTests" runstate="Runnable" seed="208945034" result="Failed" start-time="2026-11-15 07:45:47Z" end-time="2026-11-15 07:45:47Z" duration="0.057387" asserts="0">
+              <properties />
+              <failure>
+                <message><![CDATA[  Detailed actions belong in the closed field kit.
+  Expected: null
+  But was:  <Base actions (MarsTrainer.UI.MissionControls)>
+]]></message>
+                <stack-trace><![CDATA[at MarsTrainer.Tests.MinimalHudTests.DefaultHudKeepsDetailedActionsAndMetersOffTheWorldView () [0x00006] in /private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Assets/Tests/EditMode/UI/MinimalHudTests.cs:15
+]]></stack-trace>
+              </failure>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

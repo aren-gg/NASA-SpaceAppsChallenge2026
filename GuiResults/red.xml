@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Failed(Child)" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-15 15:36:21Z" end-time="2026-11-15 15:36:21Z" duration="0.1833468">
+  <test-suite type="TestSuite" id="1210" name="My project" fullname="My project" runstate="Runnable" testcasecount="161" result="Failed" site="Child" start-time="2026-11-15 15:36:21Z" end-time="2026-11-15 15:36:21Z" duration="0.183347" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+    <properties />
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1412" name="MarsTrainer.Tests.UI.dll" fullname="/private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Library/ScriptAssemblies/MarsTrainer.Tests.UI.dll" runstate="Runnable" testcasecount="15" result="Failed" site="Child" start-time="2026-11-15 15:36:21Z" end-time="2026-11-15 15:36:21Z" duration="0.152451" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="1702" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestSuite" id="1413" name="MarsTrainer" fullname="MarsTrainer" runstate="Runnable" testcasecount="15" result="Failed" site="Child" start-time="2026-11-15 15:36:21Z" end-time="2026-11-15 15:36:21Z" duration="0.149920" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-suite type="TestSuite" id="1414" name="Tests" fullname="MarsTrainer.Tests" runstate="Runnable" testcasecount="15" result="Failed" site="Child" start-time="2026-11-15 15:36:21Z" end-time="2026-11-15 15:36:21Z" duration="0.148841" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <failure>
+            <message><![CDATA[One or more child tests had errors]]></message>
+          </failure>
+          <test-suite type="TestFixture" id="1403" name="ResourceHudTests" fullname="MarsTrainer.Tests.ResourceHudTests" classname="MarsTrainer.Tests.ResourceHudTests" runstate="Runnable" testcasecount="1" result="Failed" site="Child" start-time="2026-11-15 15:36:21Z" end-time="2026-11-15 15:36:21Z" duration="0.147062" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <failure>
+              <message><![CDATA[One or more child tests had errors]]></message>
+            </failure>
+            <test-case id="1404" name="OxygenIsFirstAndFoodWaterAreDirectHudActions" fullname="MarsTrainer.Tests.ResourceHudTests.OxygenIsFirstAndFoodWaterAreDirectHudActions" methodname="OxygenIsFirstAndFoodWaterAreDirectHudActions" classname="MarsTrainer.Tests.ResourceHudTests" runstate="Runnable" seed="651737884" result="Failed" start-time="2026-11-15 15:36:21Z" end-time="2026-11-15 15:36:21Z" duration="0.136115" asserts="0">
+              <properties />
+              <failure>
+                <message><![CDATA[  Oxygen needs the clearest place in the survival cluster.
+  Expected string length 3 but was 6. Strings differ at index 0.
+  Expected: "Air"
+  But was:  "Health"
+  -----------^
+]]></message>
+                <stack-trace><![CDATA[at MarsTrainer.Tests.ResourceHudTests.OxygenIsFirstAndFoodWaterAreDirectHudActions () [0x00016] in /private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Assets/Tests/EditMode/UI/ResourceHudTests.cs:19
+]]></stack-trace>
+              </failure>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

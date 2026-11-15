@@ -8,8 +8,8 @@ namespace MarsWeather
     {
         public WeatherController weather;
         Text heading, detail;
-        readonly string[] names={"CLEAR","SOLAR FLARE","DUST STORM","HEAT STORM","COLD NIGHT"};
-        readonly string[] notes={"Clear weather • soft daylight and a muted mineral sky", "Solar particle alert • sky glow is an artistic warning, not a radiation measurement", "Windblown dust • layered haze, reduced visibility and warm scattering", "Heat wave • dense rising flecks, tall thermal wisps and subtle sky shimmer", "Cold night • dim blue light, distant stars and a dark violet horizon"};
+        readonly string[] names={"SUNSET / DAY","SOLAR FLARE","DUST STORM","HEAT STORM","COLD NIGHT"};
+        readonly string[] notes={"Clear skies • warm light, pink haze and violet shadows", "Solar particle alert • sky glow is an artistic warning, not a radiation measurement", "Windblown dust • layered haze, reduced visibility and warm scattering", "Heat wave • dense rising flecks, tall thermal wisps and subtle sky shimmer", "Cold night • violet darkness, distant stars and frost at the visor edges"};
         void Start()
         {
             var canvasObject=new GameObject("Preview controls",typeof(Canvas),typeof(CanvasScaler),typeof(GraphicRaycaster));
@@ -18,9 +18,9 @@ namespace MarsWeather
             var scaler=canvasObject.GetComponent<CanvasScaler>(); scaler.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize; scaler.referenceResolution=new Vector2(1440,900);
             var root=canvasObject.transform;
             if(FindObjectOfType<EventSystem>()==null) { var events=new GameObject("Preview input",typeof(EventSystem),typeof(StandaloneInputModule)); events.transform.SetParent(transform); }
-            heading=Text(root,"WEATHER LAB",36,new Vector2(.04f,.85f),new Vector2(.8f,.93f));
+            heading=Text(root,"FIELD WEATHER",36,new Vector2(.04f,.85f),new Vector2(.8f,.93f));
             detail=Text(root,notes[0],17,new Vector2(.04f,.78f),new Vector2(.9f,.85f));
-            Text(root,"MARS  /  ATMOSPHERE STUDIES",13,new Vector2(.04f,.94f),new Vector2(.65f,.99f));
+            Text(root,"MARS TRAINER  /  P11 LOOK STUDY",13,new Vector2(.04f,.94f),new Vector2(.65f,.99f));
             for(int i=0;i<5;i++)
             {
                 int index=i;
@@ -30,7 +30,7 @@ namespace MarsWeather
                 go.GetComponent<Button>().onClick.AddListener(()=>weather.Activate((WeatherEvent)index,weather.intensity));
                 Text(go.transform,(i+1)+"  "+names[i],16,Vector2.zero,Vector2.one).alignment=TextAnchor.MiddleCenter;
             }
-            Text(root,"1–5 switch event  •  3-second transitions  •  reusable weather prefab",14,new Vector2(.04f,.025f),new Vector2(.95f,.065f));
+            Text(root,"1–5 switch weather  •  sol-hour lighting  •  eight matte colours",14,new Vector2(.04f,.025f),new Vector2(.95f,.065f));
         }
         void Update()
         {

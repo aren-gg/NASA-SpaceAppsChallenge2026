@@ -1,0 +1,19 @@
+{
+  "name": "MarsTrainer.Tests.UI",
+  "references": [
+    "MarsTrainer.UI",
+    "MarsTrainer.Core",
+    "MarsTrainer.Data",
+    "MarsTrainer.Sim",
+    "Unity.ugui",
+    "Unity.TextMeshPro",
+    "MarsTrainer.Sim.Research",
+    "MarsTrainer.Data.Research"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

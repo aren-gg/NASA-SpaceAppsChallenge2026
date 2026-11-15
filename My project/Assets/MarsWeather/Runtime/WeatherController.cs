@@ -1,21 +1,25 @@
 using System;
+using MarsTrainer.Look;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.UI;
 
 namespace MarsWeather
 {
     public enum WeatherEvent { Clear, SolarFlare, DustStorm, HeatStorm, ColdNight }
 
-    /// <summary>Standalone visual weather. Owns atmosphere only while enabled; no terrain or survival dependencies.</summary>
+    /// <summary>Presentation only. Gameplay supplies sol hour and independent weather weights.</summary>
     public sealed class WeatherController : MonoBehaviour
     {
         public Light sun;
         public Material skyTemplate;
         public Material particleMaterial;
-        [Range(0, 1)] public float intensity = 1f;
-        [Min(0)] public float transitionSeconds = 3f;
+        public MarsLookProfile look;
+        [Range(0, 1)] public float intensity = 1;
+        [Min(0)] public float transitionSeconds = 3;
         public bool controlAtmosphere = true;
+        [Range(0, 24)] public float solHour = 16;
         public event Action<WeatherEvent> WeatherChanged;
         public WeatherEvent Current { get; private set; }
         public float DustAmount { get; private set; }
@@ -23,169 +27,232 @@ namespace MarsWeather
         public float HeatAmount { get; private set; }
         public float ColdAmount { get; private set; }
         public float RemainingSeconds { get; private set; }
+        public float NightAmount { get; private set; }
+        public int ParticleCount => dust == null ? 0 : dust.particleCount + haze.particleCount + heatFlecks.particleCount + heatWisps.particleCount;
+        private Material sky, edges;
+        private ParticleSystem dust, haze, heatFlecks, heatWisps;
+        private ParticleSystemRenderer dustRenderer, hazeRenderer, heatRenderer, wispRenderer;
+        private VolumeProfile profile;
+        private Volume volume;
+        private ColorAdjustments grading;
+        private Bloom bloom;
+        private Vignette vignette;
+        private GameObject effects;
+        private Transform skyDome;
+        private Camera viewerCamera;
+        private MaterialPropertyBlock opacity;
+        private bool driven, warning, ownsLook, saved;
+        private float targetDust, targetSolar, targetHeat, targetCold, elapsed, flashRemaining;
+        private Material previousSky;
+        private bool previousFog;
+        private FogMode previousFogMode;
+        private float previousFogDensity, previousSunIntensity;
+        private Color previousFogColor, previousAmbient, previousSunColor, previousShadow;
+        private AmbientMode previousAmbientMode;
+        private Quaternion previousSunRotation;
 
-        Material sky;
-        ParticleSystem dust, haze, sparks, heatWisps, stars;
-        Volume volume;
-        VolumeProfile profile;
-        ColorAdjustments grading;
-        Bloom bloom;
-        Vignette vignette;
-        float dustWeight, solarWeight, heatWeight, coldWeight;
-        bool saved;
-        Material previousSky;
-        bool previousFog;
-        FogMode previousFogMode;
-        float previousFogDensity;
-        Color previousFogColor, previousAmbient, previousSunColor;
-        AmbientMode previousAmbientMode;
-        float previousSunIntensity;
-        Quaternion previousSunRotation;
-        GameObject effects;
-        MaterialPropertyBlock opacityBlock;
-
-        public void Activate(WeatherEvent weather, float strength = 1f, float durationSeconds = 0f)
+        public void Activate(WeatherEvent weather, float strength = 1, float durationSeconds = 0)
         {
+            driven = false;
+            if (weather == WeatherEvent.SolarFlare && Current != weather && look != null) flashRemaining = look.flareFlashSeconds;
             Current = weather;
             intensity = Mathf.Clamp01(strength);
-            RemainingSeconds = Mathf.Max(0, durationSeconds); // zero stays active until stopped
+            RemainingSeconds = Mathf.Max(0, durationSeconds);
+            solHour = weather == WeatherEvent.ColdNight ? 0 : look == null ? 16 : look.previewHour;
             WeatherChanged?.Invoke(Current);
         }
         public void StopWeather() { Activate(WeatherEvent.Clear); }
-
-        void OnEnable()
+        public void SetPresentation(float dust, float solar, float heat, float cold, float hour, bool warned)
         {
-            opacityBlock = new MaterialPropertyBlock();
-            if (controlAtmosphere)
+            if (solar > targetSolar && targetSolar <= 0 && look != null) flashRemaining = look.flareFlashSeconds;
+            driven = true;
+            targetDust = Mathf.Clamp01(dust); targetSolar = Mathf.Clamp01(solar);
+            targetHeat = Mathf.Clamp01(heat); targetCold = Mathf.Clamp01(cold);
+            solHour = Mathf.Repeat(hour, look == null ? 24 : look.hoursPerSol);
+            warning = warned;
+        }
+        public void ReleasePresentation()
+        {
+            driven = false; warning = false;
+            targetDust = targetSolar = targetHeat = targetCold = 0;
+            Current = WeatherEvent.Clear;
+        }
+        private void OnEnable()
+        {
+            if (look == null)
             {
-                previousSky = RenderSettings.skybox;
-                previousFog = RenderSettings.fog;
-                previousFogMode = RenderSettings.fogMode;
-                previousFogDensity = RenderSettings.fogDensity;
-                previousFogColor = RenderSettings.fogColor;
-                previousAmbient = RenderSettings.ambientLight;
-                previousAmbientMode = RenderSettings.ambientMode;
-                if (sun != null)
-                {
-                    previousSunColor = sun.color;
-                    previousSunIntensity = sun.intensity;
-                    previousSunRotation = sun.transform.rotation;
-                }
-                saved = true;
-                if (skyTemplate != null) { sky = new Material(skyTemplate); RenderSettings.skybox = sky; }
+                look = ScriptableObject.CreateInstance<MarsLookProfile>(); ownsLook = true;
+                Debug.LogWarning("P11 look profile missing; using default look settings.", this);
             }
-            effects = new GameObject("Weather effects");
-            effects.transform.SetParent(transform, false);
-            dust = Particles("Windblown fine dust", 1800, 8f, 0.16f, new Color(.72f,.39f,.25f,.48f), new Vector3(42,12,38), new Vector3(-14,0,2));
-            haze = Particles("Rolling dust banks", 120, 12f, 10f, new Color(.71f,.40f,.29f,.065f), new Vector3(48,5,42), new Vector3(-3,0,0));
-            sparks = Particles("Thermal air flecks", 900, 6f, .13f, new Color(.98f,.72f,.47f,.6f), new Vector3(36,2,30), new Vector3(.3f,1.5f,0));
-            sparks.transform.localPosition = Vector3.up * 1.2f;
-            heatWisps = Particles("Rising heat wisps", 64, 6f, 2.2f, new Color(.92f,.65f,.43f,.075f), new Vector3(34,1,28), new Vector3(.2f,.9f,0));
-            heatWisps.transform.localPosition = Vector3.up * .7f;
-            var wispSize = heatWisps.main;
-            wispSize.startSize3D = true;
-            wispSize.startSizeX = new ParticleSystem.MinMaxCurve(1.2f,2.3f);
-            wispSize.startSizeY = new ParticleSystem.MinMaxCurve(3.5f,6f);
-            wispSize.startSizeZ = 1f;
-            stars = Particles("Distant night stars", 350, 120f, .13f, new Color(.76f,.78f,.94f,.85f), new Vector3(100,35,80), Vector3.zero);
-            stars.transform.localPosition = new Vector3(0,30,30);
-            var main = stars.main; main.startSpeed = 0; main.simulationSpace = ParticleSystemSimulationSpace.Local;
-            volume = effects.AddComponent<Volume>(); volume.isGlobal = true; volume.priority = 20; volume.weight = 1;
+            previousSky = RenderSettings.skybox; previousFog = RenderSettings.fog;
+            previousFogMode = RenderSettings.fogMode; previousFogDensity = RenderSettings.fogDensity;
+            previousFogColor = RenderSettings.fogColor; previousAmbient = RenderSettings.ambientLight;
+            previousAmbientMode = RenderSettings.ambientMode; previousShadow = RenderSettings.subtractiveShadowColor;
+            if (sun != null)
+            {
+                previousSunColor = sun.color; previousSunIntensity = sun.intensity; previousSunRotation = sun.transform.rotation;
+            }
+            saved = controlAtmosphere;
+            var template = look.skyMaterial != null ? look.skyMaterial : skyTemplate;
+            if (template != null) { sky = new Material(template); sky.renderQueue = (int)RenderQueue.Background; }
+            effects = new GameObject("P11 atmosphere"); effects.transform.SetParent(transform, false);
+            opacity = new MaterialPropertyBlock();
+            dust = CreateDust("Windblown dust", look.dustCapacity, look.dustSize, look.dustArea, look.dustVelocity, look.terracotta);
+            haze = CreateDust("Ground haze", look.hazeCapacity, look.hazeSize, look.dustArea, look.dustVelocity * look.hazeSpeedScale, look.rose);
+            dustRenderer = dust.GetComponent<ParticleSystemRenderer>(); hazeRenderer = haze.GetComponent<ParticleSystemRenderer>();
+            heatFlecks = CreateDust("Thermal flecks", look.heatCapacity, look.heatSize, look.heatArea, look.heatVelocity, look.orange);
+            heatWisps = CreateDust("Heat wisps", look.hazeCapacity, look.heatWispSize, look.heatArea, look.heatVelocity, look.sand);
+            heatRenderer = heatFlecks.GetComponent<ParticleSystemRenderer>(); wispRenderer = heatWisps.GetComponent<ParticleSystemRenderer>();
+            volume = effects.AddComponent<Volume>(); volume.isGlobal = true; volume.priority = look.volumePriority;
             profile = ScriptableObject.CreateInstance<VolumeProfile>(); volume.sharedProfile = profile;
             grading = profile.Add<ColorAdjustments>(true);
-            bloom = profile.Add<Bloom>(true); bloom.intensity.value = .12f; bloom.threshold.value = 1.1f;
-            vignette = profile.Add<Vignette>(true); vignette.intensity.value = .13f; vignette.smoothness.value = .5f;
+            bloom = profile.Add<Bloom>(true); bloom.threshold.value = look.bloomThreshold;
+            vignette = profile.Add<Vignette>(true); vignette.intensity.value = look.vignette;
+            if (look.edgeMaterial != null)
+            {
+                edges = new Material(look.edgeMaterial);
+                var canvas = new GameObject("Visor edges", typeof(Canvas)); canvas.transform.SetParent(effects.transform, false);
+                canvas.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
+                canvas.GetComponent<Canvas>().sortingOrder = look.edgeSortOrder;
+                var image = new GameObject("Frost and flare warning", typeof(RectTransform), typeof(RawImage));
+                image.transform.SetParent(canvas.transform, false);
+                var rect = (RectTransform)image.transform; rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one;
+                rect.offsetMin = rect.offsetMax = Vector2.zero;
+                var graphic = image.GetComponent<RawImage>(); graphic.texture = Texture2D.whiteTexture;
+                graphic.material = edges; graphic.raycastTarget = false;
+            }
+            EnablePostProcessing(Camera.main);
+            AdvanceVisuals(0);
         }
-
-        ParticleSystem Particles(string title, int max, float life, float size, Color color, Vector3 area, Vector3 velocity)
+        private ParticleSystem CreateDust(string label, int capacity, float size, Vector3 area, Vector3 velocity, Color tint)
         {
-            var go = new GameObject(title); go.transform.SetParent(effects.transform, false); go.transform.localPosition = Vector3.up * 5;
+            var go = new GameObject(label); go.transform.SetParent(effects.transform, false);
+            go.transform.localPosition = Vector3.up * area.y / 2;
             var ps = go.AddComponent<ParticleSystem>(); ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-            var main = ps.main; main.maxParticles = max; main.startLifetime = life; main.startSize = new ParticleSystem.MinMaxCurve(size*.55f,size*1.4f);
-            main.startColor = color; main.startSpeed = 0; main.simulationSpace = ParticleSystemSimulationSpace.World;
+            var main = ps.main; main.maxParticles = capacity; main.startLifetime = look.dustLife;
+            main.startSize = new ParticleSystem.MinMaxCurve(size * look.dustMinimumSizeScale, size); main.startSpeed = 0;
+            tint.a = size == look.hazeSize ? look.hazeAlpha : look.dustAlpha; main.startColor = tint;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
             var shape = ps.shape; shape.shapeType = ParticleSystemShapeType.Box; shape.scale = area;
             var motion = ps.velocityOverLifetime; motion.enabled = true; motion.space = ParticleSystemSimulationSpace.World;
             motion.x = velocity.x; motion.y = velocity.y; motion.z = velocity.z;
-            var noise = ps.noise; noise.enabled = true; noise.strength = .45f; noise.frequency = .18f; noise.scrollSpeed = .25f;
-            var fade = ps.colorOverLifetime; fade.enabled = true;
-            var gradient = new Gradient(); gradient.SetKeys(new[]{new GradientColorKey(Color.white,0),new GradientColorKey(Color.white,1)},
-                new[]{new GradientAlphaKey(0,0),new GradientAlphaKey(1,.16f),new GradientAlphaKey(.7f,.75f),new GradientAlphaKey(0,1)}); fade.color = gradient;
             var emission = ps.emission; emission.rateOverTime = 0;
-            var renderer = ps.GetComponent<ParticleSystemRenderer>(); renderer.sharedMaterial = particleMaterial;
+            var fade = ps.colorOverLifetime; fade.enabled = true;
+            var gradient = new Gradient(); gradient.SetKeys(new[] { new GradientColorKey(Color.white, 0), new GradientColorKey(Color.white, 1) },
+                new[] { new GradientAlphaKey(0, 0), new GradientAlphaKey(1, look.dustFadeIn), new GradientAlphaKey(0, 1) });
+            fade.color = gradient;
+            var renderer = ps.GetComponent<ParticleSystemRenderer>();
+            renderer.sharedMaterial = look.dustMaterial != null ? look.dustMaterial : particleMaterial;
             renderer.shadowCastingMode = ShadowCastingMode.Off; renderer.receiveShadows = false;
-            ps.useAutoRandomSeed = false; ps.randomSeed = (uint)(max + 17); ps.Play();
+            ps.useAutoRandomSeed = false; ps.randomSeed = (uint)capacity; ps.Play();
             return ps;
         }
-
-        void Update()
+        public void EnablePostProcessing(Camera camera)
         {
-            float dt = Time.deltaTime;
-            if (RemainingSeconds > 0) { RemainingSeconds -= dt; if (RemainingSeconds <= 0) StopWeather(); }
-            float step = transitionSeconds <= 0 ? 1f : dt / transitionSeconds;
-            dustWeight = Mathf.MoveTowards(dustWeight, Current == WeatherEvent.DustStorm ? intensity : 0, step);
-            solarWeight = Mathf.MoveTowards(solarWeight, Current == WeatherEvent.SolarFlare ? intensity : 0, step);
-            heatWeight = Mathf.MoveTowards(heatWeight, Current == WeatherEvent.HeatStorm ? intensity : 0, step);
-            coldWeight = Mathf.MoveTowards(coldWeight, Current == WeatherEvent.ColdNight ? intensity : 0, step);
-            if (coldWeight > 0 && stars.particleCount < 250) stars.Emit(250 - stars.particleCount);
-            DustAmount = dustWeight; SolarAmount = solarWeight; HeatAmount = heatWeight; ColdAmount = coldWeight;
-            Emit(dust, dustWeight*210); Emit(haze,dustWeight*7); Emit(sparks,heatWeight*140); Emit(heatWisps,heatWeight*9); Emit(stars,coldWeight*8);
-            FadeParticles(dust,dustWeight,new Color(.72f,.39f,.25f,.48f));
-            FadeParticles(haze,dustWeight,new Color(.71f,.40f,.29f,.065f));
-            FadeParticles(sparks,heatWeight,new Color(.98f,.72f,.47f,.6f));
-            FadeParticles(heatWisps,heatWeight,Color.white);
-            FadeParticles(stars,coldWeight,new Color(.76f,.78f,.94f,.85f));
-            float pulse = .5f + .5f*Mathf.Sin(Time.time*1.2f);
+            if (camera == null) return;
+            var data = camera.GetComponent<UniversalAdditionalCameraData>();
+            if (data == null) data = camera.gameObject.AddComponent<UniversalAdditionalCameraData>();
+            data.renderPostProcessing = true; camera.allowHDR = true;
+            viewerCamera = camera;
+            if (!controlAtmosphere || sky == null || skyDome != null) return;
+            var dome = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            dome.name = "Procedural Shader Graph sky dome";
+            dome.transform.SetParent(effects.transform, false);
+            dome.GetComponent<Collider>().enabled = false;
+            var renderer = dome.GetComponent<MeshRenderer>(); renderer.sharedMaterial = sky;
+            renderer.shadowCastingMode = ShadowCastingMode.Off; renderer.receiveShadows = false;
+            renderer.lightProbeUsage = LightProbeUsage.Off; renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
+            skyDome = dome.transform;
+            skyDome.localScale = Vector3.one * camera.farClipPlane * look.skyDomeScale;
+            skyDome.position = camera.transform.position;
+        }
+        private void LateUpdate()
+        {
+            if (skyDome != null && viewerCamera != null) skyDome.position = viewerCamera.transform.position;
+        }
+        private void Update() { AdvanceVisuals(Time.deltaTime); }
+        public void AdvanceVisuals(float deltaSeconds)
+        {
+            if (look == null || effects == null) return;
+            elapsed += deltaSeconds;
+            if (!driven)
+            {
+                if (RemainingSeconds > 0) { RemainingSeconds -= deltaSeconds; if (RemainingSeconds <= 0) StopWeather(); }
+                targetDust = Current == WeatherEvent.DustStorm ? intensity : 0;
+                targetSolar = Current == WeatherEvent.SolarFlare ? intensity : 0;
+                targetHeat = Current == WeatherEvent.HeatStorm ? intensity : 0;
+                targetCold = Current == WeatherEvent.ColdNight ? intensity : 0;
+            }
+            float step = transitionSeconds <= 0 ? 1 : deltaSeconds / transitionSeconds;
+            DustAmount = Mathf.MoveTowards(DustAmount, targetDust, step);
+            SolarAmount = Mathf.MoveTowards(SolarAmount, targetSolar, step);
+            HeatAmount = Mathf.MoveTowards(HeatAmount, targetHeat, step);
+            float daylight = Mathf.SmoothStep(0, 1, Mathf.Min((solHour - look.dawnHour + look.twilightHours) / look.twilightHours,
+                (look.duskHour + look.twilightHours - solHour) / look.twilightHours));
+            NightAmount = 1 - daylight;
+            ColdAmount = Mathf.MoveTowards(ColdAmount, targetCold * NightAmount, step);
+            Emit(dust, DustAmount * look.dustRate); Emit(haze, DustAmount * look.hazeRate);
+            opacity.SetFloat("_Opacity", DustAmount); dustRenderer.SetPropertyBlock(opacity); hazeRenderer.SetPropertyBlock(opacity);
+            Emit(heatFlecks, HeatAmount * look.heatRate); Emit(heatWisps, HeatAmount * look.heatWispRate);
+            opacity.SetFloat("_Opacity", HeatAmount); heatRenderer.SetPropertyBlock(opacity); wispRenderer.SetPropertyBlock(opacity);
+            flashRemaining = Mathf.Max(0, flashRemaining - deltaSeconds);
+            float flash = flashRemaining / Mathf.Max(.001f, look.flareFlashSeconds) * look.flareFlash;
             if (controlAtmosphere)
             {
-                Color horizon = Color.Lerp(new Color(.64f,.58f,.55f), new Color(.09f,.08f,.18f),coldWeight);
-                horizon = Color.Lerp(horizon,new Color(.64f,.36f,.25f),dustWeight*.8f);
-                horizon = Color.Lerp(horizon,new Color(1f,.54f,.30f),heatWeight);
-                horizon = Color.Lerp(horizon,new Color(.88f,.43f,.35f),solarWeight*(.7f+.2f*pulse));
+                if (sky != null) RenderSettings.skybox = null;
+                Color horizon = Color.Lerp(look.orange, look.purple * look.nightSkyBrightness, NightAmount);
+                horizon = Color.Lerp(horizon, look.terracotta, Mathf.Max(DustAmount, HeatAmount * look.heatSkyBlend));
                 RenderSettings.fog = true; RenderSettings.fogMode = FogMode.ExponentialSquared;
-                RenderSettings.fogColor = horizon; RenderSettings.fogDensity = .006f + dustWeight*.027f + heatWeight*.007f + coldWeight*.003f;
+                RenderSettings.fogColor = Color.Lerp(Color.Lerp(look.mauve, look.purple * look.nightFogBrightness, NightAmount), look.rose, DustAmount);
+                RenderSettings.fogDensity = Mathf.Lerp(Mathf.Lerp(look.clearFog, look.nightFog, NightAmount), look.stormFog, DustAmount);
                 RenderSettings.ambientMode = AmbientMode.Flat;
-                RenderSettings.ambientLight = Color.Lerp(new Color(.48f,.44f,.46f),new Color(.23f,.27f,.40f),coldWeight);
-                if (sky != null)
-                {
-                    sky.SetColor("_Horizon",horizon);
-                    sky.SetColor("_Zenith",Color.Lerp(new Color(.40f,.40f,.48f),new Color(.018f,.025f,.065f),coldWeight));
-                    sky.SetFloat("_SunStrength",(1-coldWeight)*(1-dustWeight*.8f)*(.45f+heatWeight*.55f+solarWeight*(1.5f+pulse)));
-                    sky.SetFloat("_Heat",heatWeight);
-                }
+                RenderSettings.ambientLight = look.mauve * Mathf.Lerp(look.ambientIntensity, look.nightAmbientBrightness, NightAmount);
+                RenderSettings.subtractiveShadowColor = look.purple;
+                Shader.SetGlobalVector("_MarsGradient", new Vector4(look.skyMiddleHeight, look.skyZenithHeight, 0, 0));
+                Shader.SetGlobalColor("_MarsHorizon", horizon);
+                Shader.SetGlobalColor("_MarsMiddle", Color.Lerp(look.rose, look.purple * look.nightSkyBrightness, NightAmount));
+                Shader.SetGlobalColor("_MarsZenith", Color.Lerp(look.purple, look.purple * look.nightSkyBrightness, NightAmount));
+                Shader.SetGlobalFloat("_MarsSun", daylight * (1 - DustAmount));
+                Shader.SetGlobalFloat("_MarsNight", NightAmount * (1 - DustAmount));
+                Shader.SetGlobalFloat("_MarsAurora", SolarAmount * (1 - DustAmount * look.stormAuroraDimming));
+                Shader.SetGlobalFloat("_MarsFlash", flash);
                 if (sun != null)
                 {
-                    Color daylight = Color.Lerp(new Color(.96f,.88f,.79f),new Color(1f,.69f,.48f),Mathf.Max(heatWeight,solarWeight));
-                    sun.color = Color.Lerp(daylight,new Color(.44f,.53f,.8f),coldWeight);
-                    sun.intensity = Mathf.Lerp(1.2f,.28f,coldWeight)*(1-dustWeight*.7f)+solarWeight*.4f*pulse;
+                    float arc = Mathf.Sin((solHour - look.dawnHour) / (look.duskHour - look.dawnHour) * Mathf.PI);
+                    sun.transform.rotation = Quaternion.Euler(look.sunPitch * arc, look.sunYaw, 0);
+                    sun.color = look.sunlight; sun.intensity = Mathf.Lerp(look.nightIntensity, look.sunIntensity, daylight) * (1 - DustAmount * look.stormSunDimming);
+                    Shader.SetGlobalVector("_MarsSunDirection", -sun.transform.forward);
                 }
             }
-            grading.colorFilter.value = Color.Lerp(Color.white,new Color(.82f,.88f,1f),coldWeight*.45f);
-            grading.saturation.value = -16f * (1f-Mathf.Max(Mathf.Max(heatWeight,solarWeight),Mathf.Max(dustWeight,coldWeight)));
-            grading.postExposure.value = -coldWeight*.35f - dustWeight*.15f;
-            bloom.intensity.value = .12f + solarWeight*.35f + heatWeight*.15f;
-            volume.weight = controlAtmosphere ? 1f : 0f;
+            grading.colorFilter.value = Color.Lerp(Color.Lerp(Color.white, look.sand, look.warmGradeStrength), look.mauve, NightAmount * look.nightGradeBlend);
+            grading.saturation.value = look.saturation;
+            grading.postExposure.value = look.nightExposure * NightAmount + look.stormExposure * DustAmount;
+            bloom.intensity.value = look.bloom + SolarAmount * look.flareBloom;
+            volume.weight = controlAtmosphere ? 1 : 0;
+            if (edges != null)
+            {
+                edges.SetFloat("_Frost", ColdAmount * look.frostOpacity);
+                edges.SetFloat("_Warning", Mathf.Max(SolarAmount, warning ? 1 : 0));
+                edges.SetFloat("_Frequency", look.warningFrequency);
+            }
         }
-        static void Emit(ParticleSystem ps,float rate) { var emission=ps.emission; emission.rateOverTime=rate; }
-        void FadeParticles(ParticleSystem ps,float amount,Color color)
-        {
-            // Renderer opacity also fades living particles; switching events never leaves stale fog banks.
-            var renderer=ps.GetComponent<ParticleSystemRenderer>();
-            opacityBlock.SetFloat("_Opacity",amount); renderer.SetPropertyBlock(opacityBlock);
-        }
-        void OnDisable()
+        private static void Emit(ParticleSystem ps, float rate) { var emission = ps.emission; emission.rateOverTime = rate; }
+        private static void Dispose(UnityEngine.Object asset) { if (asset == null) return; if (Application.isPlaying) Destroy(asset); else DestroyImmediate(asset); }
+        private void OnDisable()
         {
             if (saved)
             {
-                RenderSettings.skybox=previousSky; RenderSettings.fog=previousFog; RenderSettings.fogMode=previousFogMode;
-                RenderSettings.fogDensity=previousFogDensity; RenderSettings.fogColor=previousFogColor;
-                RenderSettings.ambientLight=previousAmbient; RenderSettings.ambientMode=previousAmbientMode;
-                if(sun!=null) { sun.color=previousSunColor; sun.intensity=previousSunIntensity; sun.transform.rotation=previousSunRotation; }
-                saved=false;
+                RenderSettings.skybox = previousSky; RenderSettings.fog = previousFog; RenderSettings.fogMode = previousFogMode;
+                RenderSettings.fogDensity = previousFogDensity; RenderSettings.fogColor = previousFogColor;
+                RenderSettings.ambientMode = previousAmbientMode; RenderSettings.ambientLight = previousAmbient;
+                RenderSettings.subtractiveShadowColor = previousShadow;
+                if (sun != null) { sun.color = previousSunColor; sun.intensity = previousSunIntensity; sun.transform.rotation = previousSunRotation; }
+                saved = false;
             }
-            if(effects!=null) Destroy(effects);
-            if(profile!=null) { foreach(var component in profile.components) Destroy(component); Destroy(profile); }
-            if(sky!=null) Destroy(sky);
-            dustWeight=solarWeight=heatWeight=coldWeight=0;
+            Dispose(effects); Dispose(sky); Dispose(edges);
+            if (profile != null) { for (int i = 0; i < profile.components.Count; i++) Dispose(profile.components[i]); Dispose(profile); }
+            if (ownsLook) { Dispose(look); look = null; ownsLook = false; }
+            DustAmount = SolarAmount = HeatAmount = ColdAmount = 0;
         }
     }
 }

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Failed(Child)" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-15 16:16:56Z" end-time="2026-11-15 16:16:56Z" duration="0.06615">
+  <test-suite type="TestSuite" id="1212" name="My project" fullname="My project" runstate="Runnable" testcasecount="163" result="Failed" site="Child" start-time="2026-11-15 16:16:56Z" end-time="2026-11-15 16:16:56Z" duration="0.066150" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+    <properties />
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1392" name="MarsTrainer.Tests.EditMode.dll" fullname="/private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Library/ScriptAssemblies/MarsTrainer.Tests.EditMode.dll" runstate="Runnable" testcasecount="147" result="Failed" site="Child" start-time="2026-11-15 16:16:56Z" end-time="2026-11-15 16:16:56Z" duration="0.045731" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="8842" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestSuite" id="1393" name="MarsTrainer" fullname="MarsTrainer" runstate="Runnable" testcasecount="147" result="Failed" site="Child" start-time="2026-11-15 16:16:56Z" end-time="2026-11-15 16:16:56Z" duration="0.041390" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-suite type="TestSuite" id="1394" name="Tests" fullname="MarsTrainer.Tests" runstate="Runnable" testcasecount="147" result="Failed" site="Child" start-time="2026-11-15 16:16:56Z" end-time="2026-11-15 16:16:56Z" duration="0.036831" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <failure>
+            <message><![CDATA[One or more child tests had errors]]></message>
+          </failure>
+          <test-suite type="TestFixture" id="1319" name="SimulationTests" fullname="MarsTrainer.Tests.SimulationTests" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" testcasecount="14" result="Failed" site="Child" start-time="2026-11-15 16:16:56Z" end-time="2026-11-15 16:16:56Z" duration="0.029085" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <failure>
+              <message><![CDATA[One or more child tests had errors]]></message>
+            </failure>
+            <test-case id="1322" name="MissionWinsExactlyAtDay99AndStopsAdvancing" fullname="MarsTrainer.Tests.SimulationTests.MissionWinsExactlyAtDay99AndStopsAdvancing" methodname="MissionWinsExactlyAtDay99AndStopsAdvancing" classname="MarsTrainer.Tests.SimulationTests" runstate="Runnable" seed="126727712" result="Failed" start-time="2026-11-15 16:16:56Z" end-time="2026-11-15 16:16:56Z" duration="0.014429" asserts="0">
+              <properties />
+              <failure>
+                <message><![CDATA[  Expected: 99
+  But was:  99.5d
+]]></message>
+                <stack-trace><![CDATA[at MarsTrainer.Tests.SimulationTests.MissionWinsExactlyAtDay99AndStopsAdvancing () [0x00077] in /private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-openworld-pylzwnb9/Assets/Tests/EditMode/SimulationTests.cs:50
+]]></stack-trace>
+              </failure>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

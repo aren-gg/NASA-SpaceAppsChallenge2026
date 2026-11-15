@@ -1,0 +1,24 @@
+{
+  "name": "MarsTrainer.Tests.EditMode",
+  "rootNamespace": "MarsTrainer.Tests",
+  "references": [
+    "MarsTrainer.Core",
+    "MarsTrainer.Sim",
+    "MarsTrainer.Data",
+    "MarsTrainer.Gameplay",
+    "MarsTrainer.Sim.Research",
+    "MarsTrainer.Data.Research",
+    "MarsTrainer.Sim.World",
+    "MarsTrainer.Gameplay.World",
+    "MarsTrainer.Gameplay.Player",
+    "MarsWeather.Runtime",
+    "Unity.ugui",
+    "MarsTrainer.Terrain"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

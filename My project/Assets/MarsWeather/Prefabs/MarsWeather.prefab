@@ -45,8 +45,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   sun: {fileID: 0}
-  skyTemplate: {fileID: 2100000, guid: f2392924106b84b12a7ed48871df6b98, type: 2}
-  particleMaterial: {fileID: 2100000, guid: 60ca83bc5b43d4769a22318a11700283, type: 2}
+  skyTemplate: {fileID: 2100000, guid: b3002f4b4742c41819a516027926dbca, type: 2}
+  particleMaterial: {fileID: 2100000, guid: be0e209c8547c42f291e87bd4cdd69c2, type: 2}
+  look: {fileID: 11400000, guid: 19260670c509540fba2d7dd1df093fdf, type: 2}
   intensity: 1
   transitionSeconds: 3
   controlAtmosphere: 1
+  solHour: 16

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="7" result="Passed" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-15 07:02:39Z" end-time="2026-11-15 07:02:40Z" duration="0.4223905">
+  <test-suite type="TestSuite" id="1200" name="My project" fullname="My project" runstate="Runnable" testcasecount="154" result="Passed" start-time="2026-11-15 07:02:39Z" end-time="2026-11-15 07:02:40Z" duration="0.422391" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties />
+    <test-suite type="Assembly" id="1392" name="MarsTrainer.Tests.UI.dll" fullname="/private/var/folders/fp/prk030vs7tl0jdgfhdk50_400000gn/T/mars-integration-eau16znm/Library/ScriptAssemblies/MarsTrainer.Tests.UI.dll" runstate="Runnable" testcasecount="11" result="Passed" start-time="2026-11-15 07:02:39Z" end-time="2026-11-15 07:02:40Z" duration="0.407091" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="45793" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <test-suite type="TestSuite" id="1393" name="MarsTrainer" fullname="MarsTrainer" runstate="Runnable" testcasecount="11" result="Passed" start-time="2026-11-15 07:02:39Z" end-time="2026-11-15 07:02:40Z" duration="0.406666" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1394" name="Tests" fullname="MarsTrainer.Tests" runstate="Runnable" testcasecount="11" result="Passed" start-time="2026-11-15 07:02:39Z" end-time="2026-11-15 07:02:40Z" duration="0.406410" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1378" name="HudScreenTests" fullname="MarsTrainer.Tests.HudScreenTests" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-11-15 07:02:39Z" end-time="2026-11-15 07:02:40Z" duration="0.405671" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="ParameterizedMethod" id="1383" name="AllScreenTextFitsItsAllocatedSpace" fullname="MarsTrainer.Tests.HudScreenTests.AllScreenTextFitsItsAllocatedSpace" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-11-15 07:02:39Z" end-time="2026-11-15 07:02:40Z" duration="0.317181" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1379" name="AllScreenTextFitsItsAllocatedSpace(1280,720,False)" fullname="MarsTrainer.Tests.HudScreenTests.AllScreenTextFitsItsAllocatedSpace(1280,720,False)" methodname="AllScreenTextFitsItsAllocatedSpace" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="720806687" result="Passed" start-time="2026-11-15 07:02:39Z" end-time="2026-11-15 07:02:39Z" duration="0.211485" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1380" name="AllScreenTextFitsItsAllocatedSpace(1920,1080,False)" fullname="MarsTrainer.Tests.HudScreenTests.AllScreenTextFitsItsAllocatedSpace(1920,1080,False)" methodname="AllScreenTextFitsItsAllocatedSpace" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="1607836935" result="Passed" start-time="2026-11-15 07:02:39Z" end-time="2026-11-15 07:02:40Z" duration="0.036882" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1381" name="AllScreenTextFitsItsAllocatedSpace(1280,720,True)" fullname="MarsTrainer.Tests.HudScreenTests.AllScreenTextFitsItsAllocatedSpace(1280,720,True)" methodname="AllScreenTextFitsItsAllocatedSpace" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="2091597279" result="Passed" start-time="2026-11-15 07:02:40Z" end-time="2026-11-15 07:02:40Z" duration="0.038408" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1382" name="AllScreenTextFitsItsAllocatedSpace(1920,1080,True)" fullname="MarsTrainer.Tests.HudScreenTests.AllScreenTextFitsItsAllocatedSpace(1920,1080,True)" methodname="AllScreenTextFitsItsAllocatedSpace" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="1551354658" result="Passed" start-time="2026-11-15 07:02:40Z" end-time="2026-11-15 07:02:40Z" duration="0.024700" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-case id="1384" name="AuthoredResearchCardsHaveReadableDetailsAndPurchasesUpdateState" fullname="MarsTrainer.Tests.HudScreenTests.AuthoredResearchCardsHaveReadableDetailsAndPurchasesUpdateState" methodname="AuthoredResearchCardsHaveReadableDetailsAndPurchasesUpdateState" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="1808129642" result="Passed" start-time="2026-11-15 07:02:40Z" end-time="2026-11-15 07:02:40Z" duration="0.053157" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1386" name="PauseMenuRestoresThePreviousPauseState" fullname="MarsTrainer.Tests.HudScreenTests.PauseMenuRestoresThePreviousPauseState" methodname="PauseMenuRestoresThePreviousPauseState" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="142517207" result="Passed" start-time="2026-11-15 07:02:40Z" end-time="2026-11-15 07:02:40Z" duration="0.013958" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1385" name="RebindingDoesNotKeepOldEventSubscriptions" fullname="MarsTrainer.Tests.HudScreenTests.RebindingDoesNotKeepOldEventSubscriptions" methodname="RebindingDoesNotKeepOldEventSubscriptions" classname="MarsTrainer.Tests.HudScreenTests" runstate="Runnable" seed="1781497154" result="Passed" start-time="2026-11-15 07:02:40Z" end-time="2026-11-15 07:02:40Z" duration="0.016382" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

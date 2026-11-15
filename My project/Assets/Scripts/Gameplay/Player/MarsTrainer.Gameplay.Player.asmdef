@@ -1,0 +1,11 @@
+{
+  "name": "MarsTrainer.Gameplay.Player",
+  "rootNamespace": "MarsTrainer.Gameplay.Player",
+  "references": [
+    "MarsTrainer.Sim",
+    "MarsTrainer.Sim.World",
+    "Unity.InputSystem",
+    "Cinemachine"
+  ],
+  "noEngineReferences": false
+}

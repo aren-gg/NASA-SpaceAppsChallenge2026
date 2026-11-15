@@ -1,0 +1,5 @@
+Unity Editor review, 1600x900 offscreen captures. Frame rate includes editor overhead; verify 60 fps on target player hardware.
+day: editor max draws=88, mean frame=0.55ms, particles=0
+storm: editor max draws=88, mean frame=0.53ms, particles=296
+flare: editor max draws=88, mean frame=0.52ms, particles=296
+cold-night: editor max draws=88, mean frame=0.52ms, particles=91

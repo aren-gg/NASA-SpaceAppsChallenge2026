@@ -1,0 +1,77 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e3982c777daf7454281785e624339030, type: 3}
+  m_Name: MarsLook
+  m_EditorClassIdentifier: 
+  terracotta: {r: 0.7254902, g: 0.42745098, b: 0.33333334, a: 1}
+  rose: {r: 0.78039217, g: 0.5529412, b: 0.5294118, a: 1}
+  olive: {r: 0.49019608, g: 0.53333336, b: 0.39607844, a: 1}
+  orange: {r: 0.9019608, g: 0.627451, b: 0.43137255, a: 1}
+  purple: {r: 0.2509804, g: 0.2, b: 0.30980393, a: 1}
+  pink: {r: 0.9137255, g: 0.7254902, b: 0.7372549, a: 1}
+  mauve: {r: 0.5019608, g: 0.40784314, b: 0.5254902, a: 1}
+  sand: {r: 0.84705883, g: 0.6745098, b: 0.56078434, a: 1}
+  previewHour: 16
+  stormSunDimming: 0.65
+  stormAuroraDimming: 0.8
+  nightFogBrightness: 0.6
+  nightGradeBlend: 0.25
+  hazeAlpha: 0.09
+  dustAlpha: 0.45
+  dustFadeIn: 0.2
+  hazeSpeedScale: 0.25
+  dustMinimumSizeScale: 0.5
+  volumePriority: 20
+  edgeSortOrder: -10
+  heatSkyBlend: 0.5
+  clearFog: 0.006
+  stormFog: 0.038
+  nightFog: 0.009
+  transitionSeconds: 3
+  sunPitch: 16
+  sunYaw: -35
+  sunIntensity: 1.05
+  nightIntensity: 0.12
+  ambientIntensity: 1
+  nightSkyBrightness: 0.13
+  nightAmbientBrightness: 0.35
+  hoursPerSol: 24
+  dawnHour: 6
+  duskHour: 18
+  twilightHours: 1.5
+  bloom: 0.18
+  flareBloom: 0.5
+  bloomThreshold: 1.1
+  vignette: 0.14
+  nightExposure: -0.65
+  stormExposure: -0.2
+  saturation: -7
+  warningFrequency: 1.5
+  flareFlashSeconds: 1.1
+  flareFlash: 0.55
+  frostOpacity: 0.7
+  dustCapacity: 800
+  dustRate: 95
+  dustLife: 7
+  dustSize: 0.12
+  dustArea: {x: 44, y: 12, z: 40}
+  dustVelocity: {x: -10, y: -0.3, z: 2}
+  hazeCapacity: 32
+  hazeRate: 2
+  hazeSize: 6
+  skyMaterial: {fileID: 2100000, guid: b3002f4b4742c41819a516027926dbca, type: 2}
+  dustMaterial: {fileID: 2100000, guid: be0e209c8547c42f291e87bd4cdd69c2, type: 2}
+  edgeMaterial: {fileID: 2100000, guid: 9e152c4da02df4cf58b49d7b4f310909, type: 2}
+  safeShell: {fileID: 2100000, guid: 57591814d6d2e477daa8a1b33237f659, type: 2}
+  warnShell: {fileID: 2100000, guid: d560380321b824570a5f0398ed741295, type: 2}
+  dangerShell: {fileID: 2100000, guid: 4cd416da78dee4e948d5bf4cd7679eae, type: 2}
+  criticalShell: {fileID: 2100000, guid: e9fce8ed6b890464699f938b2ad0c1d1, type: 2}
