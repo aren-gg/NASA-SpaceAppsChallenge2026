@@ -119,6 +119,35 @@ namespace MarsSurvival.Simulation
                     State.resources.oxygenGrams -= transfer;
                     reason = "Refilled suit from habitat oxygen.";
                     break;
+                case "canister_fill":
+                    if (!indoor) return Fail("Refill the oxygen canister inside the habitat.", out reason);
+                    double fill = Math.Min(Settings.canisterCapacityGrams - State.resources.canisterOxygenGrams, State.resources.oxygenGrams);
+                    if (fill <= 0) return Fail("The canister is full or habitat oxygen is empty.", out reason);
+                    State.resources.canisterOxygenGrams += fill;
+                    State.resources.oxygenGrams -= fill;
+                    reason = string.Format(CultureInfo.InvariantCulture, "Filled the oxygen canister with {0:0} g of habitat oxygen.", fill);
+                    break;
+                case "canister_use":
+                    double dose = Math.Min(Settings.canisterDoseGrams, Math.Min(State.resources.canisterOxygenGrams,
+                        Settings.suitCapacityGrams - State.resources.suitOxygenGrams));
+                    if (State.resources.canisterOxygenGrams <= 0) return Fail("The oxygen canister is empty.", out reason);
+                    if (dose <= 0) return Fail("Suit oxygen is already full.", out reason);
+                    State.resources.canisterOxygenGrams -= dose;
+                    State.resources.suitOxygenGrams += dose;
+                    reason = string.Format(CultureInfo.InvariantCulture, "Topped up the suit with {0:0} g of oxygen from the canister.", dose);
+                    break;
+                case "water_crop":
+                    CropState watered = FindCrop(target);
+                    if (!indoor || watered == null) return Fail("Choose a greenhouse bed inside the habitat.", out reason);
+                    if (!watered.planted || watered.ready) return Fail("Only a growing crop needs watering.", out reason);
+                    if (watered.stress < 0.05) return Fail("This bed is not stressed.", out reason);
+                    if (State.resources.cleanWaterLiters < 1) return Fail("Not enough clean water.", out reason);
+                    State.resources.cleanWaterLiters -= 1;
+                    State.resources.wasteWaterLiters += 0.8;
+                    State.totalWaterLostLiters += 0.2;
+                    watered.stress = Math.Max(0, watered.stress - 0.25);
+                    reason = "Watered bed " + (watered.bed + 1) + " with 1 L; crop stress fell.";
+                    break;
                 case "airlock_exit":
                     if (!indoor) return Fail("Use the habitat airlock to begin EVA.", out reason);
                     if (State.resources.suitOxygenGrams < 100 || State.resources.fieldKwh < 0.1) return Fail("Refill suit oxygen and field battery before EVA.", out reason);

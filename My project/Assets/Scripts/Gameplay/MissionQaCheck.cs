@@ -81,6 +81,7 @@ namespace MarsSurvival.Gameplay
             yield return Tasks();
             yield return Field();
             HudChecks();
+            yield return HudScreens();
             Finish();
         }
 
@@ -99,6 +100,16 @@ namespace MarsSurvival.Gameplay
         }
 
         private IEnumerator Frames(int n) { for (int i = 0; i < n; i++) yield return null; }
+
+        /// <summary>Full-screen capture including the UI overlays.</summary>
+        private IEnumerator ScreenShot(string name)
+        {
+            yield return new WaitForEndOfFrame();
+            if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) yield break;
+            Texture2D shot = ScreenCapture.CaptureScreenshotAsTexture();
+            File.WriteAllBytes(Path.Combine(outDir, name + ".png"), shot.EncodeToPNG());
+            Destroy(shot);
+        }
 
         private void Shot(string name)
         {
@@ -184,7 +195,8 @@ namespace MarsSurvival.Gameplay
 
         private IEnumerator GatingAndTools()
         {
-            MarsToolBelt belt = mission.Tools;
+            MarsToolPickup belt = mission.Tools;
+            MarsSurvival.Tools.MarsToolBelt hotbar = MarsSurvival.Tools.MarsExpedition.Instance == null ? null : MarsSurvival.Tools.MarsExpedition.Instance.Belt;
             Place(Floor(0, -12), Floor(0, -16));
             yield return Frames(3);
             mission.StartTask(TaskKind.Plant, "0:leafy");
@@ -192,8 +204,8 @@ namespace MarsSurvival.Gameplay
                 "Tasks refuse to start without their tools", mission.Notice);
 
             var ids = new List<string>();
-            foreach (MarsBaseTool t in MarsBaseTool.All) if (!ids.Contains(t.toolId)) ids.Add(t.toolId);
-            Check(ids.Count == 15, "All 15 tool kinds are in the base", ids.Count + "");
+            foreach (MarsBaseTool t in MarsBaseTool.All) if (MarsToolPickup.IsHandTool(t.toolId) && !ids.Contains(t.toolId)) ids.Add(t.toolId);
+            Check(ids.Count == 10, "All 10 hand tools are on racks in the base", ids.Count + "");
             foreach (string id in ids)
             {
                 MarsBaseTool tool = null;
@@ -220,9 +232,9 @@ namespace MarsSurvival.Gameplay
                 MarsBaseTool aimed = belt.FindAimed(player.ViewCamera.transform);
                 Check(aimed == tool, MarsBaseTool.NameOf(id) + ": looking at it selects it", aimed == null ? "nothing aimed" : aimed.toolId);
                 string msg = belt.TryPickUp(tool);
-                yield return Frames(2);
-                GameObject held = belt.HeldModel;
-                bool inHand = held != null && held.transform.IsChildOf(player.ViewCamera.transform);
+                yield return new WaitForSeconds(0.8f); // the hotbar raises a newly selected tool into view
+                Transform held = hotbar == null ? null : hotbar.HeldView;
+                bool inHand = held != null && held.gameObject.activeInHierarchy && hotbar.Current.Id == id && held.IsChildOf(player.ViewCamera.transform);
                 bool visible = false;
                 if (inHand)
                 {
@@ -230,13 +242,18 @@ namespace MarsSurvival.Gameplay
                     Bounds hb = rs[0].bounds;
                     foreach (Renderer r in rs) hb.Encapsulate(r.bounds);
                     Vector3 v = player.ViewCamera.WorldToViewportPoint(hb.center);
-                    visible = rs[0].enabled && v.z > 0 && v.x > 0.5f && v.x < 1f && v.y > 0f && v.y < 0.5f;
+                    visible = rs[0].enabled && v.z > 0 && v.x > 0.2f && v.x < 1f && v.y > 0f && v.y < 0.7f;
                 }
-                Check(tool.Carried && belt.Has(id) && inHand && visible, MarsBaseTool.NameOf(id) + ": picked up and shown in hand", msg);
-                if (id == "core_drill" || id == "hydro_sprayer") Shot("held_" + id);
+                Camera main = Camera.main;
+                string why = hotbar == null ? "no hotbar" : "active=" + hotbar.Active + " carried=" + hotbar.CurrentCarried + " selected=" + hotbar.Current.Id +
+                    " view=" + (hotbar.HeldView != null) + " main=" + (main == null ? "none" : main.name) + " child=" + (main != null && main.transform.IsChildOf(player.transform)) +
+                    " blocked=" + mission.InputBlocked + " home=" + MarsHomeScreen.IsOpen + " inHand=" + inHand + " visible=" + visible;
+                Check(tool.Carried && belt.Has(id) && inHand && visible, MarsBaseTool.NameOf(id) + ": picked up into its hotbar slot and shown in hand", msg + " | " + why);
+                if (id == "core_drill" || id == "hydro_sprayer") { Shot("held_" + id); yield return ScreenShot("screen_held_" + id); }
             }
-            belt.CycleHeld();
-            Check(belt.HeldId != "", "Q cycles the tool in hand", belt.HeldId);
+            if (hotbar != null) hotbar.Select(0);
+            Check(hotbar != null && hotbar.Current.Id == "rock_hammer" && hotbar.CurrentCarried, "Hotbar slot 1 selects the Rock Hammer",
+                hotbar == null ? "no hotbar" : hotbar.Current.Id);
         }
 
         // ------------------------------------------------------------------ tasks
@@ -270,6 +287,41 @@ namespace MarsSurvival.Gameplay
             Check(mission.Simulation.State.task.kind == TaskKind.None && effect(), what + ": completes with its effect", mission.Simulation.LastResult);
         }
 
+        /// <summary>Uses a hotbar tool as the player would (its click action), then waits for the task it starts.</summary>
+        private IEnumerator ToolTask(string toolId, TaskKind kind, Vector3 at, Vector3 look, string station, Func<bool> effect, string what)
+        {
+            Place(at, look);
+            yield return Frames(3);
+            Check(station == null || mission.Context.station == station, what + ": station detected", "station=" + mission.Context.station + " zone=" + mission.Context.zone);
+            if (!UseTool(toolId, what)) yield break;
+            bool started = mission.Simulation.State.task.kind == kind;
+            Check(started, what + ": tool starts " + kind, mission.Notice);
+            if (!started) yield break;
+            bool indoor = mission.Context.zone != PlayerZone.Outdoors;
+            float until = Time.realtimeSinceStartup + 40;
+            while (mission.Simulation.State.task.kind == kind && Time.realtimeSinceStartup < until)
+            {
+                if (indoor) { if (mission.AdvanceRemaining <= 0) mission.Advance(mission.Simulation.State.task.durationSeconds + 60); }
+                else for (int k = 0; k < 20; k++) mission.Simulation.Step(1, mission.Environment, mission.Context);
+                yield return null;
+            }
+            mission.StopAdvance("");
+            Check(mission.Simulation.State.task.kind == TaskKind.None && effect(), what + ": completes with its effect", mission.Simulation.LastResult);
+        }
+
+        /// <summary>Selects the tool's hotbar slot and runs its click action at once. False (and a failed check) when it refuses.</summary>
+        private bool UseTool(string toolId, string what)
+        {
+            MarsSurvival.Tools.MarsToolBelt hotbar = MarsSurvival.Tools.MarsExpedition.Instance == null ? null : MarsSurvival.Tools.MarsExpedition.Instance.Belt;
+            if (hotbar == null) { Check(false, what + ": hotbar exists"); return false; }
+            hotbar.Select(Array.IndexOf(MarsSurvival.Tools.MarsTool.Order, toolId));
+            MarsSurvival.Tools.ToolAction plan = hotbar.Current.Plan(new MarsSurvival.Tools.ToolTarget { SiteId = mission.Context.nearbySiteId ?? "" });
+            bool usable = hotbar.CurrentCarried && plan != null && !plan.Blocked;
+            if (!usable) { Check(false, what + ": " + MarsBaseTool.NameOf(toolId) + " can be used", plan == null ? "no action" : plan.Label); return false; }
+            if (plan.Complete != null) plan.Complete();
+            return true;
+        }
+
         private Vector3 RoomCentre(FloorRect r) { return Floor((r.x0 + r.x1) * 0.5f, (r.z0 + r.z1) * 0.5f); }
 
         private IEnumerator Tasks()
@@ -285,7 +337,10 @@ namespace MarsSurvival.Gameplay
             double sat = s.astronaut.satiety, hyd = s.astronaut.hydration, suit = s.resources.suitOxygenGrams;
             mission.Execute("eat"); Check(s.astronaut.satiety > sat, "Eat", mission.Notice);
             mission.Execute("drink"); Check(s.astronaut.hydration > hyd, "Drink", mission.Notice);
-            mission.Execute("refill"); Check(s.resources.suitOxygenGrams > suit, "Refill suit (O2 canister)", mission.Notice);
+            mission.Execute("refill"); Check(s.resources.suitOxygenGrams > suit, "Refill suit", mission.Notice);
+            s.resources.canisterOxygenGrams = 0;
+            if (UseTool("oxygen_canister", "Oxygen Canister (5) inside"))
+                Check(s.resources.canisterOxygenGrams > 0, "Oxygen Canister (5) refills from habitat oxygen", mission.Notice);
             mission.Execute("radio", "listen"); Check(s.radioMode == RadioMode.Listen, "Radio listen (comm radio)", mission.Notice);
             int reports = s.reports.Count;
             mission.Execute("report"); Check(s.reports.Count > reports, "Queue Houston report", mission.Notice);
@@ -297,11 +352,17 @@ namespace MarsSurvival.Gameplay
             s.astronaut.health = 80;
             yield return RunTask(TaskKind.Treat, "", med, med + Vector3.forward, "medical", () => s.astronaut.health > 80, "Medical treatment");
             yield return RunTask(TaskKind.Plant, "0:leafy", gh, gh + Vector3.forward, "greenhouse", () => s.crops[0].planted, "Plant bed 1");
+            yield return ToolTask("regolith_shovel", TaskKind.Plant, gh, gh + Vector3.forward, "greenhouse", () => s.crops[1].planted, "Shovel (9) plants bed 2");
+            s.crops[1].stress = 0.5;
+            if (UseTool("hydro_sprayer", "Sprayer (0) waters a stressed bed"))
+                Check(s.crops[1].stress < 0.5, "Sprayer (0) waters a stressed bed", mission.Notice);
             s.crops[0].ready = true; s.crops[0].growth = 1; s.resources.food = Math.Min(s.resources.food, 5);
             double food = s.totalFoodHarvested;
-            yield return RunTask(TaskKind.Harvest, "0", gh, gh + Vector3.forward, "greenhouse", () => s.totalFoodHarvested > food, "Harvest");
+            yield return ToolTask("hydro_sprayer", TaskKind.Harvest, gh, gh + Vector3.forward, "greenhouse", () => s.totalFoodHarvested > food, "Sprayer (0) harvests");
             s.equipment.baseCondition = 0.7; int repairs = s.repairsCompleted;
             yield return RunTask(TaskKind.RepairBase, "", en, en + Vector3.forward, null, () => s.repairsCompleted > repairs, "Repair base");
+            s.equipment.baseCondition = 0.7; repairs = s.repairsCompleted;
+            yield return ToolTask("power_wrench", TaskKind.RepairBase, q, q + Vector3.forward, null, () => s.repairsCompleted > repairs, "Field Wrench (8) repairs the base");
 
             ResearchNode first = null;
             foreach (ResearchNode n in ResearchCatalog.Nodes) if (n.prerequisites.Length == 0) { first = n; break; }
@@ -312,11 +373,11 @@ namespace MarsSurvival.Gameplay
 
             s.equipment.panelDust = 0.3; int cleaned = s.panelsCleaned;
             Vector3 array = Ground(outpost.transform.TransformPoint(new Vector3(14, 0, 10)));
-            yield return RunTask(TaskKind.DustPanels, "", array, array + Vector3.forward, "array", () => s.panelsCleaned > cleaned, "Dust panels");
+            yield return ToolTask("panel_brush", TaskKind.DustPanels, array, array + Vector3.forward, "array", () => s.panelsCleaned > cleaned, "Panel Duster (7) dusts the array");
 
             s.equipment.roverCondition = 0.7; int rRepairs = s.repairsCompleted;
             Vector3 byRover = Ground(rover.transform.position + rover.transform.right * 3f);
-            yield return RunTask(TaskKind.RepairRover, "", byRover, rover.transform.position, "rover", () => s.repairsCompleted > rRepairs, "Repair rover");
+            yield return ToolTask("power_wrench", TaskKind.RepairRover, byRover, rover.transform.position, "rover", () => s.repairsCompleted > rRepairs, "Field Wrench (8) repairs the rover");
         }
 
         private IEnumerator Field()
@@ -334,10 +395,15 @@ namespace MarsSurvival.Gameplay
             Check(marker != null && marker.gameObject.activeSelf && marker.localScale.y > 0.7f, "Survey marker pops up when near (3 m)");
             Shot("survey_marker");
             mission.SelectSite(site.id);
-            mission.Execute("survey", site.id); Check(site.surveyed, "Survey site (rock hammer)", mission.Notice);
-            mission.Execute("measure", site.id); Check(site.measured, "Measure site (dosimeter)", mission.Notice);
-            yield return RunTask(TaskKind.SampleSoil, site.id, stand, sp, null, () => site.sampled, "Sample soil");
-            yield return RunTask(TaskKind.PlaceMarker, site.id, stand, sp, null, () => site.markerPlaced, "Place survey marker");
+            if (UseTool("rock_hammer", "Rock Hammer (1) surveys the site")) Check(site.surveyed, "Rock Hammer (1) surveys the site", mission.Notice);
+            mission.Execute("measure", site.id); Check(site.measured, "Measure site", mission.Notice);
+            yield return ToolTask("core_drill", TaskKind.SampleSoil, stand, sp, null, () => site.sampled, "Core Drill (2) drills a core");
+            yield return ToolTask("rock_hammer", TaskKind.PlaceMarker, stand, sp, null, () => site.markerPlaced, "Rock Hammer (1) places the survey marker");
+            Place(stand, sp);
+            yield return Frames(2);
+            s.resources.suitOxygenGrams = 300;
+            if (UseTool("oxygen_canister", "Oxygen Canister (5) on EVA"))
+                Check(s.resources.suitOxygenGrams > 300, "Oxygen Canister (5) tops up the suit on EVA", mission.Notice);
             Place(stand, sp + Vector3.up * 1f);
             yield return Frames(3);
             mission.CapturePhoto(site.id);
@@ -346,10 +412,19 @@ namespace MarsSurvival.Gameplay
             Check(site.photographed, "Photograph marker (survey camera)", mission.Notice + " / " + mission.Simulation.LastResult);
             Vector3 lab = RoomCentre(MarsOutpostBuilder.Lab);
             int points = s.resources.researchPoints;
-            yield return RunTask(TaskKind.Analyze, site.id, lab, lab + Vector3.forward, "lab", () => site.analyzed, "Analyze sample at lab");
+            yield return ToolTask("core_drill", TaskKind.Analyze, lab, lab + Vector3.forward, "lab", () => site.analyzed, "Core Drill (2) analyzes the core at the lab");
 
             // Houston: queue a report, transmit, and wait (inside) for a radio window and acknowledgement.
-            mission.Execute("report");
+            // Radio (4): queues a report when none is waiting, transmits when one is and there is signal, else says why not.
+            var radioBelt = MarsSurvival.Tools.MarsExpedition.Instance.Belt;
+            radioBelt.Select(Array.IndexOf(MarsSurvival.Tools.MarsTool.Order, "comm_radio"));
+            bool waiting = s.reports.Exists(r => !r.acknowledged);
+            var radioPlan = radioBelt.Current.Plan(new MarsSurvival.Tools.ToolTarget());
+            bool radioOk = radioPlan != null && (!waiting ? !radioPlan.Blocked && radioPlan.Label.Contains("queue")
+                : mission.Environment.signal > 0.02 ? !radioPlan.Blocked && radioPlan.Label.Contains("transmit") : radioPlan.Blocked && radioPlan.Label.Contains("signal"));
+            Check(radioOk, "Radio (4) queues or transmits Houston reports", radioPlan == null ? "no action" : radioPlan.Label);
+            if (radioOk && !radioPlan.Blocked && radioPlan.Complete != null) radioPlan.Complete();
+            if (!s.reports.Exists(r => !r.acknowledged)) mission.Execute("report");
             mission.Execute("radio", "transmit");
             Check(s.radioMode == RadioMode.Transmit, "Radio transmit (comm radio)", mission.Notice);
             float limit = Time.realtimeSinceStartup + 60;
@@ -367,8 +442,49 @@ namespace MarsSurvival.Gameplay
         {
             var hud = FindObjectOfType<MarsMissionHud>();
             var field = typeof(MarsMissionHud).GetField("guide", BindingFlags.NonPublic | BindingFlags.Instance);
-            var text = field != null ? field.GetValue(hud) as UnityEngine.UI.Text : null;
-            Check(text != null && text.text.StartsWith("SURVIVE THE SOL"), "Bottom bar shows the survival guide", text != null ? text.text : "missing");
+            var text = field != null ? field.GetValue(hud) as TMPro.TMP_Text : null;
+            Check(text != null && text.text.StartsWith("Survive the sol"), "HUD shows the survival guide", text != null ? text.text : "missing");
+            Check(text != null && text.font != null && text.font.name.Contains("CounterStrike"), "HUD uses the Counter-Strike UI font", text != null && text.font != null ? text.font.name : "no font");
+            var vitals = typeof(MarsMissionHud).GetField("vitals", BindingFlags.NonPublic | BindingFlags.Instance);
+            var bars = vitals != null ? vitals.GetValue(hud) as MarsTrainer.UI.StatBar[] : null;
+            Check(bars != null && bars.Length == 5, "HUD shows the five suit vitals (oxygen first)");
+            Check(FindObjectOfType<MarsTrainer.UI.PauseMenu>(true) != null && FindObjectOfType<MarsTrainer.UI.EndScreen>(true) != null, "Pause menu and mission report screens exist");
+            Check(FindObjectOfType<MarsToolHud>() != null, "Tool hotbar HUD exists");
+            Check(mission.Simulation.Settings.leafyWaterLitersPerSol > 0.5 && mission.Simulation.Settings.leafyWaterLitersPerSol < 1.5,
+                "KSC Veggie crop data sets the leafy bed water use", mission.Simulation.Settings.leafyWaterLitersPerSol.ToString("0.00"));
+            Check(mission.Environment.radiationSource != null && mission.Environment.radiationSource.Contains("RAD") &&
+                  mission.Environment.eventSource.Contains("DONKI"), "Environment labels its RAD and DONKI schedule sources", mission.Environment.radiationSource);
+            Shot("hud_final");
+        }
+
+        /// <summary>Screens of the merged HUD: gameplay with the hotbar, console tabs, pause menu.</summary>
+        private IEnumerator HudScreens()
+        {
+            var hud = FindObjectOfType<MarsMissionHud>();
+            Vector3 gh = RoomCentre(MarsOutpostBuilder.Greenhouse);
+            Place(gh, gh + Vector3.forward * 3f);
+            var hotbar = MarsSurvival.Tools.MarsExpedition.Instance.Belt;
+            hotbar.Select(Array.IndexOf(MarsSurvival.Tools.MarsTool.Order, "hydro_sprayer"));
+            yield return new WaitForSeconds(1f);
+            yield return ScreenShot("screen_hud");
+            var tabField = typeof(MarsMissionHud).GetField("tab", BindingFlags.NonPublic | BindingFlags.Instance);
+            var rebuild = typeof(MarsMissionHud).GetMethod("RebuildPanel", BindingFlags.NonPublic | BindingFlags.Instance);
+            foreach (int t in new[] { 0, 1, 5, 6 })
+            {
+                mission.SetPanelOpen(true);
+                tabField.SetValue(hud, t); rebuild.Invoke(hud, null);
+                yield return new WaitForSeconds(0.5f);
+                yield return ScreenShot("screen_console_" + t);
+            }
+            mission.SetPanelOpen(false);
+            var open = typeof(MarsMissionHud).GetMethod("OpenPause", BindingFlags.NonPublic | BindingFlags.Instance);
+            open.Invoke(hud, null);
+            yield return new WaitForSeconds(0.5f);
+            yield return ScreenShot("screen_pause");
+            Check(hud.ScreenOpen && mission.Paused, "Pause menu opens and pauses the mission");
+            FindObjectOfType<MarsTrainer.UI.PauseMenu>().Close();
+            yield return null;
+            Check(!hud.ScreenOpen && !mission.Paused, "Closing the pause menu resumes the mission");
         }
 
         private void Finish()

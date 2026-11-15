@@ -110,6 +110,30 @@ public static class SimulationChecks
         Near(sim.State.resources.suitOxygenGrams + sim.State.resources.oxygenGrams, oxygen, 1e-8, "oxygen transfer conservation");
         PlayerContext field = new PlayerContext { zone = PlayerZone.Outdoors };
         Assert(!sim.Command("refill", "", field, out reason), "remote refill rejected");
+        // Oxygen Canister tool: filled from habitat oxygen inside, emptied into the suit on EVA.
+        Func<double> allOxygen = () => sim.State.resources.oxygenGrams + sim.State.resources.suitOxygenGrams + sim.State.resources.canisterOxygenGrams;
+        sim.State.resources.canisterOxygenGrams = 0;
+        oxygen = allOxygen();
+        Assert(!sim.Command("canister_fill", "", field, out reason), "canister fill needs the habitat");
+        Assert(sim.Command("canister_fill", "", Home, out reason), "canister fill succeeds");
+        Near(sim.State.resources.canisterOxygenGrams, sim.Settings.canisterCapacityGrams, 1e-8, "canister filled");
+        Near(allOxygen(), oxygen, 1e-8, "canister fill conservation");
+        sim.State.resources.suitOxygenGrams = 100;
+        oxygen = allOxygen();
+        Assert(sim.Command("canister_use", "", field, out reason), "canister field top-up");
+        Near(sim.State.resources.suitOxygenGrams, 100 + sim.Settings.canisterDoseGrams, 1e-8, "canister dose delivered");
+        Near(allOxygen(), oxygen, 1e-8, "canister use conservation");
+        sim.State.resources.suitOxygenGrams = sim.Settings.suitCapacityGrams;
+        Assert(!sim.Command("canister_use", "", field, out reason), "full suit rejects canister");
+        // Sprayer tool: watering a stressed growing bed.
+        sim.State.crops[0].planted = true; sim.State.crops[0].ready = false; sim.State.crops[0].stress = 0.5;
+        double clean = sim.State.resources.cleanWaterLiters;
+        Assert(sim.Command("water_crop", "0", Home, out reason), "water stressed crop");
+        Near(sim.State.crops[0].stress, 0.25, 1e-9, "watering lowers stress");
+        Near(sim.State.resources.cleanWaterLiters, clean - 1, 1e-9, "watering uses 1 L");
+        sim.State.crops[0].stress = 0;
+        Assert(!sim.Command("water_crop", "0", Home, out reason), "unstressed crop needs no water");
+        sim.State.crops[0].planted = false;
         sim.State.astronaut.hydration = 40;
         double water = sim.State.resources.cleanWaterLiters + sim.State.resources.wasteWaterLiters;
         Assert(sim.Command("drink", "", Home, out reason), "drink succeeds");

@@ -32,6 +32,8 @@ namespace MarsSurvival.Simulation
         public double fieldCapacityKwh = 4;
         public double oxygenCapacityGrams = 12000;
         public double suitCapacityGrams = 1000;
+        /// <summary>Portable O2 canister (hand tool): filled from habitat oxygen, emptied into the suit on EVA.</summary>
+        public double canisterCapacityGrams = 800, canisterDoseGrams = 400;
         public double waterCapacityLiters = 5000;
         public double foodCapacity = 300;
         public double thermalLossKwPerDegree = 0.02;
@@ -66,7 +68,7 @@ namespace MarsSurvival.Simulation
     {
         public double batteryKwh = 140, roverKwh = 60, fieldKwh = 4;
         public double cleanWaterLiters = 3000, wasteWaterLiters;
-        public double oxygenGrams = 10000, suitOxygenGrams = 1000;
+        public double oxygenGrams = 10000, suitOxygenGrams = 1000, canisterOxygenGrams = 800;
         public double food = 50, parts = 80, seeds = 30, nutrients = 1000, medicine = 20;
         public int researchPoints;
     }

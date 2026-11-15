@@ -23,7 +23,7 @@ namespace MarsSurvival.Gameplay
         public MarsDashboardAdapter Dashboard { get; private set; }
         public MarsArduinoBridge Arduino { get; private set; }
         public MissionWorld World { get; private set; }
-        public MarsToolBelt Tools { get; private set; }
+        public MarsToolPickup Tools { get; private set; }
         public bool Ready { get; private set; }
         public bool Paused { get; private set; }
         public bool PanelOpen { get; private set; }
@@ -74,7 +74,7 @@ namespace MarsSurvival.Gameplay
             Dashboard.Bind(() => Simulation == null ? new double[3] : Simulation.State.knobs,
                 (channel, value) => SetPowerRequest(channel, value), StopAdvance);
             World = gameObject.AddComponent<MissionWorld>();
-            Tools = gameObject.AddComponent<MarsToolBelt>();
+            Tools = gameObject.AddComponent<MarsToolPickup>();
             gameObject.AddComponent<MarsMissionHud>();
             gameObject.AddComponent<MissionSmokeCheck>();
             gameObject.AddComponent<MissionQaCheck>();
@@ -208,7 +208,7 @@ namespace MarsSurvival.Gameplay
         {
             if (Simulation == null) return;
             string reason;
-            if (!Tools.HasAll(MarsToolBelt.ToolsFor(action, target ?? ""), out reason)) { Notice = reason; return; }
+            if (!Tools.HasAll(MarsToolPickup.ToolsFor(action, target ?? ""), out reason)) { Notice = reason; return; }
             Simulation.Command(action, target, Context, out reason); Notice = reason;
         }
         public void StartTask(TaskKind kind, string target = "")
@@ -217,8 +217,8 @@ namespace MarsSurvival.Gameplay
             string station = kind == TaskKind.Plant || kind == TaskKind.Harvest ? "greenhouse" : kind == TaskKind.Treat ? "medical" : kind == TaskKind.Analyze ? "lab" : kind == TaskKind.Install ? "energy" : kind == TaskKind.DustPanels ? "array" : kind == TaskKind.RepairRover ? "rover" : "";
             if (station != "" && Context.station != station) { Notice = "Go to the " + station.Replace('_', ' ') + " to start this task."; return; }
             string reason;
-            if (!Tools.HasAll(MarsToolBelt.ToolsFor(kind), out reason)) { Notice = reason; return; }
-            foreach (string tool in MarsToolBelt.ToolsFor(kind)) { Tools.Hold(tool); break; }
+            if (!Tools.HasAll(MarsToolPickup.ToolsFor(kind), out reason)) { Notice = reason; return; }
+            foreach (string tool in MarsToolPickup.ToolsFor(kind)) { Tools.Hold(tool); break; }
             Simulation.StartTask(kind, target, Context, out reason); Notice = reason;
         }
         public void Research(string id) { if (Simulation == null) return; string reason; Simulation.Research(id, out reason); Notice = reason; }
@@ -230,7 +230,7 @@ namespace MarsSurvival.Gameplay
             SiteState site = Simulation.FindSite(id); Camera cam = player.ViewCamera;
             if (site == null || !site.markerPlaced || Context.nearbySiteId != id) { Notice = "Place a marker and stand near the site first."; return; }
             string missing;
-            if (!Tools.HasAll(MarsToolBelt.ToolsFor(TaskKind.Photograph), out missing)) { Notice = missing; return; }
+            if (!Tools.HasAll(MarsToolPickup.ToolsFor(TaskKind.Photograph), out missing)) { Notice = missing; return; }
             Vector3 screen = cam.WorldToViewportPoint(new Vector3((float)site.x, (float)site.y + 1, (float)site.z));
             if (screen.z <= 0 || screen.x < 0.1f || screen.x > 0.9f || screen.y < 0.1f || screen.y > 0.9f) { Notice = "Frame the marker in the centre of your view."; return; }
             string folder = Path.Combine(Application.persistentDataPath, "photos"); Directory.CreateDirectory(folder);

@@ -1,4 +1,7 @@
 using System;
+using System.Globalization;
+using MarsSurvival.Gameplay;
+using MarsSurvival.Simulation;
 using UnityEngine;
 
 namespace MarsSurvival.Tools
@@ -28,8 +31,8 @@ namespace MarsSurvival.Tools
         /// <summary>The hit is the terrain itself rather than an object.</summary>
         public bool Ground;
         public Collider Collider;
-        /// <summary>Survey site under the crosshair, or whose working area contains the hit point.</summary>
-        public MarsSurveySite Site;
+        /// <summary>Outpost science site the astronaut is standing beside (within 5 m), or "".</summary>
+        public string SiteId = "";
 
         public T Get<T>() where T : Component
         {
@@ -64,7 +67,9 @@ namespace MarsSurvival.Tools
     /// <summary>
     /// One of the 10 expedition tools (models from Task_assets). Subclasses say what
     /// clicking does for the current target (<see cref="Plan"/>), an optional second
-    /// action on R, and an optional live readout.
+    /// action on R, and an optional live readout. Each tool works on the outpost mission's
+    /// daily tasks: the click plays the tool's motion, then starts the mission task (which
+    /// runs while the astronaut stands still) or runs the mission command.
     /// </summary>
     public abstract class MarsTool
     {
@@ -151,37 +156,119 @@ namespace MarsSurvival.Tools
         {
             return target.Hit ? ToolAction.No(what) : null;
         }
+
+        // ------------------------------------------------------------ outpost mission helpers
+
+        protected static MarsMissionController M { get { return MarsMissionController.Instance; } }
+        protected static MissionSimulation Sim { get { return M == null ? null : M.Simulation; } }
+        protected static MissionState S { get { return Sim == null ? null : Sim.State; } }
+        protected static PlayerContext Ctx { get { return M.Context; } }
+        protected static bool Indoors { get { return Ctx.zone != PlayerZone.Outdoors && !Ctx.driving; } }
+        protected static string Station { get { return Ctx.station ?? ""; } }
+
+        protected static SiteState NearbySite
+        {
+            get { return S == null || string.IsNullOrEmpty(Ctx.nearbySiteId) ? null : Sim.FindSite(Ctx.nearbySiteId); }
+        }
+
+        /// <summary>Common refusals: no mission, or a mission task already running.</summary>
+        protected static ToolAction Unavailable()
+        {
+            if (S == null || !M.IsRunning) return ToolAction.No("Start a mission first");
+            if (S.task.kind != TaskKind.None)
+                return ToolAction.No("Busy: " + TaskName(S.task.kind) + " " + Percent((float)(S.task.progressSeconds / Math.Max(1, S.task.durationSeconds))) +
+                                     ". Stand still to finish it");
+            return null;
+        }
+
+        /// <summary>Plays the tool for <paramref name="seconds"/>, then starts the mission task. Refuses with the mission's reason when it cannot start.</summary>
+        protected ToolAction Task(string label, float seconds, TaskKind kind, string targetId)
+        {
+            TaskQuote quote = Sim.GetTaskQuote(kind, targetId, Ctx);
+            if (!quote.available) return ToolAction.No(quote.reason.TrimEnd('.'));
+            return ToolAction.Do(label, seconds, kind + "/" + targetId, () =>
+            {
+                M.StartTask(kind, targetId);
+                if (S != null && S.task.kind == kind)
+                    X.Say("Started " + TaskName(kind) + ": about " + Minutes(quote.durationSeconds) + ". Stand still until it finishes.");
+            });
+        }
+
+        /// <summary>Plays the tool, then runs a mission command (eat, refill, survey...).</summary>
+        protected static ToolAction Command(string label, float seconds, string command, string targetId = "")
+        {
+            return ToolAction.Do(label, seconds, command + "/" + targetId, () => M.Execute(command, targetId));
+        }
+
+        public static string TaskName(TaskKind kind)
+        {
+            switch (kind)
+            {
+                case TaskKind.SampleSoil: return "core sampling";
+                case TaskKind.PlaceMarker: return "placing the marker";
+                case TaskKind.DustPanels: return "dusting the panels";
+                case TaskKind.RepairBase: return "base repair";
+                case TaskKind.RepairRover: return "rover repair";
+                case TaskKind.Install: return "installation";
+                case TaskKind.Analyze: return "sample analysis";
+                case TaskKind.Photograph: return "photo documentation";
+                case TaskKind.Transmit: return "transmitting to Houston";
+                case TaskKind.Plant: return "planting";
+                case TaskKind.Harvest: return "harvesting";
+                default: return kind.ToString().ToLowerInvariant();
+            }
+        }
+
+        protected static string Minutes(double seconds)
+        {
+            return seconds >= 3600 ? (seconds / 3600).ToString("0.0", CultureInfo.InvariantCulture) + " h"
+                 : seconds >= 60 ? Math.Round(seconds / 60).ToString(CultureInfo.InvariantCulture) + " min"
+                 : Math.Round(seconds).ToString(CultureInfo.InvariantCulture) + " s";
+        }
     }
 
-    // ---------------------------------------------------------------- 1-3: science
+    // ---------------------------------------------------------------- 1-3: science (Field log sites)
 
     public sealed class RockHammer : MarsTool
     {
         // Handle along +Y with the head on top; the pick points along OBJ +X (Unity -X).
-        public RockHammer() : base("rock_hammer", "Rock Hammer", "Break a rock sample off a survey site.",
+        public RockHammer() : base("rock_hammer", "Rock Hammer", "Survey a science site's rocks, then hammer in its survey marker.",
             ToolPose.Upright, Vector3.left, Vector3.up, Vector3.zero) { }
 
         public override ToolMotion Motion { get { return ToolMotion.Swing; } }
 
         public override ToolAction Plan(ToolTarget target)
         {
-            MarsSurveySite site = target.Get<MarsSurveySite>();
-            if (site == null) return NotHere(target, "Aim at the rocks of a survey site");
-            if (site.RockTaken) return ToolAction.No("You already have a rock from here");
-            if (X.BagFull) return ToolAction.No("Your sample bag is full. Take it to the supply crate");
-            return ToolAction.Do("break off a rock sample", 1.3f, site, () =>
-            {
-                site.RockTaken = true;
-                X.AddSample(MarsExpedition.SampleKind.Rock, target.Point);
-                Belt.Debris(target, Paint.Mauve, 10);
-            });
+            ToolAction busy = Unavailable();
+            if (busy != null) return busy;
+            SiteState site = NearbySite;
+            if (site == null) return ToolAction.No("Walk to a science site marker (Tab > Field log) to survey it");
+            if (!site.surveyed)
+                return Command("survey the rocks of " + site.name, 1.6f, "survey", site.id);
+            if (!site.markerPlaced)
+                return Task("hammer in the survey marker", 1.2f, TaskKind.PlaceMarker, site.id);
+            return ToolAction.No("Surveyed and marked. Photograph the marker with the Survey Camera (3)");
         }
+
+        public override string Readout(ToolTarget target)
+        {
+            SiteState site = S == null ? null : NearbySite;
+            return site == null ? null : SiteProgress(site);
+        }
+
+        public static string SiteProgress(SiteState site)
+        {
+            return site.name + "\nSurvey " + Tick(site.surveyed) + "   Marker " + Tick(site.markerPlaced) + "   Photo " + Tick(site.photographed) +
+                   "\nCore " + Tick(site.sampled) + "   Lab analysis " + Tick(site.analyzed);
+        }
+
+        private static string Tick(bool done) { return done ? "done" : "to do"; }
     }
 
     public sealed class CoreDrill : MarsTool
     {
         // Pistol drill: the bit points along OBJ +X (Unity -X), grip at the handle.
-        public CoreDrill() : base("core_drill", "Core Drill", "Drill a core sample at a survey site. Cores are worth the most!",
+        public CoreDrill() : base("core_drill", "Core Drill", "Drill a core sample at a science site, then analyze it at the lab bench.",
             ToolPose.Point, Vector3.left, Vector3.up, new Vector3(0.04f, 0.04f, 0f)) { }
 
         public override ToolMotion Motion { get { return ToolMotion.Buzz; } }
@@ -189,82 +276,66 @@ namespace MarsSurvival.Tools
 
         public override ToolAction Plan(ToolTarget target)
         {
-            MarsSurveySite site = target.Hit ? target.Site : null;
-            if (site == null) return NotHere(target, "Drill at a survey site. The radio (4) can find one");
-            if (site.CoreTaken) return ToolAction.No("You already drilled a core here");
-            if (X.BagFull) return ToolAction.No("Your sample bag is full. Take it to the supply crate");
-            return ToolAction.Do("drill a core sample", 2f, site, () =>
+            ToolAction busy = Unavailable();
+            if (busy != null) return busy;
+            if (Station == "lab")
             {
-                site.CoreTaken = true;
-                X.AddSample(MarsExpedition.SampleKind.Core, target.Point);
-                Belt.Debris(target, Paint.ClaySand, 14);
-            });
+                SiteState waiting = S.sites.Find(s => s.sampled && !s.analyzed);
+                if (waiting == null) return ToolAction.No("No core samples are waiting. Drill one at a science site first");
+                return Task("analyze the " + waiting.name + " core", 1.5f, TaskKind.Analyze, waiting.id);
+            }
+            SiteState site = NearbySite;
+            if (site == null) return ToolAction.No("Drill at a science site, or analyze cores at the lab bench");
+            if (site.sampled) return ToolAction.No(site.analyzed ? "This site's core is already analyzed" : "Core collected. Analyze it at the lab bench");
+            return Task("drill a core sample", 2f, TaskKind.SampleSoil, site.id);
+        }
+
+        public override string Readout(ToolTarget target)
+        {
+            if (S == null) return null;
+            int waiting = S.sites.FindAll(s => s.sampled && !s.analyzed).Count;
+            return "Cores waiting for the lab: " + waiting + "\nAnalyzed sites: " + S.sites.FindAll(s => s.analyzed).Count +
+                   "\nResearch points: " + S.resources.researchPoints;
         }
     }
 
     public sealed class SurveyCamera : MarsTool
     {
-        // Aeolis Mons (Mount Sharp) summit, about 5.08 S 137.85 E.
-        private const double SharpLatitude = -5.08;
-        private const double SharpLongitude = 137.85;
-        private bool sharpPhotographed;
-        private bool campPhotographed;
-
         // Lens on +Z.
-        public SurveyCamera() : base("survey_camera", "Survey Camera", "Take photos of survey sites and Mount Sharp. R zooms in.",
+        public SurveyCamera() : base("survey_camera", "Survey Camera", "Photograph a site's survey marker to document it. R zooms in.",
             ToolPose.Camera, Vector3.forward, Vector3.up, new Vector3(0.075f, 0.06f, 0f)) { } // its hand grip, on the right side
 
         public override ToolAction Plan(ToolTarget target)
         {
-            return ToolAction.Do("take a photo", 0f, "photo", Snap);
+            ToolAction busy = Unavailable();
+            if (busy != null) return busy;
+            SiteState site = NearbySite;
+            if (site != null && site.markerPlaced && !site.photographed)
+                return ToolAction.Do("photograph the " + site.name + " marker", 0f, "photo/" + site.id, () =>
+                {
+                    Belt.Flash();
+                    MarsSfx.Play(MarsSfx.Sound.Shutter);
+                    M.CapturePhoto(site.id);
+                });
+            if (site != null && !site.markerPlaced)
+                return ToolAction.No("Place the survey marker first with the Rock Hammer (1)");
+            return ToolAction.Do("take a photo", 0f, "photo", () =>
+            {
+                Belt.Flash();
+                MarsSfx.Play(MarsSfx.Sound.Shutter);
+                X.Say("Nice photo! At a science site, frame its survey marker to document it for Houston.");
+            });
         }
 
         public override string SecondaryLabel(ToolTarget target) { return Belt.Zoomed ? "zoom out" : "zoom in"; }
         public override void Secondary(ToolTarget target) { Belt.Zoomed = !Belt.Zoomed; MarsSfx.Play(MarsSfx.Sound.Click); }
         public override void OnUnequip() { Belt.Zoomed = false; }
 
-        private void Snap()
+        public override string Readout(ToolTarget target)
         {
-            Belt.Flash();
-            MarsSfx.Play(MarsSfx.Sound.Shutter);
-            Transform view = Belt.ViewCamera.transform;
-            bool anything = false;
-
-            foreach (MarsSurveySite site in MarsSurveySite.All)
-            {
-                if (site.Photographed) continue;
-                Vector3 to = site.transform.position + Vector3.up * X.Units(0.5f) - view.position;
-                float limit = Belt.Zoomed ? 25f : 14f;
-                if (X.Meters(to.magnitude) > 90f || Vector3.Angle(view.forward, to) > limit) continue;
-                site.Photographed = true;
-                site.Discovered = true;
-                X.AddResearch(2, "Great photo of " + site.DisplayName + "!", site.transform.position + Vector3.up * X.Units(1f));
-                anything = true;
-            }
-
-            if (!sharpPhotographed && X.Terrain != null && X.Terrain.IsReady)
-            {
-                Vector3 summit = X.Terrain.LatLonToWorld(SharpLatitude, SharpLongitude);
-                if (X.Terrain.IsInsideTile(summit) && Vector3.Angle(view.forward, summit - view.position) < 10f)
-                {
-                    sharpPhotographed = true;
-                    X.AddResearch(3, "You photographed Mount Sharp, a 5 km tall mountain in the middle of Gale Crater!", null);
-                    anything = true;
-                }
-            }
-
-            if (!campPhotographed && X.Camp != null)
-            {
-                Vector3 to = X.Camp.transform.position - view.position;
-                if (X.Meters(to.magnitude) > 8f && Vector3.Angle(view.forward, to) < 15f)
-                {
-                    campPhotographed = true;
-                    X.AddResearch(1, "A photo of your camp for the mission log.", null);
-                    anything = true;
-                }
-            }
-
-            if (!anything) X.Say("Nice photo! Point the camera at a survey site or at Mount Sharp to earn research.");
+            if (S == null) return null;
+            return "Documented markers: " + S.sites.FindAll(s => s.photographed).Count + " of " + S.sites.Count +
+                   "\nCentre the marker in the frame, then click.";
         }
     }
 
@@ -273,20 +344,21 @@ namespace MarsSurvival.Tools
     public sealed class CommRadio : MarsTool
     {
         // Upright handset; its screen faces OBJ +Z, so the back (-Z) points away from you.
-        public CommRadio() : base("comm_radio", "Radio", "Click to call the base. R: \"Where is the nearest survey site?\"",
+        public CommRadio() : base("comm_radio", "Radio", "Queue a status report for Houston, then transmit it. R: \"Where is the nearest site?\"",
             ToolPose.Upright, Vector3.back, Vector3.up, new Vector3(0f, 0.07f, 0f)) { }
 
         public override ToolAction Plan(ToolTarget target)
         {
-            return ToolAction.Do("call the base", 0f, "radio", () =>
-            {
-                MarsSfx.Play(MarsSfx.Sound.Radio);
-                X.Say("Base: " + WeatherLine() + "  ·  Your oxygen: " + Mathf.RoundToInt(X.SuitOxygen) + "%", MarsExpedition.Tone.Radio);
-                if (X.Camp != null) X.Say("Base: battery " + Percent(X.Camp.Battery.Fraction) + " charged.", MarsExpedition.Tone.Radio);
-            });
+            ToolAction busy = Unavailable();
+            if (busy != null) return busy;
+            bool queued = S.reports.Exists(r => !r.acknowledged);
+            if (!queued) return Command("queue a status report for Houston", 0.6f, "report");
+            if (M.Environment.signal <= 0.02)
+                return ToolAction.No("No relay signal. Next window in " + Minutes(M.Environment.nextWindowSeconds));
+            return Task("transmit the report to Houston", 0.6f, TaskKind.Transmit, "");
         }
 
-        public override string SecondaryLabel(ToolTarget target) { return "find the nearest survey site"; }
+        public override string SecondaryLabel(ToolTarget target) { return "find the nearest science site"; }
 
         public override void Secondary(ToolTarget target)
         {
@@ -296,28 +368,20 @@ namespace MarsSurvival.Tools
 
         public override string Readout(ToolTarget target)
         {
-            string text = WeatherLine();
-            if (X.Schedule != null && X.Schedule.NextSolarEvent != null)
-            {
-                double hours = X.Schedule.NextSolarEventMarsHours;
-                text += "\nNext: " + X.Schedule.NextSolarEvent.label + " in " +
-                        (hours >= 48.0 ? (hours / 24.0).ToString("F0") + " sols" : hours.ToString("F0") + " hours");
-            }
-            text += "\nRadiation: " + X.RadiationWord;
-            return text;
-        }
-
-        private static string WeatherLine()
-        {
-            if (X.Schedule != null && !string.IsNullOrEmpty(X.Schedule.CurrentLabel)) return "Weather: " + X.Schedule.CurrentLabel;
-            return "Weather: " + (X.Weather != null ? X.Weather.Current.ToString() : "unknown");
+            if (S == null) return null;
+            EnvironmentSample env = M.Environment;
+            return "Signal " + Mathf.RoundToInt((float)env.signal * 100f) + "%" +
+                   (env.signal > 0.02 ? "" : "   next window " + Minutes(env.nextWindowSeconds)) +
+                   "\nQueued reports: " + S.reports.FindAll(r => !r.acknowledged).Count +
+                   "   Acknowledged: " + S.reports.FindAll(r => r.acknowledged).Count +
+                   "\nWeather: " + (env.label ?? "unknown") + "\nRadiation: " + X.RadiationWord;
         }
     }
 
     public sealed class OxygenCanister : MarsTool
     {
         // Upright bottle; the outlet points along OBJ +X (Unity -X).
-        public OxygenCanister() : base("oxygen_canister", "Oxygen Canister", "Top up your suit's oxygen when you are far from camp.",
+        public OxygenCanister() : base("oxygen_canister", "Oxygen Canister", "Top up your suit on EVA. Inside the base, refill the canister and your suit.",
             ToolPose.Upright, Vector3.left, Vector3.up, new Vector3(0f, 0.24f, 0f))
         {
             ViewOffset = new Vector3(0f, 0.06f, 0f);
@@ -327,29 +391,28 @@ namespace MarsSurvival.Tools
 
         public override ToolAction Plan(ToolTarget target)
         {
-            if (X.NearCrate)
+            ToolAction busy = Unavailable();
+            if (busy != null) return busy;
+            ResourceState r = S.resources;
+            MissionSettings settings = Sim.Settings;
+            if (Indoors)
             {
-                if (X.CanisterCharges >= MarsExpedition.MaxCanisterCharges) return ToolAction.No("The canister is already full");
-                return ToolAction.Do("refill the canister", 1f, "refill", () =>
-                {
-                    X.CanisterCharges = MarsExpedition.MaxCanisterCharges;
-                    X.Say("Oxygen canister refilled.", MarsExpedition.Tone.Good);
-                });
+                if (r.canisterOxygenGrams < settings.canisterCapacityGrams - 1) return Command("refill the canister from habitat oxygen", 1f, "canister_fill");
+                if (r.suitOxygenGrams < settings.suitCapacityGrams - 1) return Command("refill your suit from habitat oxygen", 1f, "refill");
+                return ToolAction.No("Your suit and the canister are full");
             }
-            if (X.SuitOxygen >= 99f) return ToolAction.No("Your suit oxygen is already full");
-            if (X.CanisterCharges <= 0) return ToolAction.No("The canister is empty. Refill it at the supply crate");
-            return ToolAction.Do("breathe from the canister", 0.8f, "breathe", () =>
-            {
-                X.CanisterCharges--;
-                X.ChangeOxygen(X.canisterRefillPercent);
-                X.Say("Oxygen topped up to " + Mathf.RoundToInt(X.SuitOxygen) + "%.", MarsExpedition.Tone.Good);
-            });
+            if (r.suitOxygenGrams >= settings.suitCapacityGrams - 1) return ToolAction.No("Your suit oxygen is already full");
+            if (r.canisterOxygenGrams < 1) return ToolAction.No("The canister is empty. Refill it inside the base");
+            return Command("top up your suit from the canister", 1f, "canister_use");
         }
 
         public override string Readout(ToolTarget target)
         {
-            return "Suit oxygen: " + Mathf.RoundToInt(X.SuitOxygen) + "%\nCanister: " + X.CanisterCharges + " of " +
-                   MarsExpedition.MaxCanisterCharges + " top-ups left";
+            if (S == null) return null;
+            return "Suit oxygen: " + Mathf.RoundToInt(X.SuitOxygen) + "%  (" + S.resources.suitOxygenGrams.ToString("0", CultureInfo.InvariantCulture) + " g)" +
+                   "\nCanister: " + S.resources.canisterOxygenGrams.ToString("0", CultureInfo.InvariantCulture) + " of " +
+                   Sim.Settings.canisterCapacityGrams.ToString("0", CultureInfo.InvariantCulture) + " g" +
+                   "\nAbout " + Sim.SuitHoursRemaining.ToString("0.0", CultureInfo.InvariantCulture) + " h of suit air left";
         }
     }
 
@@ -369,12 +432,12 @@ namespace MarsSurvival.Tools
         }
     }
 
-    // ---------------------------------------------------------------- 7-0: base
+    // ---------------------------------------------------------------- 7-0: base upkeep
 
     public sealed class PanelDuster : MarsTool
     {
         // Broom: the brush head is at the -Y end, the handle runs up to +Y.
-        public PanelDuster() : base("panel_brush", "Panel Duster", "Sweep dust off the solar panels so they make power again.",
+        public PanelDuster() : base("panel_brush", "Panel Duster", "Sweep dust off the solar array (outside the energy room) so it makes power again.",
             ToolPose.Pole, Vector3.down, Vector3.forward, new Vector3(0f, 0.95f, 0f)) { } // held near the top of the handle
 
         public override ToolMotion Motion { get { return ToolMotion.Sweep; } }
@@ -382,22 +445,31 @@ namespace MarsSurvival.Tools
 
         public override ToolAction Plan(ToolTarget target)
         {
-            MarsSolarPanel panel = target.Get<MarsSolarPanel>();
-            if (panel == null) return NotHere(target, "Aim at a solar panel at camp");
-            if (panel.Dust < 0.05f) return ToolAction.No("This panel is already clean");
-            return ToolAction.Do("sweep the dust off", 1.4f, panel, () =>
+            ToolAction busy = Unavailable();
+            if (busy != null) return busy;
+            if (Station != "array") return ToolAction.No("Go out to the solar array beside the energy room");
+            if (S.equipment.panelDust < 0.005) return ToolAction.No("The panels are already clean");
+            ToolAction action = Task("sweep the dust off the panels", 1.4f, TaskKind.DustPanels, "");
+            if (!action.Blocked)
             {
-                panel.Clean();
-                Belt.Debris(target, Paint.ClaySand, 12);
-                X.Say(panel.name + " is shiny and clean!", MarsExpedition.Tone.Good);
-            });
+                Action start = action.Complete;
+                action.Complete = () => { start(); Belt.Debris(target, Paint.ClaySand, 12); };
+            }
+            return action;
+        }
+
+        public override string Readout(ToolTarget target)
+        {
+            if (S == null) return null;
+            return "Panel dust: " + Percent((float)S.equipment.panelDust) + "\nSolar now: " +
+                   Sim.Power.generatedKw.ToString("0.0", CultureInfo.InvariantCulture) + " kW";
         }
     }
 
     public sealed class FieldWrench : MarsTool
     {
         // Flat spanner standing up, jaws at +Y.
-        public FieldWrench() : base("power_wrench", "Field Wrench", "Fix solar panels and the battery when storms break them.",
+        public FieldWrench() : base("power_wrench", "Field Wrench", "Repair the base and the rover, and install upgrades in the energy room.",
             ToolPose.Upright, Vector3.forward, Vector3.up, new Vector3(0f, -0.07f, 0f)) { }
 
         public override ToolMotion Motion { get { return ToolMotion.Buzz; } }
@@ -405,76 +477,79 @@ namespace MarsSurvival.Tools
 
         public override ToolAction Plan(ToolTarget target)
         {
-            MarsSolarPanel panel = target.Get<MarsSolarPanel>();
-            if (panel != null)
+            ToolAction busy = Unavailable();
+            if (busy != null) return busy;
+            if (Station == "rover")
             {
-                if (!panel.Damaged) return ToolAction.No("This panel is working fine");
-                return ToolAction.Do("fix the solar panel", 1.6f, panel, () =>
-                {
-                    panel.Damaged = false;
-                    X.Say(panel.name + " is fixed!", MarsExpedition.Tone.Good);
-                });
+                if (S.equipment.roverCondition >= 0.995) return ToolAction.No("The rover is in good condition");
+                return Task("repair the rover", 1.6f, TaskKind.RepairRover, "");
             }
-            MarsBatteryCabinet battery = target.Get<MarsBatteryCabinet>();
-            if (battery != null)
+            if (Station == "energy")
             {
-                if (!battery.Damaged) return ToolAction.No("The battery is working fine");
-                return ToolAction.Do("fix the battery", 1.8f, battery, () =>
-                {
-                    battery.Damaged = false;
-                    X.Say("The battery is fixed! It can hold a full charge again.", MarsExpedition.Tone.Good);
-                });
+                foreach (ResearchNode node in ResearchCatalog.Nodes)
+                    if (S.researched.Contains(node.id) && !S.installed.Contains(node.id))
+                        return Task("install " + node.title, 1.8f, TaskKind.Install, node.id);
+                if (Sim.Installed("S1") && S.equipment.extraPanels < 2) return Task("install an extra solar panel", 1.8f, TaskKind.Install, "panel");
+                if (Sim.Installed("E0") && S.equipment.extraBatteries < 2) return Task("install a battery cabinet", 1.8f, TaskKind.Install, "battery");
             }
-            return NotHere(target, "Aim at a solar panel or the battery at camp");
+            if (!Indoors) return ToolAction.No("Repair the base from inside, or stand beside the rover");
+            if (S.equipment.baseCondition >= 0.995) return ToolAction.No("The base does not need repair");
+            return Task("repair the base", 1.6f, TaskKind.RepairBase, "");
+        }
+
+        public override string Readout(ToolTarget target)
+        {
+            if (S == null) return null;
+            return "Base " + Percent((float)S.equipment.baseCondition) + "   Rover " + Percent((float)S.equipment.roverCondition) +
+                   "\nParts: " + S.resources.parts.ToString("0", CultureInfo.InvariantCulture) + " (a repair uses 2)" +
+                   "\nResearched, not installed: " + Math.Max(0, S.researched.Count - S.installed.Count);
         }
     }
 
     public sealed class RegolithShovel : MarsTool
     {
+        private bool staple;
+
         // The blade is at the -Y end, the D-handle at +Y.
-        public RegolithShovel() : base("regolith_shovel", "Shovel", "Dig up Mars soil (regolith) and put it in the crop beds.",
+        public RegolithShovel() : base("regolith_shovel", "Shovel", "Plant a greenhouse bed. R switches between a fast leafy crop and a filling staple crop.",
             ToolPose.Pole, Vector3.down, Vector3.forward, new Vector3(0f, 0.85f, 0f)) { } // held by the D-handle
 
         public override ToolMotion Motion { get { return ToolMotion.Dig; } }
 
+        private string Crop { get { return staple ? "staple" : "leafy"; } }
+
         public override ToolAction Plan(ToolTarget target)
         {
-            MarsCropBed bed = target.Get<MarsCropBed>();
-            if (bed != null)
+            ToolAction busy = Unavailable();
+            if (busy != null) return busy;
+            if (Station != "greenhouse") return ToolAction.No("Plant in the greenhouse beds");
+            CropState bed = S.crops.Find(c => !c.planted);
+            if (bed == null) return ToolAction.No("Both beds are planted. Harvest them with the Sprayer (0) when ready");
+            ToolAction action = Task("plant a " + Crop + " crop in bed " + (bed.bed + 1), 1.2f, TaskKind.Plant,
+                bed.bed.ToString(CultureInfo.InvariantCulture) + ":" + Crop);
+            if (!action.Blocked)
             {
-                if (!bed.NeedsSoil) return ToolAction.No("This bed already has enough soil");
-                if (X.RegolithBags <= 0) return ToolAction.No("Dig some soil from the ground first");
-                return ToolAction.Do("put soil in the bed", 0.8f, bed, () =>
-                {
-                    X.RegolithBags--;
-                    bed.AddSoil(0.5f);
-                    Belt.Debris(target, Paint.Terracotta, 10);
-                    X.Say(bed.NeedsSoil ? bed.name + " needs one more load of soil."
-                                        : bed.name + " is full of soil. Now water it with " + Named("hydro_sprayer", "Sprayer") + "!",
-                          MarsExpedition.Tone.Good);
-                });
+                Action start = action.Complete;
+                action.Complete = () => { start(); Belt.Debris(target, Paint.Terracotta, 10); };
             }
-            if (!target.Hit || !target.Ground) return NotHere(target, "Aim at the ground or a crop bed");
-            if (X.RegolithBags >= MarsExpedition.MaxRegolithBags)
-                return ToolAction.No("Your soil bags are full. Put the soil in a crop bed at camp");
-            return ToolAction.Do("dig up soil", 0.9f, "ground", () =>
-            {
-                X.RegolithBags++;
-                Belt.Debris(target, Paint.Terracotta, 12);
-                X.Say("You dug up a bag of soil (" + X.RegolithBags + "/" + MarsExpedition.MaxRegolithBags + "). Crop beds need 2.");
-            });
+            return action;
         }
+
+        public override string SecondaryLabel(ToolTarget target) { return staple ? "plant leafy crops (fast)" : "plant staple crops (filling)"; }
+        public override void Secondary(ToolTarget target) { staple = !staple; MarsSfx.Play(MarsSfx.Sound.Click); }
 
         public override string Readout(ToolTarget target)
         {
-            return "Soil bags: " + X.RegolithBags + " / " + MarsExpedition.MaxRegolithBags;
+            if (S == null) return null;
+            return "Planting: " + Crop + (staple ? " (10 sols, 50 portions)" : " (5 sols, 24 portions)") +
+                   "\nSeeds: " + S.resources.seeds.ToString("0", CultureInfo.InvariantCulture) + "   Nutrients: " + S.resources.nutrients.ToString("0", CultureInfo.InvariantCulture);
         }
     }
 
     public sealed class HydroSprayer : MarsTool
     {
         // Watering can: the spout points along OBJ +X (Unity -X).
-        public HydroSprayer() : base("hydro_sprayer", "Sprayer", "Water the crop beds so plants grow. Harvest them when they're ready!",
+        public HydroSprayer() : base("hydro_sprayer", "Sprayer", "Harvest ready greenhouse beds, or water a stressed bed so it recovers.",
             ToolPose.Upright, Vector3.left, Vector3.up, new Vector3(0f, 0.16f, 0.11f))
         {
             // Carried by the side of the tank, like a watering can, so the tank stays in view.
@@ -486,23 +561,25 @@ namespace MarsSurvival.Tools
 
         public override ToolAction Plan(ToolTarget target)
         {
-            MarsCropBed bed = target.Get<MarsCropBed>();
-            if (bed == null) return NotHere(target, "Aim at a crop bed at camp");
-            if (bed.NeedsSoil) return ToolAction.No("Put soil in this bed first with " + Named("regolith_shovel", "Shovel"));
-            if (bed.Grown)
-            {
-                return ToolAction.Do("harvest the plants", 0.9f, bed, () =>
-                {
-                    bed.Harvest();
-                    X.AddResearch(2, "You harvested fresh food from " + bed.name + "!", bed.transform.position + Vector3.up * X.Units(0.8f));
-                });
-            }
-            if (bed.Water > 0.9f) return ToolAction.No("Already watered. The plants are growing");
-            return ToolAction.Do("water the plants", 0.8f, bed, () =>
-            {
-                bed.WaterUp();
-                X.Say(bed.name + " watered. Watch the plants grow!", MarsExpedition.Tone.Good);
-            });
+            ToolAction busy = Unavailable();
+            if (busy != null) return busy;
+            if (Station != "greenhouse") return ToolAction.No("Tend the crops in the greenhouse");
+            CropState ready = S.crops.Find(c => c.ready);
+            if (ready != null) return Task("harvest bed " + (ready.bed + 1), 1f, TaskKind.Harvest, ready.bed.ToString(CultureInfo.InvariantCulture));
+            CropState thirsty = S.crops.Find(c => c.planted && !c.ready && c.stress >= 0.05);
+            if (thirsty != null) return Command("water bed " + (thirsty.bed + 1), 0.9f, "water_crop", thirsty.bed.ToString(CultureInfo.InvariantCulture));
+            if (!S.crops.Exists(c => c.planted)) return ToolAction.No("Plant a bed with the Shovel (9) first");
+            return ToolAction.No("The crops are growing well");
+        }
+
+        public override string Readout(ToolTarget target)
+        {
+            if (S == null) return null;
+            string text = "";
+            foreach (CropState crop in S.crops)
+                text += (text.Length > 0 ? "\n" : "") + "Bed " + (crop.bed + 1) + ": " +
+                        (crop.ready ? "ready to harvest" : crop.planted ? crop.crop + " " + Percent((float)crop.growth) + ", stress " + Percent((float)crop.stress) : "empty");
+            return text + "\nClean water: " + S.resources.cleanWaterLiters.ToString("0", CultureInfo.InvariantCulture) + " L";
         }
     }
 }

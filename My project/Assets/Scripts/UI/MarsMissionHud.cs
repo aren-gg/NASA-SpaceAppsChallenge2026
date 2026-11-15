@@ -211,7 +211,7 @@ namespace MarsSurvival.UI
             drinkButton = SupplyButton(supplies, "Drink [G]", ResourceSymbol.Water, () => { if (mission != null) mission.Execute("drink"); });
 
             // Bottom centre, above the tool hotbar: latest message and what to do next.
-            RectTransform feedback = StatBar.Frame(gameplay, "Mission feedback", .245f, .165f, .755f, .30f, Ui.UiSurface);
+            RectTransform feedback = StatBar.Frame(gameplay, "Mission feedback", .245f, .205f, .755f, .335f, Ui.UiSurface);
             notice = Overlay(feedback, "", Ui.UiBody * 0.72f);
             Place(notice.rectTransform, .025f, .52f, .975f, .96f);
             guide = Overlay(feedback, "", Ui.UiBody * 0.72f);
@@ -845,19 +845,19 @@ namespace MarsSurvival.UI
             if (s.astronaut.hydration < 45) return outside ? "You are thirsty. Head inside, then Tab > Base tasks > Drink." : "You are thirsty. Tab > Base tasks > Drink.";
             if (s.astronaut.satiety < 45) return outside ? "You are hungry. Head inside, then Tab > Base tasks > Eat." : "You are hungry. Tab > Base tasks > Eat.";
             if (s.astronaut.health < 70)
-                return "Health is low. Carry the Radiation Dosimeter to the medical bay, then Tab > Base tasks > Medical treatment.";
+                return "Health is low. Go to the medical bay, then Tab > Base tasks > Medical treatment.";
             if (s.astronaut.fatigue > 70) return "You are exhausted. Inside, Tab > Base tasks > Rest (6 h).";
             if (outside && s.resources.suitOxygenGrams < 500)
                 return "Suit oxygen under half. Finish up and plan your walk back.";
             foreach (CropState crop in s.crops)
-                if (crop.ready) return "A crop is ready. Carry the Hydroponic Sprayer to the greenhouse, then Tab > Base tasks > Harvest.";
+                if (crop.ready) return "A crop is ready. In the greenhouse, select the Sprayer (0) and click to harvest.";
             foreach (CropState crop in s.crops)
                 if (!crop.planted && s.resources.seeds >= 1)
-                    return "Bed " + (crop.bed + 1) + " is empty. Pick up the Regolith Shovel and Hydroponic Sprayer in the greenhouse, then Tab > Base tasks > Plant.";
+                    return "Bed " + (crop.bed + 1) + " is empty. Pick up the Shovel in the greenhouse (E), select it (9) and click to plant.";
             if (s.equipment.baseCondition < 0.8)
-                return "The base is wearing out. Take the Field Wrench and Energy Meter (energy room), then Tab > Base tasks > Repair base.";
+                return "The base is wearing out. Take the Field Wrench from the energy room (E), select it (8) and click inside to repair.";
             if (s.equipment.panelDust > 0.15)
-                return "Solar panels are dusty. Take the Solar Panel Duster (energy room) out to the array, then Tab > Base tasks > Dust panels.";
+                return "Solar panels are dusty. Take the Panel Duster from the energy room (E) out to the array, select it (7) and click.";
             if (env.solarFraction <= 0.01)
                 return outside ? "It is night: cold and no solar power. Go back inside." : "Night: no solar power. Keep the sliders lean and pass the night with Tab > + 1 hour (daily routine ON).";
             if (s.astronaut.fatigue > 50) return "Getting tired. Plan a Rest inside before the next trip.";
@@ -907,11 +907,11 @@ namespace MarsSurvival.UI
         {
             Heading("HOW TO COMPLETE YOUR DAILY TASKS");
             Paragraph("Every task follows the same three steps:", 22);
-            Paragraph("1.  Pick up the tools.  Walk up to a tool in the base, look at it and press E. You can carry many at once; press B inside the base to put them all back.\n" +
-                      "2.  Go to the right room.  Tasks only start at their station (the bottom bar names the room you are in). Stand still.\n" +
-                      "3.  Press the task button.  Open the console (Tab), choose the task and wait. Moving pauses the task; it resumes when you stand still. Inside, + 1 hour waits faster.", 21);
+            Paragraph("1.  Fill your hotbar.  Look at a tool on its rack in the base and press E: it goes into its hotbar slot (keys 1-9, 0). Inside the base, Q puts the selected tool back and B returns them all.\n" +
+                      "2.  Go to the right place.  Tasks only start at their station (the top bar names the room you are in). Stand still.\n" +
+                      "3.  Use the tool.  Select it with its number key and left-click; R is its second action. The task then runs while you stand still (moving pauses it). The console (Tab) has the same tasks as buttons. Inside, + 1 hour waits faster.", 21);
             if (mission != null && mission.Tools != null && mission.Simulation != null)
-                LiveParagraph(() => "You are carrying: " + mission.Tools.CarriedSummary(), 21);
+                LiveParagraph(() => "In your hotbar: " + mission.Tools.CarriedSummary(), 21);
             if (mission != null && mission.Simulation == null)
             {
                 Paragraph("First choose a mission length.", 21);
@@ -922,46 +922,46 @@ namespace MarsSurvival.UI
             HelpCard("Balance power", "Overview tab", "none",
                 "Move the three sliders until each channel's Delivered matches its Useful need. Shortfalls harm the astronaut; extra draw wastes battery.");
             HelpCard("Eat and drink", "Anywhere inside (the galley is in the command hub)", "none",
-                "Base tasks > Eat, Drink. Keep Food need and Hydration up. The daily routine does this for you while time advances.");
+                "Press F to eat and G to drink (or Base tasks > Eat, Drink). Keep Food and Water up. The daily routine does this for you while time advances.");
             HelpCard("Rest and exercise", "Anywhere inside (crew quarters has the bunks)", "none",
                 "Base tasks > Rest (6 h) lowers fatigue; Exercise (30 min) keeps fitness up.");
-            HelpCard("Medical treatment", "Medical bay", "Radiation Dosimeter (medical bay)",
+            HelpCard("Medical treatment", "Medical bay", "none",
                 "Base tasks > Medical treatment when health drops. Uses one medical supply.");
 
             Heading("GREENHOUSE");
-            HelpCard("Plant a bed", "Greenhouse", "Regolith Shovel + Hydroponic Sprayer (greenhouse)",
-                "Base tasks > Plant leafy (fast) or staple (filling) crop on an empty bed. Keep greenhouse power ON.");
-            HelpCard("Harvest", "Greenhouse", "Hydroponic Sprayer (greenhouse)",
-                "When a bed says READY TO HARVEST, press Harvest. Food storage must have room.");
+            HelpCard("Plant a bed", "Greenhouse", "Shovel (9), kept in the greenhouse",
+                "Click to plant an empty bed; R switches between a leafy (fast) and staple (filling) crop. Keep greenhouse power ON.");
+            HelpCard("Harvest and water", "Greenhouse", "Sprayer (0), kept in the greenhouse",
+                "Click when a bed is ready to harvest. On a stressed bed, click to water it (1 L) so it recovers.");
 
             Heading("MAINTENANCE");
-            HelpCard("Repair the base", "Inside the habitat", "Field Wrench + Energy Meter (energy room)",
-                "Base tasks > Repair base when base condition falls. Uses 2 parts.");
-            HelpCard("Dust the solar panels", "Solar array beside the energy room (outside)", "Solar Panel Duster (energy room)",
-                "Base tasks > Dust panels when panel dust builds up. Go out through the airlock.");
-            HelpCard("Repair the rover", "Beside the rover", "Field Wrench (energy room)",
-                "Base tasks > Repair rover. Uses 2 parts.");
-            HelpCard("Install research and equipment", "Energy room", "Field Wrench + Energy Meter (energy room)",
-                "Research tab > Install, after a design is researched.");
+            HelpCard("Repair the base", "Inside the habitat", "Field Wrench (8), kept in the energy room",
+                "Click inside the base when base condition falls. Uses 2 parts.");
+            HelpCard("Dust the solar panels", "Solar array beside the energy room (outside)", "Panel Duster (7), kept in the energy room",
+                "Click at the array when panel dust builds up. Go out through the airlock.");
+            HelpCard("Repair the rover", "Beside the rover", "Field Wrench (8)",
+                "Click beside the rover. Uses 2 parts.");
+            HelpCard("Install research and equipment", "Energy room", "Field Wrench (8)",
+                "Click in the energy room to install the next researched design (or Research tab > Install).");
 
             Heading("FIELD SCIENCE (EVA)");
-            HelpCard("Get ready", "Anywhere inside, then the lab", "Portable O2 Canister (lab, life support or medical bay)",
-                "Base tasks > Refill suit before leaving. Then walk through the lab door into the airlock: the inner door closes before the outer one opens.");
-            HelpCard("Find a site", "Outside", "none",
-                "Field log > select a site and walk or drive toward it. Its marker pops up when you are within about 30 m.");
-            HelpCard("Survey and measure", "Within 5 m of the site", "Rock Hammer + Radiation Dosimeter (lab, hub)",
-                "Field log > Survey, then Measure.");
-            HelpCard("Sample soil", "Within 5 m of the site", "Sample Scoop + Sample Canister Rack (lab)",
-                "Field log > Sample soil.");
-            HelpCard("Mark and photograph", "Within 5 m of the site", "Survey Marker + Survey Camera (lab)",
-                "Field log > Place marker, face the marker, then Capture marker photo.");
-            HelpCard("Analyze the sample", "EVA prep and sample lab", "Core Sample Drill (lab)",
-                "Back inside, Field log > Analyze at lab. Earns research points.");
+            HelpCard("Get ready", "Anywhere inside, then the lab", "Oxygen Canister (5), kept in life support, the medical bay or the lab",
+                "Click the canister inside to fill it and your suit; on EVA, click to top your suit up. Then walk through the lab door into the airlock: the inner door closes before the outer one opens.");
+            HelpCard("Find a site", "Outside", "Radio (4)",
+                "Radio R (or Field log) picks the nearest site with work left; follow its marker. Markers pop up within about 30 m.");
+            HelpCard("Survey and mark", "Within 5 m of the site", "Rock Hammer (1), kept in the lab",
+                "Click to survey the rocks, then click again to hammer in the survey marker. Measure is in the Field log.");
+            HelpCard("Core sample", "Within 5 m of the site", "Core Drill (2), kept in the lab",
+                "Click to drill a core sample.");
+            HelpCard("Photograph", "Within 5 m of the site", "Survey Camera (3), kept in the lab",
+                "Centre the survey marker in view and click. R zooms.");
+            HelpCard("Analyze the sample", "EVA prep and sample lab", "Core Drill (2)",
+                "Back inside at the lab bench, click to analyze the core. Earns research points.");
 
             Heading("COMMUNICATIONS");
-            HelpCard("Report to Houston", "Anywhere", "Comm Radio (hub, shelter or lab)",
-                "Radio tab > Queue status report, then Transmit during a usable radio window.");
-            Paragraph("Carrying the Habitat Work Lamp (quarters or shelter) lights your way at night.", 20);
+            HelpCard("Report to Houston", "Anywhere", "Radio (4), kept in the hub, shelter or lab",
+                "Click to queue a status report, then click again to transmit during a usable radio window (or use the Radio tab).");
+            Paragraph("The Work Lamp (6), kept in the quarters or shelter, lights your way at night: click to switch it on; it clips to your helmet when you change tools.", 20);
         }
 
         private void HelpCard(string title, string where, string tools, string how)
@@ -1086,7 +1086,8 @@ namespace MarsSurvival.UI
             Button button = StatBar.Button(parent, text, action);
             ResourceGlyph.Decorate(button, symbol);
             TMP_Text label = button.GetComponentInChildren<TMP_Text>();
-            label.fontSize = Ui.UiBody * 0.75f;
+            label.fontSize = Ui.UiBody * 0.62f;
+            label.enableWordWrapping = false;
             return button;
         }
 

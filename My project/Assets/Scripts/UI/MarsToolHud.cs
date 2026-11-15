@@ -1,70 +1,62 @@
 using System.Collections.Generic;
+using MarsSurvival.Gameplay;
+using MarsSurvival.Simulation;
 using MarsSurvival.Tools;
 using MarsSurvival.World;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace MarsSurvival.UI
 {
     /// <summary>
-    /// On-screen display for the tools, built in code with uGUI and the palette, and
-    /// written for players aged 7-12:
-    /// a "what to do next" card, a numbered hotbar of the 10 tools, a crosshair with a
-    /// progress ring and "CLICK to ..." prompts, a card describing whatever you look at,
-    /// oxygen / research / sample-bag stats, the held tool's readout, messages, floating
-    /// "+research" pop-ups, waypoints, a low-oxygen warning glow and a camera viewfinder.
-    /// Only shown while walking as the astronaut.
+    /// On-screen display for the tools, built in code with uGUI and the MarsTrainer UI font:
+    /// a numbered hotbar of the 10 tools (a slot fills when its tool is picked up from its
+    /// outpost rack), a crosshair with a progress ring (the tool's motion, then the mission
+    /// task it started) and "CLICK to ..." prompts, a card describing what you look at or the
+    /// site you stand at, the held tool's readout, floating "+research" pop-ups, waypoints,
+    /// a low-oxygen warning glow and a camera viewfinder. Vitals, warnings and the next step
+    /// are on the mission HUD. Only shown while walking as the astronaut on a mission.
     /// </summary>
     public sealed class MarsToolHud : MonoBehaviour
     {
-        private const int ToastCount = 4;
         private const int WaypointCount = 4;
         private const int PopupCount = 6;
-        private const float ToastSeconds = 7f;
         private const float SlotSize = 88f;
         private const float SlotGap = 12f;
 
         private MarsExpedition expedition;
         private MarsToolBelt belt;
-        private Font font;
+        private TMP_FontAsset font;
         private Sprite round, ring, circle, disc;
 
         private Canvas canvas;
         private RectTransform canvasRect;
         private Image crosshair, crosshairRing, progressRing;
         private RectTransform promptRect;
-        private Text prompt, secondary;
+        private TMP_Text prompt, secondary;
         private RectTransform lookCard;
-        private Text lookTitle, lookBody;
-        private RectTransform nextCard;
-        private Image nextBackground;
-        private Text nextBody;
-        private string lastNext = "";
-        private float nextChangedAt = -10f;
-        private Text toolName, toolHint;
+        private TMP_Text lookTitle, lookBody;
+        private TMP_Text toolName, toolHint;
         private RectTransform[] slots;
         private Image[] slotBackgrounds, slotRings;
-        private Image oxygenFill;
-        private Text oxygenLabel, researchLabel, bagLabel, extrasLabel, radiationLabel;
+        private RawImage[] slotIcons;
         private RectTransform readoutCard;
-        private Text readoutTitle, readoutBody;
-        private readonly List<Image> toastCards = new List<Image>();
-        private readonly List<Text> toastTexts = new List<Text>();
+        private TMP_Text readoutTitle, readoutBody;
         private readonly List<RectTransform> waypoints = new List<RectTransform>();
         private readonly List<Image> waypointIcons = new List<Image>();
-        private readonly List<Text> waypointTexts = new List<Text>();
-        private readonly List<Text> popups = new List<Text>();
+        private readonly List<TMP_Text> waypointTexts = new List<TMP_Text>();
+        private readonly List<TMP_Text> popups = new List<TMP_Text>();
         private Image flash;
         private RawImage warning;
         private RectTransform viewfinder;
-        private int lastResearch;
-        private float researchBumpAt = -10f;
 
         private void Start()
         {
             expedition = GetComponent<MarsExpedition>();
             belt = GetComponent<MarsToolBelt>();
-            font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            font = Resources.Load<TMP_FontAsset>(MarsTrainer.UI.UiTypeface.ResourcePath);
+            if (font == null) font = TMP_Settings.defaultFontAsset;
             round = RoundedSprite(64, 18f, 0f);
             ring = RoundedSprite(64, 18f, 3f);
             circle = CircleSprite(128, 0.36f);
@@ -114,7 +106,7 @@ namespace MarsSurvival.UI
                 RectTransform marker = NewRect("Waypoint", canvasRect, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(360f, 70f));
                 Image icon = Panel(marker, "Pin", disc, new Vector2(0.5f, 0.5f), new Vector2(0f, 14f), new Vector2(22f, 22f), orange);
                 Panel(icon.rectTransform, "Dot", disc, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(8f, 8f), purple);
-                Text label = Label(marker, "", 20, pink, FontStyle.Bold, TextAnchor.UpperCenter);
+                TMP_Text label = Label(marker, "", 20, pink, FontStyle.Bold, TextAnchor.UpperCenter);
                 Place(label.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, -12f), new Vector2(360f, 26f));
                 AddShadow(label);
                 waypoints.Add(marker);
@@ -153,20 +145,9 @@ namespace MarsSurvival.UI
             lookTitle = Label(lookCard, "", 22, orange, FontStyle.Bold, TextAnchor.UpperLeft);
             Place(lookTitle.rectTransform, new Vector2(0f, 1f), new Vector2(18f, -12f), new Vector2(390f, 28f), new Vector2(0f, 1f));
             lookBody = Label(lookCard, "", 20, pink, FontStyle.Normal, TextAnchor.UpperLeft);
-            lookBody.horizontalOverflow = HorizontalWrapMode.Wrap;
-            lookBody.lineSpacing = 1.1f;
+            lookBody.enableWordWrapping = true;
+            lookBody.lineSpacing = 8f;
             Place(lookBody.rectTransform, new Vector2(0f, 1f), new Vector2(18f, -42f), new Vector2(384f, 200f), new Vector2(0f, 1f));
-
-            // "What to do next", top-left.
-            nextBackground = Panel(canvasRect, "Next Card", round, new Vector2(0f, 1f), new Vector2(28f, -28f), new Vector2(520f, 110f), WithAlpha(purple, 0.82f));
-            nextBackground.rectTransform.pivot = new Vector2(0f, 1f);
-            nextCard = nextBackground.rectTransform;
-            Text nextTitle = Label(nextCard, "WHAT TO DO NEXT", 18, orange, FontStyle.Bold, TextAnchor.UpperLeft);
-            Place(nextTitle.rectTransform, new Vector2(0f, 1f), new Vector2(20f, -14f), new Vector2(480f, 24f), new Vector2(0f, 1f));
-            nextBody = Label(nextCard, "", 23, pink, FontStyle.Normal, TextAnchor.UpperLeft);
-            nextBody.horizontalOverflow = HorizontalWrapMode.Wrap;
-            nextBody.lineSpacing = 1.1f;
-            Place(nextBody.rectTransform, new Vector2(0f, 1f), new Vector2(20f, -42f), new Vector2(480f, 200f), new Vector2(0f, 1f));
 
             // Hotbar with key numbers.
             int count = belt.Tools.Length;
@@ -176,6 +157,7 @@ namespace MarsSurvival.UI
             slots = new RectTransform[count];
             slotBackgrounds = new Image[count];
             slotRings = new Image[count];
+            slotIcons = new RawImage[count];
             for (int i = 0; i < count; i++)
             {
                 RectTransform slot = NewRect("Slot " + MarsTool.KeyOf(belt.Tools[i].Id), bar, new Vector2(0f, 0.5f),
@@ -187,9 +169,10 @@ namespace MarsSurvival.UI
                 RawImage icon = NewRect("Icon", slot, new Vector2(0.5f, 0.5f), new Vector2(0f, -2f), new Vector2(SlotSize - 12f, SlotSize - 12f)).gameObject.AddComponent<RawImage>();
                 icon.texture = belt.Tools[i].Icon;
                 icon.raycastTarget = false;
+                slotIcons[i] = icon;
                 slotRings[i] = Panel(slot, "Ring", ring, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(SlotSize + 8f, SlotSize + 8f), orange);
                 Image chip = Panel(slot, "Key", disc, new Vector2(0f, 1f), new Vector2(12f, -12f), new Vector2(28f, 28f), orange);
-                Text key = Label(chip.rectTransform, MarsTool.KeyOf(belt.Tools[i].Id), 18, purple, FontStyle.Bold, TextAnchor.MiddleCenter);
+                TMP_Text key = Label(chip.rectTransform, MarsTool.KeyOf(belt.Tools[i].Id), 18, purple, FontStyle.Bold, TextAnchor.MiddleCenter);
                 Stretch(key.rectTransform);
                 slots[i] = slot;
             }
@@ -201,52 +184,20 @@ namespace MarsSurvival.UI
             Place(toolHint.rectTransform, new Vector2(0.5f, 0f), new Vector2(0f, 134f), new Vector2(1200f, 30f));
             AddShadow(toolHint);
 
-            // Stats, bottom-left.
-            Image stats = Panel(canvasRect, "Stats", round, new Vector2(0f, 0f), new Vector2(28f, 28f), new Vector2(360f, 196f), WithAlpha(purple, 0.82f));
-            stats.rectTransform.pivot = Vector2.zero;
-            RectTransform s = stats.rectTransform;
-            oxygenLabel = Label(s, "", 21, pink, FontStyle.Bold, TextAnchor.UpperLeft);
-            Place(oxygenLabel.rectTransform, new Vector2(0f, 1f), new Vector2(20f, -14f), new Vector2(320f, 26f), new Vector2(0f, 1f));
-            Image oxygenTrack = Panel(s, "Oxygen Track", round, new Vector2(0f, 1f), new Vector2(20f, -46f), new Vector2(320f, 16f), WithAlpha(MarsPalette.Mauve, 0.8f));
-            oxygenTrack.rectTransform.pivot = new Vector2(0f, 1f);
-            oxygenTrack.pixelsPerUnitMultiplier = 4f;
-            oxygenFill = Panel(oxygenTrack.rectTransform, "Oxygen Fill", round, new Vector2(0f, 0.5f), Vector2.zero, new Vector2(320f, 16f), orange);
-            oxygenFill.rectTransform.pivot = new Vector2(0f, 0.5f);
-            oxygenFill.pixelsPerUnitMultiplier = 4f;
-            researchLabel = Label(s, "", 22, orange, FontStyle.Bold, TextAnchor.MiddleLeft);
-            Place(researchLabel.rectTransform, new Vector2(0f, 1f), new Vector2(20f, -88f), new Vector2(320f, 28f), new Vector2(0f, 0.5f));
-            bagLabel = Label(s, "", 20, pink, FontStyle.Normal, TextAnchor.UpperLeft);
-            Place(bagLabel.rectTransform, new Vector2(0f, 1f), new Vector2(20f, -106f), new Vector2(320f, 26f), new Vector2(0f, 1f));
-            extrasLabel = Label(s, "", 19, WithAlpha(pink, 0.85f), FontStyle.Normal, TextAnchor.UpperLeft);
-            Place(extrasLabel.rectTransform, new Vector2(0f, 1f), new Vector2(20f, -134f), new Vector2(320f, 24f), new Vector2(0f, 1f));
-            radiationLabel = Label(s, "", 19, WithAlpha(pink, 0.85f), FontStyle.Normal, TextAnchor.UpperLeft);
-            Place(radiationLabel.rectTransform, new Vector2(0f, 1f), new Vector2(20f, -160f), new Vector2(320f, 24f), new Vector2(0f, 1f));
-
-            // Tool readout, bottom-right.
-            Image readout = Panel(canvasRect, "Readout", round, new Vector2(1f, 0f), new Vector2(-28f, 28f), new Vector2(420f, 120f), WithAlpha(purple, 0.82f));
+            // Tool readout, right side above the mission HUD's power panel.
+            Image readout = Panel(canvasRect, "Readout", round, new Vector2(1f, 0.535f), new Vector2(-28f, 0f), new Vector2(420f, 120f), WithAlpha(purple, 0.82f));
             readout.rectTransform.pivot = new Vector2(1f, 0f);
             readoutCard = readout.rectTransform;
             readoutTitle = Label(readoutCard, "", 19, orange, FontStyle.Bold, TextAnchor.UpperLeft);
             Place(readoutTitle.rectTransform, new Vector2(0f, 1f), new Vector2(20f, -14f), new Vector2(380f, 24f), new Vector2(0f, 1f));
             readoutBody = Label(readoutCard, "", 20, pink, FontStyle.Normal, TextAnchor.UpperLeft);
-            readoutBody.lineSpacing = 1.15f;
+            readoutBody.lineSpacing = 10f;
             Place(readoutBody.rectTransform, new Vector2(0f, 1f), new Vector2(20f, -44f), new Vector2(380f, 200f), new Vector2(0f, 1f));
-
-            // Messages, top centre.
-            for (int i = 0; i < ToastCount; i++)
-            {
-                Image card = Panel(canvasRect, "Message", round, new Vector2(0.5f, 1f), new Vector2(0f, -28f - i * 52f), new Vector2(600f, 44f), WithAlpha(purple, 0.85f));
-                card.rectTransform.pivot = new Vector2(0.5f, 1f);
-                Text text = Label(card.rectTransform, "", 21, pink, FontStyle.Normal, TextAnchor.MiddleCenter);
-                Stretch(text.rectTransform);
-                toastCards.Add(card);
-                toastTexts.Add(text);
-            }
 
             // Floating "+research" pop-ups.
             for (int i = 0; i < PopupCount; i++)
             {
-                Text popup = Label(canvasRect, "", 32, orange, FontStyle.Bold, TextAnchor.MiddleCenter);
+                TMP_Text popup = Label(canvasRect, "", 32, orange, FontStyle.Bold, TextAnchor.MiddleCenter);
                 Place(popup.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(500f, 40f));
                 AddShadow(popup);
                 popups.Add(popup);
@@ -254,7 +205,6 @@ namespace MarsSurvival.UI
 
             flash = Panel(canvasRect, "Camera Flash", null, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero, new Color(1f, 1f, 1f, 0f));
             Stretch(flash.rectTransform);
-            lastResearch = expedition.Research;
         }
 
         // ------------------------------------------------------------------ update
@@ -275,14 +225,19 @@ namespace MarsSurvival.UI
             string orangeHex = "#" + ColorUtility.ToHtmlStringRGB(orange);
             float ease = 1f - Mathf.Exp(-15f * dt);
 
-            // Crosshair, progress ring and prompt.
+            // Crosshair, progress ring and prompt. After the tool's motion, the ring follows the
+            // mission task the click started (it runs while the astronaut stands still).
+            MissionState state = MarsExpedition.State;
+            bool taskRunning = state != null && state.task.kind != TaskKind.None;
+            float taskProgress = taskRunning ? (float)(state.task.progressSeconds / System.Math.Max(1.0, state.task.durationSeconds)) : 0f;
             bool working = belt.Working != null;
             bool usable = plan != null && !plan.Blocked;
             crosshairRing.color = Color.Lerp(crosshairRing.color, usable ? orange : WithAlpha(pink, 0.4f), ease);
             float ringScale = working ? 0f : usable ? 1f + 0.08f * Mathf.Sin(now * 6f) : 0.8f;
             crosshairRing.rectTransform.localScale = Vector3.one * Mathf.Lerp(crosshairRing.rectTransform.localScale.x, ringScale, ease);
-            progressRing.transform.parent.gameObject.SetActive(working);
-            progressRing.fillAmount = working ? Mathf.MoveTowards(progressRing.fillAmount, belt.Progress, dt * 3f) : 0f;
+            progressRing.transform.parent.gameObject.SetActive(working || taskRunning);
+            progressRing.fillAmount = working ? Mathf.MoveTowards(progressRing.fillAmount, belt.Progress, dt * 3f)
+                                    : taskRunning ? Mathf.MoveTowards(progressRing.fillAmount, taskProgress, dt * 3f) : 0f;
             progressRing.color = belt.AimLost ? WithAlpha(pink, 0.6f) : orange;
             float pop = Mathf.Clamp01(1f - (now - belt.CompletedAt) / 0.3f);
             crosshair.rectTransform.localScale = Vector3.one * (1f + pop * 1.5f);
@@ -292,6 +247,13 @@ namespace MarsSurvival.UI
             {
                 prompt.text = belt.AimLost ? "Keep aiming at it!" : Capitalize(belt.Working.Label) + "...";
                 prompt.color = belt.AimLost ? WithAlpha(pink, 0.6f + 0.4f * Mathf.Abs(Mathf.Sin(now * 8f))) : orange;
+            }
+            else if (taskRunning)
+            {
+                bool moving = MarsExpedition.Mission != null && (MarsExpedition.Mission.Context.moving || MarsExpedition.Mission.Context.driving);
+                prompt.text = Capitalize(MarsTool.TaskName(state.task.kind)) + "  " + Mathf.RoundToInt(taskProgress * 100f) + "%" +
+                              (moving ? "  (paused while you move)" : "  (stand still)");
+                prompt.color = moving ? WithAlpha(pink, 0.7f) : orange;
             }
             else if (plan == null)
             {
@@ -323,20 +285,6 @@ namespace MarsSurvival.UI
                 lookCard.sizeDelta = new Vector2(420f, 56f + lookBody.preferredHeight);
             }
 
-            // What to do next.
-            string next = expedition.NextStep;
-            if (next != lastNext)
-            {
-                lastNext = next;
-                nextChangedAt = now;
-            }
-            nextBody.text = next;
-            nextCard.gameObject.SetActive(!string.IsNullOrEmpty(next));
-            nextCard.sizeDelta = new Vector2(520f, 58f + nextBody.preferredHeight);
-            float glow = Mathf.Clamp01(1f - (now - nextChangedAt) / 0.8f);
-            nextBackground.color = Color.Lerp(WithAlpha(MarsPalette.DeepPurple, 0.82f), WithAlpha(MarsPalette.Mauve, 0.95f), glow);
-            nextCard.localScale = Vector3.one * (1f + 0.04f * glow);
-
             // Hotbar.
             float slotEase = 1f - Mathf.Exp(-18f * dt);
             for (int i = 0; i < slots.Length; i++)
@@ -347,38 +295,18 @@ namespace MarsSurvival.UI
                 Vector2 p = slots[i].anchoredPosition;
                 p.y = Mathf.Lerp(p.y, selected ? 10f : 0f, slotEase);
                 slots[i].anchoredPosition = p;
-                slotBackgrounds[i].color = selected ? MarsPalette.Mauve : WithAlpha(MarsPalette.DeepPurple, 0.75f);
+                bool carried = belt.Carried(i);
+                slotBackgrounds[i].color = selected ? MarsPalette.Mauve : WithAlpha(MarsPalette.DeepPurple, carried ? 0.75f : 0.45f);
+                slotIcons[i].color = carried ? Color.white : new Color(1f, 1f, 1f, 0.22f);
                 slotRings[i].enabled = selected;
             }
-            toolName.text = tool.Name;
+            toolName.text = belt.CurrentCarried ? tool.Name : tool.Name + "  (empty slot)";
             toolHint.text = tool.Hint;
             toolHint.color = WithAlpha(pink, 0.9f * Mathf.Clamp01(1f - (now - belt.SwitchedAt - 5f) / 1f));
 
-            // Stats.
+            // Low-oxygen glow while outside on suit air.
             float oxygen = expedition.SuitOxygen;
-            bool low = oxygen < 25f;
-            bool atCamp = expedition.InsideCamp(expedition.PlayerPosition);
-            oxygenLabel.text = "Oxygen  " + Mathf.RoundToInt(oxygen) + "%" + (atCamp && oxygen < 99.5f ? "   (filling up at camp)" : "");
-            oxygenFill.rectTransform.sizeDelta = new Vector2(320f * oxygen / 100f, 16f);
-            oxygenFill.color = low && Mathf.Repeat(now, 0.8f) < 0.4f ? MarsPalette.Terracotta : orange;
-            if (expedition.Research != lastResearch)
-            {
-                lastResearch = expedition.Research;
-                researchBumpAt = now;
-            }
-            float bump = Mathf.Clamp01(1f - (now - researchBumpAt) / 0.5f);
-            researchLabel.text = "Research points:  " + expedition.Research;
-            researchLabel.rectTransform.localScale = Vector3.one * (1f + 0.15f * bump);
-            string bag = "";
-            for (int i = 0; i < MarsExpedition.BagCapacity; i++) bag += i < expedition.Samples.Count ? "■ " : "□ ";
-            bagLabel.text = "Sample bag:  " + bag;
-            extrasLabel.text = "Soil bags " + expedition.RegolithBags + "/" + MarsExpedition.MaxRegolithBags +
-                               "   ·   O2 canister " + expedition.CanisterCharges + "/" + MarsExpedition.MaxCanisterCharges;
-            radiationLabel.text = "Radiation: " + expedition.RadiationWord;
-            radiationLabel.color = expedition.RadiationHigh ? orange : WithAlpha(pink, 0.85f);
-
-            // Low-oxygen glow.
-            float danger = Mathf.Clamp01((25f - oxygen) / 25f);
+            float danger = expedition.Outdoors ? Mathf.Clamp01((25f - oxygen) / 25f) : 0f;
             warning.color = WithAlpha(warning.color, danger * (0.45f + 0.25f * Mathf.Sin(now * 5f)));
 
             // Readout.
@@ -395,39 +323,11 @@ namespace MarsSurvival.UI
             float frame = Mathf.Lerp(viewfinder.localScale.x, belt.Zoomed ? 1.15f : 1f, ease);
             viewfinder.localScale = new Vector3(frame, frame, 1f);
 
-            UpdateToasts(now);
             UpdateWaypoints();
             UpdatePopups(now);
 
             float flashAlpha = Mathf.Clamp01(1f - (now - belt.FlashAt) / 0.35f);
             flash.color = new Color(1f, 1f, 1f, flashAlpha * 0.85f);
-        }
-
-        private void UpdateToasts(float now)
-        {
-            List<MarsExpedition.Message> messages = expedition.Messages;
-            int shown = 0;
-            for (int m = messages.Count - 1; m >= 0 && shown < ToastCount; m--)
-            {
-                float age = now - messages[m].time;
-                if (age > ToastSeconds) break;
-                Image card = toastCards[shown];
-                Text text = toastTexts[shown];
-                card.gameObject.SetActive(true);
-                text.text = messages[m].text;
-                float alpha = Mathf.Clamp01((ToastSeconds - age) / 1f) * Mathf.Clamp01(age / 0.15f);
-                MarsExpedition.Tone tone = messages[m].tone;
-                Color textColor = tone == MarsExpedition.Tone.Good ? MarsPalette.WarmOrange
-                                : tone == MarsExpedition.Tone.Radio ? MarsPalette.ClaySand : MarsPalette.PalePink;
-                text.color = WithAlpha(textColor, alpha);
-                Color background = tone == MarsExpedition.Tone.Warning ? MarsPalette.Terracotta : MarsPalette.DeepPurple;
-                card.color = WithAlpha(background, 0.85f * alpha);
-                float slide = 1f - Mathf.Clamp01(age / 0.2f);
-                card.rectTransform.anchoredPosition = new Vector2(0f, -28f - shown * 52f + slide * 20f);
-                card.rectTransform.sizeDelta = new Vector2(Mathf.Min(1500f, text.preferredWidth + 44f), 44f);
-                shown++;
-            }
-            for (int i = shown; i < ToastCount; i++) toastCards[i].gameObject.SetActive(false);
         }
 
         private bool ToCanvas(Vector3 world, out Vector2 local, out bool behind)
@@ -483,7 +383,7 @@ namespace MarsSurvival.UI
                 Vector2 local = new Vector2(0f, 60f);
                 bool behind = false;
                 if (list[i].hasWorld && (!ToCanvas(list[i].world, out local, out behind) || behind)) local = new Vector2(0f, 60f);
-                Text text = popups[used];
+                TMP_Text text = popups[used];
                 text.gameObject.SetActive(true);
                 text.text = list[i].text;
                 text.rectTransform.anchoredPosition = local + new Vector2(0f, 30f + age * 70f + used * 36f);
@@ -538,27 +438,30 @@ namespace MarsSurvival.UI
             return image;
         }
 
-        private Text Label(Transform parent, string content, int size, Color color, FontStyle style, TextAnchor anchor)
+        private TMP_Text Label(Transform parent, string content, int size, Color color, FontStyle style, TextAnchor anchor)
         {
-            Text text = NewRect("Text", parent, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(100f, 30f)).gameObject.AddComponent<Text>();
+            TextMeshProUGUI text = NewRect("Text", parent, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(100f, 30f)).gameObject.AddComponent<TextMeshProUGUI>();
             text.font = font;
             text.text = content;
             text.fontSize = size;
-            text.fontStyle = style;
+            text.fontStyle = style == FontStyle.Bold ? FontStyles.Bold : FontStyles.Normal;
             text.color = color;
-            text.alignment = anchor;
-            text.supportRichText = true;
-            text.horizontalOverflow = HorizontalWrapMode.Overflow;
-            text.verticalOverflow = VerticalWrapMode.Overflow;
+            text.alignment = anchor == TextAnchor.UpperLeft ? TextAlignmentOptions.TopLeft
+                : anchor == TextAnchor.UpperCenter ? TextAlignmentOptions.Top
+                : anchor == TextAnchor.MiddleLeft ? TextAlignmentOptions.MidlineLeft
+                : anchor == TextAnchor.LowerCenter ? TextAlignmentOptions.Bottom : TextAlignmentOptions.Center;
+            text.richText = true;
+            text.enableWordWrapping = false;
+            text.overflowMode = TextOverflowModes.Overflow;
             text.raycastTarget = false;
             return text;
         }
 
-        private static void AddShadow(Text text)
+        /// <summary>Dark outline so labels read over the bright Martian ground.</summary>
+        private static void AddShadow(TMP_Text text)
         {
-            Shadow shadow = text.gameObject.AddComponent<Shadow>();
-            shadow.effectColor = WithAlpha(MarsPalette.DeepPurple, 0.85f);
-            shadow.effectDistance = new Vector2(0f, -2f);
+            text.outlineWidth = 0.18f;
+            text.outlineColor = WithAlpha(MarsPalette.DeepPurple, 0.9f);
         }
 
         private static Color WithAlpha(Color color, float alpha)

@@ -73,17 +73,17 @@ namespace MarsSurvival.Base
         {
             switch (id)
             {
-                case "comm_radio": return "Comm Radio";
+                case "comm_radio": return "Radio";
                 case "dosimeter": return "Radiation Dosimeter";
-                case "oxygen_canister": return "Portable O2 Canister";
-                case "work_lamp": return "Habitat Work Lamp";
+                case "oxygen_canister": return "Oxygen Canister";
+                case "work_lamp": return "Work Lamp";
                 case "multimeter": return "Energy Meter";
                 case "power_wrench": return "Field Wrench";
-                case "panel_brush": return "Solar Panel Duster";
-                case "hydro_sprayer": return "Hydroponic Sprayer";
-                case "regolith_shovel": return "Regolith Shovel";
+                case "panel_brush": return "Panel Duster";
+                case "hydro_sprayer": return "Sprayer";
+                case "regolith_shovel": return "Shovel";
                 case "rock_hammer": return "Rock Hammer";
-                case "core_drill": return "Core Sample Drill";
+                case "core_drill": return "Core Drill";
                 case "sample_scoop": return "Sample Scoop";
                 case "sample_canisters": return "Sample Canister Rack";
                 case "survey_camera": return "Survey Camera";

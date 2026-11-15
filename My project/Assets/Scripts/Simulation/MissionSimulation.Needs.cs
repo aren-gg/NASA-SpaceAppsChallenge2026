@@ -139,6 +139,7 @@ namespace MarsSurvival.Simulation
             r.wasteWaterLiters = Clamp(r.wasteWaterLiters, 0, Settings.waterCapacityLiters);
             r.oxygenGrams = Clamp(r.oxygenGrams, 0, Settings.oxygenCapacityGrams);
             r.suitOxygenGrams = Clamp(r.suitOxygenGrams, 0, Settings.suitCapacityGrams);
+            r.canisterOxygenGrams = Clamp(r.canisterOxygenGrams, 0, Settings.canisterCapacityGrams);
             r.food = Clamp(r.food, 0, Settings.foodCapacity);
             r.seeds = Math.Max(0, r.seeds); r.nutrients = Math.Max(0, r.nutrients);
         }

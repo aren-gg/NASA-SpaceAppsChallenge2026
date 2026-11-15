@@ -48,6 +48,8 @@ namespace MarsTrainer.UI
         {
             var owner = StatBar.Frame(parent, "Settings", 0, 0, 1, 1);
             StatBar.Height(owner, GameConstants.UiButton);
+            // Keep the row at button height; a force-expanding row would otherwise claim all spare height in its parent.
+            owner.GetComponent<LayoutElement>().flexibleHeight = 0;
             var row = owner.gameObject.AddComponent<HorizontalLayoutGroup>(); row.spacing = GameConstants.UiGap;
             row.childControlHeight = row.childForceExpandHeight = true;
             row.childControlWidth = row.childForceExpandWidth = true;

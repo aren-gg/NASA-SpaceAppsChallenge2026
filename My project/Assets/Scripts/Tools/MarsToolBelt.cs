@@ -1,3 +1,5 @@
+using MarsSurvival.Base;
+using MarsSurvival.Gameplay;
 using MarsSurvival.Interaction;
 using MarsSurvival.UI;
 using UnityEngine;
@@ -13,6 +15,8 @@ namespace MarsSurvival.Tools
     /// mouse wheel also works), left click uses it, R is the tool's second action.
     /// One click starts an action; it carries on by itself while you keep aiming at the
     /// same thing (short glances away are forgiven), so nothing needs to be held down.
+    /// A slot holds its tool once the astronaut has picked it up from its outpost rack
+    /// (<see cref="MarsToolPickup"/>); the tools only work while the mission is running.
     /// </summary>
     public sealed class MarsToolBelt : MonoBehaviour
     {
@@ -39,6 +43,21 @@ namespace MarsSurvival.Tools
         public float SwitchedAt { get; private set; } = -10f;
         public Camera ViewCamera { get; private set; }
         public bool Zoomed { get; set; }
+
+        /// <summary>True when slot <paramref name="index"/>'s tool has been picked up from its rack.</summary>
+        public bool Carried(int index)
+        {
+            var mission = MarsMissionController.Instance;
+            return mission != null && mission.Tools != null && index >= 0 && index < Tools.Length && mission.Tools.Has(Tools[index].Id);
+        }
+
+        public bool CurrentCarried { get { return Carried(Selected); } }
+
+        /// <summary>The held tool in front of the camera, or null when the slot is empty or the tools are inactive.</summary>
+        public Transform HeldView
+        {
+            get { return Active && pivots != null && CurrentCarried && pivots[Selected].gameObject.activeSelf ? pivots[Selected] : null; }
+        }
 
         public bool LampOn
         {
@@ -130,16 +149,28 @@ namespace MarsSurvival.Tools
             if (player == null) player = FindObjectOfType<MarsAstronautPlayer>();
             Camera cam = Camera.main;
 
-            // Tools work only while walking as the astronaut (not on the home screen or in the F2 fly camera).
-            bool walking = !MarsHomeScreen.IsOpen && player != null && cam != null && cam.transform.IsChildOf(player.transform);
+            // Tools work only while walking as the astronaut on a running mission (not on the home screen,
+            // in the F2 fly camera, in the console or pause menu, or while driving the rover).
+            var mission = MarsMissionController.Instance;
+            bool walking = !MarsHomeScreen.IsOpen && player != null && cam != null && cam.transform.IsChildOf(player.transform) &&
+                           mission != null && mission.IsRunning && !mission.InputBlocked && !player.IsDriving;
             if (walking != Active || cam != ViewCamera) SetActive(walking, cam);
             if (!Active) return;
 
             HandleInput();
             Target = FindTarget();
-            Plan = Current.Plan(Target);
-            SecondaryLabel = Current.SecondaryLabel(Target);
-            Readout = Current.Readout(Target);
+            if (CurrentCarried)
+            {
+                Plan = Current.Plan(Target);
+                SecondaryLabel = Current.SecondaryLabel(Target);
+                Readout = Current.Readout(Target);
+            }
+            else
+            {
+                Plan = ToolAction.No("Empty slot: pick up the " + Current.Name + " in the " + MarsBaseTool.WhereIs(Current.Id) + " (look at it, press E)");
+                SecondaryLabel = null;
+                Readout = null;
+            }
             UpdateWork();
             UpdateZoom();
         }
@@ -149,8 +180,9 @@ namespace MarsSurvival.Tools
         private void LateUpdate()
         {
             if (!Active) return;
+            ShowView();
             AnimateView();
-            HoldInHand();
+            if (CurrentCarried) HoldInHand();
             UpdateLamp();
         }
 
@@ -346,15 +378,9 @@ namespace MarsSurvival.Tools
                 }
             }
 
-            if (target.Hit)
-            {
-                target.Site = target.Get<MarsSurveySite>();
-                if (target.Site == null)
-                {
-                    MarsSurveySite near = MarsSurveySite.Nearest(target.Point, expedition.Units(20f));
-                    if (near != null && near.Contains(target.Point)) target.Site = near;
-                }
-            }
+            // The outpost mission knows which science site the astronaut is standing beside.
+            var mission = MarsMissionController.Instance;
+            target.SiteId = mission == null ? "" : mission.Context.nearbySiteId ?? "";
             return target;
         }
 
@@ -435,7 +461,11 @@ namespace MarsSurvival.Tools
         private void ShowView()
         {
             if (pivots == null) return;
-            for (int i = 0; i < pivots.Length; i++) pivots[i].gameObject.SetActive(i == Selected);
+            for (int i = 0; i < pivots.Length; i++)
+            {
+                bool show = i == Selected && Carried(i);
+                if (pivots[i].gameObject.activeSelf != show) pivots[i].gameObject.SetActive(show);
+            }
         }
 
         private void AnimateView()
@@ -625,7 +655,9 @@ namespace MarsSurvival.Tools
         private void UpdateLamp()
         {
             if (lamp == null || models == null) return;
-            bool inHand = Current is WorkLamp && !Zoomed;
+            // The lamp only shines while it is in the hotbar (picked up from its rack).
+            if (lampOn && !Carried(System.Array.IndexOf(MarsTool.Order, "work_lamp"))) lampOn = false;
+            bool inHand = Current is WorkLamp && !Zoomed && CurrentCarried;
             Transform mount = inHand ? models[Selected] : helmetMount;
             if (lamp.transform.parent != mount) lamp.transform.SetParent(mount, false);
             if (inHand)
