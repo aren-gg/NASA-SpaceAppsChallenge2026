@@ -32,7 +32,7 @@ namespace MarsSurvival.Integration
         [Tooltip("Fog density the weather module uses for clear weather (WeatherController, clear preset).")]
         [Min(0.0001f)] public float weatherClearFogDensity = 0.006f;
 
-        [Tooltip("Keys 1-5 switch Clear, Solar Flare, Dust Storm, Heat Storm and Cold Night. For testing only.")]
+        [Tooltip("Keys F5-F9 switch Clear, Solar Flare, Dust Storm, Heat Storm and Cold Night. For testing only.")]
         public bool debugKeys = true;
 
         // sqrt(-ln 0.02): exponential-squared fog leaves 2% of the terrain colour at this many 1/density.
@@ -55,7 +55,8 @@ namespace MarsSurvival.Integration
             if (!debugKeys || weather == null) return;
             for (int i = 0; i < 5; i++)
             {
-                if (Input.GetKeyDown(KeyCode.Alpha1 + i)) weather.Activate((WeatherEvent)i, weather.intensity);
+                // F5-F9: the number keys 1-0 pick tools.
+                if (Input.GetKeyDown(KeyCode.F5 + i)) weather.Activate((WeatherEvent)i, weather.intensity);
             }
 #endif
         }

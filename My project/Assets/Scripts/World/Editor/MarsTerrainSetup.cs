@@ -196,7 +196,7 @@ namespace MarsSurvival.World.EditorTools
             Selection.activeGameObject = weather.gameObject;
             EditorUtility.SetDirty(link);
             UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(terrain.gameObject.scene);
-            Debug.Log("Weather added. Press Play; keys 1-5 switch Clear, Solar Flare, Dust Storm, Heat Storm, Cold Night.", weather);
+            Debug.Log("Weather added. Press Play; keys F5-F9 switch Clear, Solar Flare, Dust Storm, Heat Storm, Cold Night.", weather);
         }
 
         /// <summary>

@@ -27,6 +27,8 @@ namespace MarsSurvival.Interaction
         private const float HipHeight = 0.92f;
         private const float ThighLength = 0.42f;
         private const float UpperArmLength = 0.28f;
+        /// <summary>Elbow to the middle of the glove, where a held handle sits.</summary>
+        private const float GripDistance = 0.32f;
 
         private readonly List<Object> owned = new List<Object>();
         private Material[] materials;
@@ -205,6 +207,70 @@ namespace MarsSurvival.Interaction
                 h ^= h >> 16;
                 return (h & 0xFFFF) / 65535f;
             }
+        }
+
+        // ------------------------------------------------------------------ holding things
+
+        public bool IsBuilt { get { return built; } }
+
+        /// <summary>World position of a shoulder joint.</summary>
+        public Vector3 ShoulderPosition(bool right)
+        {
+            return (right ? upperArmR : upperArmL).position;
+        }
+
+        /// <summary>Shoulder-to-glove distance with the arm straight, in world units.</summary>
+        public float ArmReach(bool right)
+        {
+            return (UpperArmLength + GripDistance) * (right ? upperArmR : upperArmL).lossyScale.y;
+        }
+
+        /// <summary>
+        /// Bends an arm (two-bone IK) so the middle of the glove sits on <paramref name="grip"/>.
+        /// The elbow bends toward <paramref name="elbowHint"/>; the fist turns so the handle
+        /// (<paramref name="handleUp"/>, pointing to the tool's head) runs through it with the
+        /// thumb toward the head. Call after <see cref="Animate"/> (it overrides that arm's pose).
+        /// </summary>
+        public void ReachArm(bool right, Vector3 grip, Vector3 handleUp, Vector3 elbowHint)
+        {
+            if (!built) return;
+            Transform upper = right ? upperArmR : upperArmL;
+            Transform fore = right ? forearmR : forearmL;
+            float scale = upper.lossyScale.y;
+            float a = UpperArmLength * scale, b = GripDistance * scale;
+            Vector3 shoulder = upper.position;
+            Vector3 toGrip = grip - shoulder;
+            float distance = toGrip.magnitude;
+            if (distance < 1e-5f) return;
+            Vector3 dir = toGrip / distance;
+            distance = Mathf.Clamp(distance, Mathf.Abs(a - b) + 1e-4f, (a + b) * 0.9999f);
+
+            // Elbow on the circle where the two bones meet, on the side of the hint.
+            float along = (a * a - b * b + distance * distance) / (2f * distance);
+            float outward = Mathf.Sqrt(Mathf.Max(0f, a * a - along * along));
+            Vector3 hint = elbowHint - shoulder;
+            Vector3 bend = hint - dir * Vector3.Dot(hint, dir);
+            if (bend.sqrMagnitude < 1e-8f) bend = Vector3.down - dir * Vector3.Dot(Vector3.down, dir);
+            bend.Normalize();
+            Vector3 elbow = shoulder + dir * along + bend * outward;
+            Vector3 hand = shoulder + dir * distance;
+
+            // Limbs hang along local -Y; the forearm folds toward the upper arm's local +Z.
+            Vector3 upperDir = (elbow - shoulder).normalized;
+            Vector3 foreDir = (hand - elbow).normalized;
+            Vector3 fold = foreDir - upperDir * Vector3.Dot(foreDir, upperDir);
+            if (fold.sqrMagnitude < 1e-8f) fold = -bend;
+            upper.rotation = Quaternion.LookRotation(fold.normalized, -upperDir);
+
+            // The thumb is on the glove's inner side (-X on the right hand, +X on the left):
+            // point it along the handle toward the tool's head.
+            Vector3 across = (right ? -handleUp : handleUp);
+            across -= foreDir * Vector3.Dot(across, foreDir);
+            Vector3 front = across.sqrMagnitude > 1e-6f
+                ? Vector3.Cross(across.normalized, -foreDir)
+                : fold - foreDir * Vector3.Dot(fold, foreDir);
+            if (front.sqrMagnitude < 1e-8f) front = upper.forward;
+            fore.rotation = Quaternion.LookRotation(front.normalized, -foreDir);
         }
 
         // ------------------------------------------------------------------ animation

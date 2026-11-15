@@ -1,6 +1,6 @@
 # Mars Weather
 
-Open `Scenes/WeatherPreview.unity` and press Play. Buttons or keys 1–5 activate Clear, Solar Flare, Dust Storm, Heat Storm, and Cold Night. Each transition takes three seconds. One scene keeps the lighting comparison consistent and avoids duplicated scene files.
+Open `Assets/Scenes/Mars.unity` and press Play. Keys F5–F9 activate Clear, Solar Flare, Dust Storm, Heat Storm, and Cold Night for testing. Each transition takes three seconds. There is no separate preview scene; **Mars Weather → Rebuild Weather Prefab** recreates the prefab and its materials.
 
 ## Merge into the team's game
 
@@ -8,7 +8,7 @@ Open `Scenes/WeatherPreview.unity` and press Play. Buttons or keys 1–5 activat
 2. The target needs Unity 2022.3, URP 14, and Unity UI. Keep the target project's own render pipeline assets and project settings.
 3. Drag `Prefabs/MarsWeather.prefab` into the team's scene. Assign its **Sun** field to that scene's directional light. Position the prefab where weather particles should appear, or parent it to a moving region anchor.
 4. Enable post-processing on the target camera for bloom and grading. The sky, fog, and particles work independently of those camera effects.
-5. Call the public activation API from the team's game logic. Do not copy the preview scene's stage, camera, or `WeatherPreview` component into the gameplay scene.
+5. Call the public activation API from the team's game logic.
 
 ```csharp
 using MarsWeather;
@@ -31,7 +31,7 @@ Only one event is active at a time. Strength is clamped to 0–1; zero duration 
 - **Heat storm:** warm haze, up to 900 rising flecks and 64 tall thermal wisps, subtle animated sky shimmer and warmer horizon. This is a stylized extreme-heat scenario, not a measured Martian storm model.
 - **Cold night:** darker violet sky, blue ambient light, faint stars and reduced sunlight. No snow is implied.
 
-The preview uses smooth reference objects and instrument rings to show visibility and lighting detail. The floor is a flat test surface; this module does not generate terrain.
+This module does not generate terrain; in the Mars scene it draws over the streamed Gale Crater terrain.
 
 ## Isolation and ownership
 
