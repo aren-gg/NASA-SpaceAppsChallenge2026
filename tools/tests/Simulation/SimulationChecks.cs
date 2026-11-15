@@ -218,8 +218,9 @@ public static class SimulationChecks
         }
         MissionSimulation lethal = Fresh();
         lethal.State.elapsedSeconds = lethal.DurationSeconds - 1;
-        lethal.State.astronaut.health = 0.001;
+        lethal.State.astronaut.health = 0.0001; // below one second of hypoxia damage (60 HP per sol)
         lethal.State.astronaut.hypoxiaSeconds = 60;
+        lethal.State.astronaut.oxygen = 0;
         lethal.State.resources.oxygenGrams = 0; lethal.State.resources.cleanWaterLiters = 0;
         lethal.State.resources.wasteWaterLiters = 0; lethal.State.knobs[0] = 0;
         lethal.Step(1, Clear, Home);

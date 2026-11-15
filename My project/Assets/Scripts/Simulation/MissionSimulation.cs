@@ -20,6 +20,10 @@ namespace MarsSurvival.Simulation
         public double WorkEfficiency { get { return Clamp(1 - State.astronaut.fatigue / 160, 0.35, 1) * (State.astronaut.satiety < 20 ? 0.7 : 1) * (0.7 + 0.3 * State.astronaut.fitness / 100); } }
         public double BatteryCapacity { get { return (Settings.batteryCapacityKwh + State.equipment.extraBatteries * 90) * (Installed("E1") ? 1.5 : 1); } }
         public double SuitHoursRemaining { get { return State.resources.suitOxygenGrams / (Settings.oxygenGramsPerSol / (MissionSettings.SolSeconds / 3600)); } }
+        /// <summary>Hunger, water, rest, oxygen, fitness and health, tracked by the MarsTrainer survival model.</summary>
+        public SurvivalNeeds Needs { get { return needs ?? (needs = new SurvivalNeeds(State.astronaut)); } }
+        private SurvivalNeeds needs;
+        private double KcalPerPortion { get { return SurvivalNeeds.KcalPerPortion * (Installed("H1") ? 1.15 : 1); } }
 
         public MissionSimulation(MissionSettings settings, MissionState state)
         {
@@ -89,19 +93,23 @@ namespace MarsSurvival.Simulation
                     if (!indoor) return Fail("Eat from the galley inside the habitat.", out reason);
                     if (State.astronaut.satiety > 95) return Fail("You do not need another meal yet.", out reason);
                     if (State.resources.food < 1) return Fail("No food portions remain.", out reason);
-                    State.resources.food -= 1;
-                    State.astronaut.satiety = Math.Min(100, State.astronaut.satiety + (Installed("H1") ? 35 : 30));
-                    reason = "Ate one food portion.";
+                    double portions = State.resources.food;
+                    double eaten = Needs.Eat(State.astronaut, ref portions, KcalPerPortion);
+                    if (eaten <= 0) return Fail("You do not need another meal yet.", out reason);
+                    State.resources.food = portions;
+                    reason = string.Format(CultureInfo.InvariantCulture, "Ate {0:0} kcal ({1:0.0} portions).", eaten * KcalPerPortion, eaten);
                     break;
                 case "drink":
                     if (State.astronaut.hydration > 95) return Fail("Hydration is already sufficient.", out reason);
-                    if (State.resources.cleanWaterLiters < 0.5) return Fail("No clean water is available.", out reason);
+                    if (State.resources.cleanWaterLiters < SurvivalNeeds.DrinkLitres) return Fail("No clean water is available.", out reason);
                     if (!indoor) return Fail("Return to a connected drinking-water station.", out reason);
-                    State.resources.cleanWaterLiters -= 0.5;
-                    State.resources.wasteWaterLiters += 0.4;
-                    State.totalWaterLostLiters += 0.1;
-                    State.astronaut.hydration = Math.Min(100, State.astronaut.hydration + 18);
-                    reason = "Drank 0.5 L of water.";
+                    double water = State.resources.cleanWaterLiters;
+                    double drunk = Needs.Drink(State.astronaut, ref water);
+                    if (drunk <= 0) return Fail("Hydration is already sufficient.", out reason);
+                    State.resources.cleanWaterLiters = water;
+                    State.resources.wasteWaterLiters += drunk * 0.8;
+                    State.totalWaterLostLiters += drunk * 0.2;
+                    reason = string.Format(CultureInfo.InvariantCulture, "Drank {0:0.00} L of water.", drunk);
                     break;
                 case "refill":
                     if (!indoor) return Fail("Suit refill requires a habitat connection.", out reason);

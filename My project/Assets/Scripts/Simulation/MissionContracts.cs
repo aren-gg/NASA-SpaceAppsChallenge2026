@@ -51,7 +51,9 @@ namespace MarsSurvival.Simulation
     [Serializable]
     public sealed class AstronautState
     {
-        public double health = 100, satiety = 100, hydration = 100, fatigue = 10, fitness = 75;
+        // Mirrors of the MarsTrainer survival state (see SurvivalNeeds): satiety = 100 - hunger,
+        // fatigue = tiredness, oxygen = breathing reserve. Stored here so saves keep them.
+        public double health = 100, satiety = 100, hydration = 100, fatigue = 10, fitness = 75, oxygen = 100;
         public double doseMicrogray, temperatureC = 21;
         public double starvationSeconds, dehydrationSeconds, hypoxiaSeconds, lastExerciseSeconds;
         public string lastDamageCause = "";

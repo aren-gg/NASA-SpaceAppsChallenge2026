@@ -10,13 +10,16 @@ $sources = @(
     (Join-Path $engine 'Simulation/MissionSimulation.Power.cs'),
     (Join-Path $engine 'Simulation/MissionSimulation.Needs.cs'),
     (Join-Path $engine 'Simulation/MissionSimulation.Tasks.cs'),
+    (Join-Path $engine 'Simulation/SurvivalNeeds.cs'),
     (Join-Path $engine 'Research/ResearchCatalog.cs'),
     (Join-Path $PSScriptRoot 'SimulationChecks.cs')
 )
+# The astronaut's needs use the MarsTrainer survival model (pure C#, no UnityEngine).
+$sources += Get-ChildItem (Join-Path $engine 'Sim') -Filter '*.cs' -Recurse | ForEach-Object { $_.FullName }
 $mono = Join-Path $UnityEditor 'Data/MonoBleedingEdge/bin/mono.exe'
 $compiler = Join-Path $UnityEditor 'Data/MonoBleedingEdge/lib/mono/4.5/csc.exe'
 $executable = Join-Path $outputDir 'SimulationChecks.exe'
-& $mono $compiler -nologo "-out:$executable" $sources
+& $mono $compiler -nologo -langversion:9 "-out:$executable" $sources
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & $mono $executable @args
 exit $LASTEXITCODE

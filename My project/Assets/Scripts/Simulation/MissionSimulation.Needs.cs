@@ -74,20 +74,15 @@ namespace MarsSurvival.Simulation
             bool sleeping = State.task.kind == TaskKind.Rest && TaskLocationValid(ctx);
             bool exercise = State.task.kind == TaskKind.Exercise && taskPowerFraction > 0;
             double activity = sleeping ? 0.7 : ctx.sprinting ? 1.8 : ctx.moving || exercise ? 1.3 : 1;
-            a.satiety -= 75 * sols * activity;
-            a.hydration -= 85 * sols * activity;
-            if (sleeping) a.fatigue -= hours * (Installed("H3") ? 19 : 14);
-            else a.fatigue += hours * (ctx.sprinting ? 5 : exercise ? 7 : ctx.moving ? 3 : 1.6);
-            a.fitness = Clamp(a.fitness - 0.6 * sols, 0, 100);
             double oxygenNeed = Settings.oxygenGramsPerSol * sols * activity;
             bool indoor = IsIndoors(ctx);
             double oxygenAvailable = indoor ? r.oxygenGrams : r.suitOxygenGrams;
             double usedOxygen = Math.Min(oxygenNeed, oxygenAvailable);
             if (indoor) r.oxygenGrams -= usedOxygen; else r.suitOxygenGrams -= usedOxygen;
-            bool hypoxia = usedOxygen + 0.00000001 < oxygenNeed || (indoor && State.equipment.airQuality < 15);
-            a.hypoxiaSeconds = hypoxia ? a.hypoxiaSeconds + seconds : 0;
-            a.starvationSeconds = a.satiety <= 0 ? a.starvationSeconds + seconds : 0;
-            a.dehydrationSeconds = a.hydration <= 0 ? a.dehydrationSeconds + seconds : 0;
+            // Fraction of breathing demand actually met; unsafe cabin air counts as none.
+            double oxygenSupply = oxygenNeed > 0 ? usedOxygen / oxygenNeed : 1;
+            if (indoor && State.equipment.airQuality < 15) oxygenSupply = 0;
+            bool hypoxia = oxygenSupply < 0.999;
 
             double temperatureTarget = State.equipment.habitatTemperatureC;
             if (!indoor)
@@ -103,22 +98,30 @@ namespace MarsSurvival.Simulation
             double doseRate = Environment.radiationMicrograyPerHour * passive * shield;
             a.doseMicrogray += doseRate * hours;
 
-            if (a.hypoxiaSeconds > 30) Damage(24 * hours, "Oxygen shortage or unsafe cabin air");
-            if (a.dehydrationSeconds > 1800) Damage(8 * hours, "Prolonged dehydration");
-            if (a.starvationSeconds > 7200) Damage(5 * hours, "Prolonged starvation");
+            // Hunger, water, tiredness, oxygen, fitness and their health damage (starvation, dehydration,
+            // hypoxia, cumulative dose against the NASA-STD-3001 budget) come from the MarsTrainer model.
+            string cause = Needs.Step(a, seconds, oxygenSupply, sleeping, exercise);
+            if (cause != null) NoteDamage(cause);
+            if (sleeping && Installed("H3")) a.fatigue = Math.Max(0, a.fatigue - hours * 3);
+
             if (a.temperatureC < 5) Damage(Math.Min(18, (5 - a.temperatureC) * 0.4) * hours, "Unsafe suit or habitat temperature");
             if (a.temperatureC > 35) Damage(Math.Min(18, (a.temperatureC - 35) * 0.5) * hours, "Unsafe suit or habitat temperature");
             // Both threshold and acute-rate condition are teaching rules, not medical limits.
             if (a.doseMicrogray > Settings.backgroundDamageThresholdMicrogray && doseRate > Settings.harmfulDoseRateMicrograyPerHour)
                 Damage(Math.Min(20, (doseRate - Settings.harmfulDoseRateMicrograyPerHour) * 0.003) * hours, "Severe radiation scenario");
-            bool stable = !hypoxia && a.hydration > 35 && a.satiety > 35 && a.temperatureC >= 12 && a.temperatureC <= 30;
-            if (sleeping && stable) a.health = Math.Min(100, a.health + hours * (Installed("H3") ? 0.8 : 0.4));
+            bool stable = !hypoxia && a.oxygen > 0 && a.hydration > 35 && a.satiety > 35 && a.temperatureC >= 12 && a.temperatureC <= 30;
+            if (sleeping && stable) a.health = Math.Min(Needs.Body.MaxHealth, a.health + hours * (Installed("H3") ? 0.8 : 0.4));
         }
 
         private void Damage(double amount, string cause)
         {
             if (amount <= 0) return;
             State.astronaut.health = Math.Max(0, State.astronaut.health - amount);
+            NoteDamage(cause);
+        }
+
+        private void NoteDamage(string cause)
+        {
             if (State.astronaut.lastDamageCause != cause) Log("Health falling: " + cause + ".");
             State.astronaut.lastDamageCause = cause;
         }
@@ -127,7 +130,7 @@ namespace MarsSurvival.Simulation
         {
             AstronautState a = State.astronaut;
             a.health = Clamp(a.health, 0, 100); a.satiety = Clamp(a.satiety, 0, 100);
-            a.hydration = Clamp(a.hydration, 0, 100); a.fatigue = Clamp(a.fatigue, 0, 100);
+            a.hydration = Clamp(a.hydration, 0, 100); a.fatigue = Clamp(a.fatigue, 0, 100); a.oxygen = Clamp(a.oxygen, 0, 100);
             ResourceState r = State.resources;
             r.batteryKwh = Clamp(r.batteryKwh, 0, BatteryCapacity);
             r.roverKwh = Clamp(r.roverKwh, 0, Settings.roverCapacityKwh);
@@ -157,6 +160,9 @@ namespace MarsSurvival.Simulation
             if (a.satiety < 25) Warnings.Add("Eat a food portion before hunger affects work.");
             if (a.hydration < 25) Warnings.Add("Drink clean water before dehydration causes harm.");
             if (a.fatigue > 75) Warnings.Add("The astronaut is tired. Rest improves task efficiency.");
+            if (a.oxygen < 40) Warnings.Add("Breathing oxygen is low. Restore suit or habitat oxygen supply now.");
+            if (SurvivalNeeds.DoseBudgetFraction(a) >= MarsTrainer.Sim.GameConstants.ShieldWarnFraction)
+                Warnings.Add("Radiation dose has used over half of the NASA-STD-3001 budget. Raise shielding and limit EVA.");
             if (!IsIndoors(ctx) && r.suitOxygenGrams < 150) Warnings.Add("Suit oxygen is low. Return to the habitat refill station.");
             if (!IsIndoors(ctx) && r.fieldKwh < 0.25) Warnings.Add("Field battery is low. Return before suit heating and tools lose power.");
             if (IsIndoors(ctx) && r.oxygenGrams < 1000) Warnings.Add("Habitat oxygen is low. Increase Life control and check water input.");
