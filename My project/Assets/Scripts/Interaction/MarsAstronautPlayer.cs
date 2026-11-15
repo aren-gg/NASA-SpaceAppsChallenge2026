@@ -77,6 +77,7 @@ namespace MarsSurvival.Interaction
         private float landDip, cameraDip;
         private CapsuleCollider capsule;
         private readonly Collider[] overlaps = new Collider[16];
+        private bool started;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AddToTerrainScene()
@@ -88,6 +89,13 @@ namespace MarsSurvival.Interaction
 
         private void Start()
         {
+            // While the home screen is up it owns the camera; take over once it closes.
+            if (!MarsSurvival.UI.MarsHomeScreen.IsOpen) Begin();
+        }
+
+        private void Begin()
+        {
+            started = true;
             if (terrain == null) terrain = FindObjectOfType<MarsTerrain>();
             if (viewCamera == null) viewCamera = Camera.main;
             if (viewCamera == null)
@@ -226,6 +234,12 @@ namespace MarsSurvival.Interaction
 
         private void Update()
         {
+            if (!started)
+            {
+                if (MarsSurvival.UI.MarsHomeScreen.IsOpen) return;
+                Begin();
+                if (!enabled) return;
+            }
             if (!placed)
             {
                 if (terrain != null && !terrain.IsReady) return;

@@ -12,6 +12,8 @@ Two modules in one Unity project (`My project/`, Unity 2022.3, URP 14):
 
 Open `My project/Assets/Scenes/Mars.unity`. If the scene has no weather yet, choose **Mars → Add Weather To Terrain Scene**. Press Play.
 
+Play opens on the home screen: the camera slowly circles the starting area (or the outpost, once it is in the scene) while the menu offers **Start mission** (or press Enter), **How to play** and **Quit**. Starting fades into the astronaut's view. The screen is built in code (`Scripts/UI/MarsHomeScreen.cs`); to change its text or skip it, add a **MarsHomeScreen** component to a scene object and edit it or untick *Show On Start*.
+
 | Key | Action |
 | --- | --- |
 | W A S D | Walk (3.4 km/h) |
