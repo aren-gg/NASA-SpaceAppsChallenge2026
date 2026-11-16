@@ -83,7 +83,9 @@ namespace MarsSurvival.Hardware
 
             request = DashboardProtocol.Clamp(NormalizedValues[channel], 0, 1);
             if (physical == 0 || physical == 1) request = physical;
-            if (Math.Abs(request - lastSent[channel]) < deadband) return false;
+            // Skip jitter, but always pull the game onto the knob when they disagree (for
+            // example the first reading of a knob parked at zero, or a freshly loaded save).
+            if (Math.Abs(request - lastSent[channel]) < deadband && Math.Abs(request - logical) < deadband) return false;
             lastSent[channel] = request;
             return true;
         }

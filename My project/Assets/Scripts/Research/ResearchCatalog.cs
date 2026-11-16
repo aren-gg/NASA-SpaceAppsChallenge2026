@@ -11,7 +11,7 @@ namespace MarsSurvival.Simulation
             Node("H2", "Medical devices", "Health", "Treatment restores more health with the same medical supplies.", 18, 5, "H0"),
             Node("H3", "Recovery suite", "Health", "Rest and exercise improve recovery and fitness more efficiently.", 26, 8, "H1", "H2"),
             Node("S0", "Improved solar cells", "Solar", "Installed solar generation increases by 20%.", 12, 4),
-            Node("S1", "Array expansion", "Solar", "Unlock two additional 7 kW panel installations.", 18, 5, "S0"),
+            Node("S1", "Array expansion", "Solar", "Unlock two additional 4 kW panel installations.", 18, 5, "S0"),
             Node("S2", "Dust servicing", "Solar", "A powered cleaning system removes deposits when surplus power exists.", 18, 5, "S0"),
             Node("S3", "Tracking array", "Solar", "Solar collection improves by 20%, with a 0.12 kW actuator load.", 26, 8, "S1", "S2"),
             Node("P0", "Environmental monitoring", "Protection", "Earlier warnings and clear environmental forecast details.", 12, 4),

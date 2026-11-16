@@ -804,6 +804,7 @@ namespace MarsSurvival.UI
                     "Solar in {0:0.00} kW   ·   Load {1:0.00} kW   ·   Greenhouse {2:0.00}   ·   Task {3:0.00}   ·   Charging {4:0.00}   ·   Radio {5:0.00}   ·   Wasted by overdraw {6:0.00}",
                     p.generatedKw, p.loadKw, p.greenhouseKw, p.taskKw, p.chargingKw, p.radioKw, p.overdrawLossKw);
             }, 17, null, muted);
+            LiveLabel(battery, NeedleText, 17, null, muted);
 
             Paragraph("Drag each knob until the bar under it is full. A short bar is a shortfall that hurts the astronaut; drawing past the need wastes battery three times over.", 19);
             string[] names = { "Life control", "Temperature", "Radiation shielding" };
@@ -840,6 +841,16 @@ namespace MarsSurvival.UI
                 "Outside {0:0.0} °C   ·   Habitat {1:0.0} °C   ·   Dose rate {2:0.0} µGy/h   ·   Total {3:0.0} µGy\n{4}",
                 mission.Environment.temperatureC, State.equipment.habitatTemperatureC, mission.Environment.radiationMicrograyPerHour,
                 State.astronaut.doseMicrogray, mission.Simulation.Warnings.Count == 0 ? "No warnings." : string.Join("\n", mission.Simulation.Warnings.ToArray())), 18);
+        }
+
+        /// <summary>What the dashboard needle was last told (shown in Power and Settings).</summary>
+        private string NeedleText()
+        {
+            ArduinoLink link = mission.Arduino == null ? null : mission.Arduino.Link;
+            if (link == null || !link.Connected) return "Dashboard needle: no Arduino connected.";
+            return string.Format(CultureInfo.InvariantCulture, "Dashboard needle: S{0} of {1} steps ({2:0}% battery, {3:0.0} deg)   ·   {4} needle commands sent   ·   moves in 1% steps",
+                link.GaugeSentSteps, link.gaugeFullSteps, 100.0 * Math.Abs(link.GaugeSentSteps) / Math.Max(1, link.gaugeFullSteps),
+                180.0 * Math.Abs(link.GaugeSentSteps) / Math.Max(1, link.gaugeFullSteps), link.GaugeCommandsSent);
         }
 
         private void BuildCrewWindow()
@@ -1155,10 +1166,11 @@ namespace MarsSurvival.UI
 
             RectTransform hardware = Card();
             LabelInFlow(hardware, "Three-knob dashboard (Arduino)", 22, accent);
-            LabelInFlow(hardware, "Arduino Uno over USB serial (115200 baud, COM7 when present). Left knob: Life control. Middle: Temperature. Right: Radiation shielding. Counter-clockwise gives more power. " +
+            LabelInFlow(hardware, "Arduino Uno over USB serial (115200 baud, COM7 when present). Left knob: Life control. Middle: Temperature. Right: Radiation shielding. All three start fully counter-clockwise (no power); turn clockwise for more power. " +
                       "Each LED group is green when the need is met, yellow when 1-15% short and red beyond that; the buzzer sounds on red and on warnings. " +
                       "The needle shows stored battery energy. Close the Arduino Serial Monitor before playing.", 17, muted);
             LiveLabel(hardware, () => "Serial link: " + (mission.Arduino == null ? "not created" : mission.Arduino.Status), 18);
+            LiveLabel(hardware, NeedleText, 18);
             LiveLabel(hardware, () => mission.Dashboard == null ? "Software controls active." : mission.Dashboard.Status, 18);
             if (mission.Dashboard == null) return;
             row = Row(hardware, 46);

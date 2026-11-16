@@ -39,7 +39,7 @@ namespace MarsSurvival.Tools
         public static MarsExpedition Instance { get; private set; }
 
         [Tooltip("How far the tools reach, in real metres.")]
-        public float reachMeters = 3.5f;
+        public float reachMeters = 5f;
 
         public MarsTerrain Terrain { get; private set; }
         public MarsDayNightCycle Cycle { get; private set; }

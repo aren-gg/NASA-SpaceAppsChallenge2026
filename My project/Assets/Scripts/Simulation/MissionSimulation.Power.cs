@@ -20,7 +20,7 @@ namespace MarsSurvival.Simulation
             Power.neededKw[1] = thermalNeed;
             Power.neededKw[2] = 0.2 + Environment.solarEvent * 2.6;
             Power.batteryCapacityKwh = BatteryCapacity;
-            double panelRating = Settings.solarRatedKw + equipment.extraPanels * 7;
+            double panelRating = Settings.solarRatedKw + equipment.extraPanels * 4;
             Power.generatedKw = panelRating * Environment.solarFraction * equipment.panelCondition * (1 - equipment.panelDust)
                 * (Installed("S0") ? 1.2 : 1) * (Installed("S3") ? 1.2 : 1);
             double dischargeLimit = Settings.maximumDischargeKw * (Installed("E1") ? 1.25 : 1);

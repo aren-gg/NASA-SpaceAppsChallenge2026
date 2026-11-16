@@ -10,11 +10,13 @@ namespace MarsSurvival.Hardware
     /// Connects the physical control panel (through <see cref="ArduinoLink"/>) to the mission:
     /// <list type="bullet">
     /// <item>Knobs left / middle / right set the Life control, Temperature and Radiation
-    /// shielding power requests.</item>
+    /// shielding power requests. They are always fully counter-clockwise (zero power) when the
+    /// game starts, and turning one clockwise sends more power to that system.</item>
     /// <item>Each LED group shows its channel: green when the power put in meets or exceeds the
     /// useful need, yellow when it is 1-15% short, red when more than 15% short.</item>
-    /// <item>The stepper needle shows total stored battery energy (kWh / capacity): it turns
-    /// clockwise as stored energy rises and counter-clockwise as it falls.</item>
+    /// <item>The stepper needle shows total stored battery energy (kWh / capacity). It always
+    /// sits at energy 0 when the game starts; energy 100% is half a turn (180 degrees)
+    /// clockwise from there.</item>
     /// <item>The buzzer sounds when something goes wrong (the sketch also buzzes on any red LED).</item>
     /// </list>
     /// If no Arduino is found the game runs normally with the on-screen sliders.
@@ -28,10 +30,12 @@ namespace MarsSurvival.Hardware
         public float yellowShortPercent = 15f;
         [Tooltip("Shortfall (percent of need) still shown green, so rounding never flickers yellow at exactly the need.")]
         public float greenTolerancePercent = 1f;
-        [Tooltip("On: turning a knob counter-clockwise increases that system's power and clockwise decreases it. Untick if your knobs are wired the other way round.")]
-        public bool counterClockwiseIncreases = true;
-        [Tooltip("Tick if the needle turns the wrong way on your gauge.")]
+        [Tooltip("Off: turning a knob clockwise increases that system's power. Each knob's wiring direction is also checked from its first reading, since the knobs start fully counter-clockwise.")]
+        public bool counterClockwiseIncreases = false;
+        [Tooltip("Tick if the needle turns counter-clockwise as energy rises; it then steps the other way from the same zero.")]
         public bool invertGauge;
+        [Tooltip("The needle only moves once the battery has changed by at least this many percent.")]
+        [Min(0.1f)] public float gaugeStepPercent = 1f;
         [Tooltip("Seconds between repeated alarm beeps while a problem lasts.")]
         public float alarmRepeatSeconds = 4f;
 
@@ -44,6 +48,11 @@ namespace MarsSurvival.Hardware
         private string lastWarning = "";
         private MissionPhase lastPhase = MissionPhase.Running;
         private readonly float[] lastKnob = { -1, -1, -1 };
+        // Per knob: true when its potentiometer reads high at the counter-clockwise end.
+        private readonly bool[] reversedWiring = new bool[3];
+        private bool wiringChecked;
+        // Battery share the needle currently shows; it only moves once the battery is 1% away.
+        private float shownFraction = -1f;
         private float lastFeed;
 
         private void Awake()
@@ -94,14 +103,23 @@ namespace MarsSurvival.Hardware
             if (!moved && Time.unscaledTime - lastFeed < 0.5f) return;
             for (int i = 0; i < 3; i++) lastKnob[i] = Link.GetKnob(i);
             lastFeed = Time.unscaledTime;
-            // A potentiometer reads higher when turned clockwise, so flip it: counter-clockwise = more power.
-            mission.Dashboard.FeedNormalized(Knob(Link.Left), Knob(Link.Middle), Knob(Link.Right));
+            if (!wiringChecked && Link.HasKnobReading)
+            {
+                // Every knob starts fully counter-clockwise, so a first reading near the top of
+                // the range means that potentiometer is wired backwards: flip it so it still
+                // starts at zero power and gains power clockwise.
+                for (int i = 0; i < 3; i++) reversedWiring[i] = Link.GetFirstKnob(i) > 0.5f;
+                wiringChecked = true;
+            }
+            mission.Dashboard.FeedNormalized(Knob(0), Knob(1), Knob(2));
         }
 
-        private float Knob(float raw)
+        private float Knob(int index)
         {
-            float value = Mathf.Clamp01(raw);
-            return counterClockwiseIncreases ? 1f - value : value;
+            float value = Mathf.Clamp01(Link.GetKnob(index));
+            // A potentiometer normally reads higher clockwise, so clockwise = more power.
+            bool flip = counterClockwiseIncreases ^ reversedWiring[index];
+            return flip ? 1f - value : value;
         }
 
         /// <summary>
@@ -145,7 +163,14 @@ namespace MarsSurvival.Hardware
         {
             MissionSimulation sim = mission.Simulation;
             float fraction = sim == null ? 0f : Mathf.Clamp01((float)(sim.State.resources.batteryKwh / Math.Max(0.001, sim.BatteryCapacity)));
-            Link.SetGauge(invertGauge ? 1f - fraction : fraction);
+            // Move the needle only in whole 1% steps of battery, so it ticks visibly instead of
+            // creeping a step at a time. Empty and full are always shown exactly.
+            bool atEnd = (fraction <= 0f || fraction >= 1f) && fraction != shownFraction;
+            if (shownFraction < 0f || atEnd || Mathf.Abs(fraction - shownFraction) >= gaugeStepPercent / 100f)
+                shownFraction = fraction;
+            // Energy 0 is always the start position (zeroed on connect); full is 180 degrees on.
+            Link.reverseGaugeDirection = invertGauge;
+            Link.SetGauge(shownFraction);
         }
 
         private void DriveAlarm()

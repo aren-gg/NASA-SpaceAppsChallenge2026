@@ -25,7 +25,7 @@ namespace MarsSurvival.Simulation
         public double batteryCapacityKwh = 180;
         public double maximumDischargeKw = 24;
         public double maximumChargeKw = 24;
-        public double solarRatedKw = 28;
+        public double solarRatedKw = 16;
         public double lifeRatedKw = 3;
         public double thermalRatedKw = 5;
         public double shieldingRatedKw = 4;

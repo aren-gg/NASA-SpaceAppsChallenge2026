@@ -18,6 +18,8 @@ namespace MarsSurvival.Gameplay
     public sealed class MarsToolPickup : MonoBehaviour
     {
         public float reachMeters = 2.4f;
+        [Tooltip("How far E reaches for stations and plants (picking up tools uses reachMeters).")]
+        public float useReachMeters = 4f;
         public float aimDegrees = 18f;
 
         private MissionState syncedState;
@@ -161,7 +163,7 @@ namespace MarsSurvival.Gameplay
             {
                 if (t == null) continue;
                 Vector3 to = t.transform.position - eye.position;
-                if (to.magnitude > reachMeters + 0.6f) continue;
+                if (to.magnitude > useReachMeters) continue;
                 string what = UseLabelFor(t, state);
                 if (what == null) continue;
                 float angle = Vector3.Angle(eye.forward, to);

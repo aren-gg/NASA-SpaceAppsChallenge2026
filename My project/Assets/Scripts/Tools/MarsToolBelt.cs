@@ -423,10 +423,43 @@ namespace MarsSurvival.Tools
                 }
             }
 
+            AimAtPlant(ray, reach, target);
+
             // The outpost mission knows which science site the astronaut is standing beside.
             var mission = MarsMissionController.Instance;
             target.SiteId = mission == null ? "" : mission.Context.nearbySiteId ?? "";
             return target;
+        }
+
+        /// <summary>
+        /// Greenhouse aim assist: the plant spot nearest the crosshair within reach wins, even if
+        /// the ray first clips the bed edge or a front-row plant, so the far row can be worked
+        /// from the aisle without climbing onto the bed.
+        /// </summary>
+        private static void AimAtPlant(Ray ray, float reach, ToolTarget target)
+        {
+            const float AssistDegrees = 9f;
+            MarsTaskTarget best = null;
+            float bestAngle = AssistDegrees;
+            foreach (MarsTaskTarget t in MarsTaskTarget.Usables)
+            {
+                if (t == null || t.kind != MarsTaskTarget.Kind.Plant) continue;
+                Vector3 centre = t.transform.position + Vector3.up * 0.2f;
+                Vector3 to = centre - ray.origin;
+                if (to.magnitude > reach) continue;
+                float angle = Vector3.Angle(ray.direction, to);
+                if (angle < bestAngle) { bestAngle = angle; best = t; }
+            }
+            if (best == null) return;
+            Collider collider = best.GetComponent<Collider>();
+            if (collider == null) return;
+            Vector3 point = best.transform.position + Vector3.up * 0.2f;
+            target.Hit = true;
+            target.Ground = false;
+            target.Collider = collider;
+            target.Point = point;
+            target.Normal = Vector3.up;
+            target.Distance = Vector3.Distance(ray.origin, point);
         }
 
         // ------------------------------------------------------------------ first-person view
