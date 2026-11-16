@@ -45,6 +45,9 @@ namespace MarsSurvival.Simulation
             state.resources.nutrients = 60 + sols;
             state.resources.food = 50;
             state.resources.parts = 80;
+            // Wake up hungry and thirsty on sol 1, so breakfast in the galley is the first job.
+            state.astronaut.satiety = 60;
+            state.astronaut.hydration = 55;
             state.history.Add("Mission started. Solar panels generate electricity; the three knobs decide how it is spent.");
             return state;
         }
@@ -90,7 +93,7 @@ namespace MarsSurvival.Simulation
             switch (command)
             {
                 case "eat":
-                    if (!indoor) return Fail("Eat from the galley inside the habitat.", out reason);
+                    if (!AtGalley(ctx)) return Fail("Food is stored in the galley (command hub). Go there and use the food locker.", out reason);
                     if (State.astronaut.satiety > 95) return Fail("You do not need another meal yet.", out reason);
                     if (State.resources.food < 1) return Fail("No food portions remain.", out reason);
                     double portions = State.resources.food;
@@ -98,11 +101,12 @@ namespace MarsSurvival.Simulation
                     if (eaten <= 0) return Fail("You do not need another meal yet.", out reason);
                     State.resources.food = portions;
                     reason = string.Format(CultureInfo.InvariantCulture, "Ate {0:0} kcal ({1:0.0} portions).", eaten * KcalPerPortion, eaten);
+                    if (Morning) State.day.ateMorning = true; else State.day.ateEvening = true;
                     break;
                 case "drink":
                     if (State.astronaut.hydration > 95) return Fail("Hydration is already sufficient.", out reason);
                     if (State.resources.cleanWaterLiters < SurvivalNeeds.DrinkLitres) return Fail("No clean water is available.", out reason);
-                    if (!indoor) return Fail("Return to a connected drinking-water station.", out reason);
+                    if (!AtGalley(ctx)) return Fail("Drinking water comes from the dispenser in the galley (command hub).", out reason);
                     double water = State.resources.cleanWaterLiters;
                     double drunk = Needs.Drink(State.astronaut, ref water);
                     if (drunk <= 0) return Fail("Hydration is already sufficient.", out reason);
@@ -110,6 +114,7 @@ namespace MarsSurvival.Simulation
                     State.resources.wasteWaterLiters += drunk * 0.8;
                     State.totalWaterLostLiters += drunk * 0.2;
                     reason = string.Format(CultureInfo.InvariantCulture, "Drank {0:0.00} L of water.", drunk);
+                    if (Morning) State.day.drankMorning = true; else State.day.drankEvening = true;
                     break;
                 case "refill":
                     if (!indoor) return Fail("Suit refill requires a habitat connection.", out reason);
@@ -137,16 +142,19 @@ namespace MarsSurvival.Simulation
                     reason = string.Format(CultureInfo.InvariantCulture, "Topped up the suit with {0:0} g of oxygen from the canister.", dose);
                     break;
                 case "water_crop":
-                    CropState watered = FindCrop(target);
-                    if (!indoor || watered == null) return Fail("Choose a greenhouse bed inside the habitat.", out reason);
-                    if (!watered.planted || watered.ready) return Fail("Only a growing crop needs watering.", out reason);
-                    if (watered.stress < 0.05) return Fail("This bed is not stressed.", out reason);
-                    if (State.resources.cleanWaterLiters < 1) return Fail("Not enough clean water.", out reason);
-                    State.resources.cleanWaterLiters -= 1;
-                    State.resources.wasteWaterLiters += 0.8;
-                    State.totalWaterLostLiters += 0.2;
-                    watered.stress = Math.Max(0, watered.stress - 0.25);
-                    reason = "Watered bed " + (watered.bed + 1) + " with 1 L; crop stress fell.";
+                    if (!WaterCrop(target, ctx, out reason)) return false;
+                    break;
+                case "plant_slot":
+                    if (!PlantSlot(target, ctx, out reason)) return false;
+                    break;
+                case "pick":
+                    if (!PickSlot(target, ctx, out reason)) return false;
+                    break;
+                case "dust_panel":
+                    if (!DustPanel(target, ctx, out reason)) return false;
+                    break;
+                case "sleep":
+                    if (!StartSleep(ctx, out reason)) return false;
                     break;
                 case "airlock_exit":
                     if (!indoor) return Fail("Use the habitat airlock to begin EVA.", out reason);
@@ -157,7 +165,7 @@ namespace MarsSurvival.Simulation
                     State.totalConsumedKwh += 0.02;
                     reason = "Airlock cycled; suit supplies now support the EVA.";
                     break;
-                case "routine": State.routineEnabled = Toggle(State.routineEnabled, target); reason = "Daily routine " + (State.routineEnabled ? "enabled." : "disabled."); break;
+                case "routine": State.routineEnabled = false; reason = "There is no automatic routine: eat and drink at the galley and sleep in a bunk."; break;
                 case "greenhouse": State.greenhouseEnabled = Toggle(State.greenhouseEnabled, target); reason = "Greenhouse power " + (State.greenhouseEnabled ? "enabled." : "disabled."); break;
                 case "charge_rover": State.chargeRover = Toggle(State.chargeRover, target); reason = "Rover charging " + (State.chargeRover ? "requested." : "disabled."); break;
                 case "charge_field": State.chargeField = Toggle(State.chargeField, target); reason = "Field battery charging " + (State.chargeField ? "requested." : "disabled."); break;
@@ -245,7 +253,7 @@ namespace MarsSurvival.Simulation
             {
                 case TaskKind.Rest:
                     if (!indoor) return Fail("Rest inside the habitat.", out reason);
-                    task.durationSeconds = 6 * 3600; task.powerKw = 0; break;
+                    task.durationSeconds = task.targetId == "sleep" ? SecondsUntilMorning() : 6 * 3600; task.powerKw = 0; break;
                 case TaskKind.Exercise:
                     if (!indoor) return Fail("Use the exercise equipment inside the habitat.", out reason);
                     task.durationSeconds = 1800; task.powerKw = 0.08; break;
@@ -268,7 +276,7 @@ namespace MarsSurvival.Simulation
                     task.durationSeconds = 30; task.powerKw = 0.15; break;
                 case TaskKind.RepairBase:
                     if (!indoor) return Fail("Base repairs require access inside the habitat.", out reason);
-                    if (State.equipment.baseCondition >= 0.995) return Fail("The base does not need repair.", out reason);
+                    if (!State.faultActive && State.equipment.baseCondition >= 0.995) return Fail("The base does not need repair.", out reason);
                     task.reservedParts = 2; task.durationSeconds = 120; task.powerKw = 0.5; break;
                 case TaskKind.RepairRover:
                     if (ctx.distanceFromBase > 80 && !string.Equals(ctx.station, "rover", StringComparison.OrdinalIgnoreCase)) return Fail("Stand beside the rover to repair it.", out reason);
@@ -362,7 +370,8 @@ namespace MarsSurvival.Simulation
         private void Tick(double seconds, PlayerContext context)
         {
             double hours = seconds / 3600, sols = seconds / MissionSettings.SolSeconds;
-            if (State.routineEnabled && IsIndoors(context) && !context.moving && !context.driving) RunRoutine(context);
+            // The routine only acts while time is fast-forwarded, never just because the astronaut stands still.
+            TickDay(context);
             ApplyPower(seconds, context);
             TickLifeSupport(seconds, context);
             TickCrops(seconds);
@@ -373,9 +382,9 @@ namespace MarsSurvival.Simulation
                 TickTask(seconds, context);
             }
             double wearFactor = Installed("P3") ? 0.5 : 1;
-            State.equipment.baseCondition = Clamp(State.equipment.baseCondition - sols * (0.00025 + Environment.dust * 0.001) * wearFactor, 0, 1);
+            State.equipment.baseCondition = Clamp(State.equipment.baseCondition - sols * (0.00025 + Environment.dust * 0.001 + (State.faultActive ? 0.03 : 0)) * wearFactor, 0, 1);
             State.equipment.panelCondition = Clamp(State.equipment.panelCondition - sols * 0.0001 * wearFactor, 0.25, 1);
-            State.equipment.panelDust = Clamp(State.equipment.panelDust + sols * (0.0006 + Environment.dust * 0.015), 0, 0.85);
+            AddPanelDust(sols * (0.0006 + Environment.dust * 0.015));
             if (context.roverDistanceKm > 0)
             {
                 double km = Math.Max(0, context.roverDistanceKm);
@@ -425,6 +434,13 @@ namespace MarsSurvival.Simulation
             if (State.reports == null) State.reports = new List<ReportState>();
             if (State.history == null) State.history = new List<string>();
             if (State.task == null) State.task = new TaskState();
+            if (State.day == null) State.day = new DayState();
+            if (State.panelDustEach == null || State.panelDustEach.Length != PanelCount)
+            {
+                State.panelDustEach = new double[PanelCount];
+                for (int i = 0; i < PanelCount; i++) State.panelDustEach[i] = State.equipment.panelDust;
+            }
+            State.routineEnabled = false;
         }
 
         private EnvironmentSample Sanitize(EnvironmentSample value)

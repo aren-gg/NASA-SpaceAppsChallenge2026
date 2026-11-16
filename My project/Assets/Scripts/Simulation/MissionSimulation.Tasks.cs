@@ -71,7 +71,8 @@ namespace MarsSurvival.Simulation
             switch (task.kind)
             {
                 case TaskKind.Rest:
-                    result = "Rest completed. Fatigue fell; consumed supplies were not restored.";
+                    result = task.targetId == "sleep" ? "Good morning! A new sol begins." : "Rest completed. Fatigue fell; consumed supplies were not restored.";
+                    if (task.targetId == "sleep") { State.task = new TaskState(); NewDay(true); Log(result); return; }
                     break;
                 case TaskKind.Exercise:
                     State.astronaut.fitness = Math.Min(100, State.astronaut.fitness + (Installed("H3") ? 3 : 1.6));
@@ -85,6 +86,7 @@ namespace MarsSurvival.Simulation
                     break;
                 case TaskKind.Plant:
                     crop.crop = task.cropId; crop.planted = true; crop.ready = false; crop.growth = 0; crop.stress = 0;
+                    crop.sownMask = CropState.AllSlots; crop.pickedMask = 0; crop.moisture = 1;
                     result = "Planted " + crop.crop + " in greenhouse bed " + (crop.bed + 1) + ".";
                     break;
                 case TaskKind.Harvest:
@@ -94,12 +96,16 @@ namespace MarsSurvival.Simulation
                     r.seeds += 1;
                     State.totalFoodHarvested += stored;
                     crop.planted = false; crop.ready = false; crop.growth = 0; crop.harvests++;
+                    crop.sownMask = 0; crop.pickedMask = 0; crop.moisture = 0;
+                    State.day.foodHarvested += stored;
                     result = "Harvested " + stored.ToString("0", CultureInfo.InvariantCulture) + " food portions and saved one seed.";
                     break;
                 case TaskKind.RepairBase:
                     State.equipment.baseCondition = Math.Min(1, State.equipment.baseCondition + 0.35);
                     State.repairsCompleted++;
-                    result = "Base equipment repaired.";
+                    State.day.repairs++;
+                    result = State.faultActive ? "Fault fixed and base equipment repaired." : "Base equipment repaired.";
+                    State.faultActive = false; State.faultSpot = -1;
                     break;
                 case TaskKind.RepairRover:
                     State.equipment.roverCondition = Math.Min(1, State.equipment.roverCondition + 0.35);
@@ -116,6 +122,7 @@ namespace MarsSurvival.Simulation
                         site.analyzed = true;
                         r.researchPoints += site.reward;
                         r.parts += 3;
+                        State.day.fieldDone = true;
                     }
                     result = "Analyzed " + site.name + " (+" + site.reward + " research; +3 mission supply parts). Parts are a fictional supply allotment, not extracted minerals.";
                     break;
@@ -133,7 +140,8 @@ namespace MarsSurvival.Simulation
                     result = "Marker photo documented (+4 research). It can be included in a Houston report.";
                     break;
                 case TaskKind.DustPanels:
-                    State.equipment.panelDust = Math.Max(0, State.equipment.panelDust - 0.7);
+                    for (int i = 0; i < State.panelDustEach.Length; i++) State.panelDustEach[i] = Math.Max(0, State.panelDustEach[i] - 0.7);
+                    UpdatePanelDust();
                     State.panelsCleaned++;
                     result = "Panel deposits removed. Generation still depends on sunlight and airborne dust.";
                     break;
@@ -161,6 +169,7 @@ namespace MarsSurvival.Simulation
             if (report.progressSeconds >= 120 - 0.0000001)
             {
                 report.progressSeconds = 120; report.acknowledged = true;
+                State.day.reportDone = true;
                 Log("Houston acknowledged " + report.id + ".");
             }
         }
@@ -169,32 +178,6 @@ namespace MarsSurvival.Simulation
         {
             return "houston-" + State.seed + "-" + (int)(State.elapsedSeconds / MissionSettings.SolSeconds) + "-"
                 + State.sites.FindAll(s => s.analyzed).Count + "-" + State.sites.FindAll(s => s.photographed).Count + "-" + State.repairsCompleted;
-        }
-
-        private void RunRoutine(PlayerContext ctx)
-        {
-            if (State.task.kind != TaskKind.None) return;
-            string ignored;
-            if (State.astronaut.satiety < 70 && State.resources.food >= 1) Command("eat", "", ctx, out ignored);
-            if (State.astronaut.hydration < 70 && State.resources.cleanWaterLiters >= 0.5) Command("drink", "", ctx, out ignored);
-            if (State.astronaut.fatigue > 65) { StartTask(TaskKind.Rest, "", ctx, out ignored); return; }
-            if (State.astronaut.health < 60 && State.resources.medicine >= 1) { StartTask(TaskKind.Treat, "", ctx, out ignored); return; }
-            foreach (CropState crop in State.crops)
-            {
-                if (crop.ready && State.resources.food < Settings.foodCapacity * 0.8)
-                {
-                    StartTask(TaskKind.Harvest, crop.bed.ToString(CultureInfo.InvariantCulture), ctx, out ignored); return;
-                }
-                if (!crop.planted && State.resources.seeds >= 1 && State.resources.food < Settings.foodCapacity * 0.8)
-                {
-                    StartTask(TaskKind.Plant, crop.bed.ToString(CultureInfo.InvariantCulture) + ":" + crop.crop, ctx, out ignored); return;
-                }
-            }
-            if (State.astronaut.fitness < 95 && State.elapsedSeconds - State.astronaut.lastExerciseSeconds >= MissionSettings.SolSeconds)
-            {
-                StartTask(TaskKind.Exercise, "", ctx, out ignored); return;
-            }
-            if (State.equipment.baseCondition < 0.75 && State.resources.parts >= 2) StartTask(TaskKind.RepairBase, "", ctx, out ignored);
         }
     }
 }

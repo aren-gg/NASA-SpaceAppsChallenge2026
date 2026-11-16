@@ -25,6 +25,21 @@ namespace MarsSurvival.Tools
                 return true;
             }
 
+            if (mission.Tools != null && mission.Tools.AimedUse != null)
+            {
+                title = mission.Tools.AimedUse.name;
+                body = "Press E to " + mission.Tools.UseLabel + ".";
+                ResourceState r = mission.Simulation.State.resources;
+                switch (mission.Tools.AimedUse.kind)
+                {
+                    case MarsTaskTarget.Kind.Food: body += "\nFood store: " + r.food.ToString("0") + " portions"; break;
+                    case MarsTaskTarget.Kind.Water: body += "\nClean water: " + r.cleanWaterLiters.ToString("0") + " L"; break;
+                    case MarsTaskTarget.Kind.Bunk: body += "\nThe night passes quickly; you wake up hungry and thirsty."; break;
+                    case MarsTaskTarget.Kind.MedicalBed: body += "\nUses one medical supply (" + r.medicine.ToString("0") + " left)."; break;
+                }
+                return true;
+            }
+
             SiteState site = target == null || string.IsNullOrEmpty(target.SiteId) ? null : mission.Simulation.FindSite(target.SiteId);
             if (site != null)
             {

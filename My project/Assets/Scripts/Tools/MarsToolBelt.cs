@@ -35,6 +35,8 @@ namespace MarsSurvival.Tools
         public float Progress { get; private set; }
         /// <summary>True while the aim has drifted off the thing being worked on.</summary>
         public bool AimLost { get { return Working != null && lostFor > 0f; } }
+        /// <summary>The mini-game being played for <see cref="Working"/>, or null.</summary>
+        public MiniGame Game { get; private set; }
         public string Readout { get; private set; }
         public string SecondaryLabel { get; private set; }
         public float RefusedAt { get; private set; } = -10f;
@@ -227,11 +229,20 @@ namespace MarsSurvival.Tools
 
         private void UpdateWork()
         {
-            bool click = false;
+            bool click = false, held = false, released = false;
 #if ENABLE_LEGACY_INPUT_MANAGER
             click = MouseCaptured && Input.GetMouseButtonDown(0);
+            held = MouseCaptured && Input.GetMouseButton(0);
+            released = Input.GetMouseButtonUp(0);
+            if (Game != null && Input.GetKeyDown(KeyCode.X)) { StopWork(); return; }
 #endif
             bool usable = Plan != null && !Plan.Blocked;
+
+            if (Game != null)
+            {
+                UpdateGame(click, held, released, usable);
+                return;
+            }
 
             if (Working == null)
             {
@@ -245,6 +256,16 @@ namespace MarsSurvival.Tools
                 if (Plan.Seconds <= 0f)
                 {
                     Finish(Plan);
+                    return;
+                }
+                if (Plan.Game != null)
+                {
+                    // The click that starts a mini-game does not count as its first press.
+                    Working = Plan;
+                    Game = Plan.Game;
+                    Progress = 0f;
+                    lostFor = 0f;
+                    MarsSfx.Play(MarsSfx.Sound.Start, 0.7f);
                     return;
                 }
                 Working = Plan;
@@ -313,8 +334,32 @@ namespace MarsSurvival.Tools
             if (plan.Seconds > 0f) MarsSfx.Play(MarsSfx.Sound.Success, 0.6f);
         }
 
+        /// <summary>Feeds the mouse to the mini-game; it ends when won, or when the player looks away for a while.</summary>
+        private void UpdateGame(bool click, bool held, bool released, bool usable)
+        {
+            if (usable && object.Equals(Plan.Key, Working.Key)) lostFor = 0f;
+            else
+            {
+                lostFor += Time.deltaTime;
+                if (lostFor > aimGraceSeconds * 3f) { StopWork(); return; }
+            }
+            Game.Tick(Time.deltaTime, click, held, released);
+            Progress = Mathf.Clamp01(Game.Progress);
+            bool busy = held || Game.View == MiniGameView.Dial || Game.View == MiniGameView.Scan;
+            workTime += busy ? Time.deltaTime : 0f;
+            MarsSfx.SetLoop(held && !Game.Jammed ? Current.LoopSound : MarsSfx.Loop.None);
+            if (Game.Done)
+            {
+                ToolAction done = Working;
+                StopWork();
+                Finish(done);
+            }
+            else if (Game.Failed) StopWork();
+        }
+
         private void StopWork()
         {
+            Game = null;
             Working = null;
             Progress = 0f;
             workTime = 0f;

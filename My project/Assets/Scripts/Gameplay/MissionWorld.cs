@@ -22,6 +22,7 @@ namespace MarsSurvival.Gameplay
         public float siteRevealMeters = 30f;
         private void Update()
         {
+            if (GetComponent<MarsWorldTasks>() == null) gameObject.AddComponent<MarsWorldTasks>();
             var controller = MarsMissionController.Instance;
             if (controller == null || controller.Simulation == null) return;
             UpdateSiteVisibility();
@@ -29,7 +30,6 @@ namespace MarsSurvival.Gameplay
             var outpost = FindObjectOfType<MarsOutpost>();
             if (outpost == null || !outpost.IsPlaced) return;
             string key = state.equipment.extraPanels + ":" + state.equipment.extraBatteries + ":" + string.Join(",", state.installed);
-            foreach (var crop in state.crops) key += ":" + crop.planted + ":" + (int)(crop.growth * 4);
             foreach (var site in state.sites) key += ":" + site.markerPlaced;
             if (key == visualKey) return;
             visualKey = key;
@@ -38,9 +38,7 @@ namespace MarsSurvival.Gameplay
             equipmentRoot.SetParent(outpost.transform, false);
             for (int i = 0; i < state.equipment.extraPanels; i++) Prop("Solar expansion", new Vector3(8 + i * 4, 1, 19), new Vector3(3, 0.15f, 2), MarsPalette.DeepPurple);
             for (int i = 0; i < state.equipment.extraBatteries; i++) Prop("Battery cabinet", new Vector3(8 + i * 1.5f, 1, -1), new Vector3(1, 2, 0.8f), MarsPalette.DeepPurple);
-            foreach (var crop in state.crops)
-                if (crop.planted) for (int i = 0; i < 6; i++)
-                    Prop("Crop growth", new Vector3(-2 + crop.bed * 3, 0.7f + (float)crop.growth * 0.4f, -9 - i), new Vector3(0.4f, 0.1f + (float)crop.growth * 0.8f, 0.4f), MarsPalette.MutedOlive);
+            // Greenhouse plants are drawn per plant spot by MarsWorldTasks.
             foreach (var site in state.sites)
                 if (site.markerPlaced)
                 {
@@ -142,6 +140,7 @@ namespace MarsSurvival.Gameplay
                 {
                     foreach (var room in outpost.Rooms) if (room.Contains(p.x, p.z)) { ctx.zone = PlayerZone.Habitat; ctx.station = "habitat"; break; }
                     if ((Math.Abs(p.z) < 0.9 && p.x > -26 && p.x < 20.5) || (Math.Abs(p.x) < 0.9 && p.z > -18 && p.z < 16.75)) ctx.zone = PlayerZone.Habitat;
+                    if (MarsOutpostBuilder.Hub.Contains(p.x, p.z) && p.x < -0.8f && p.z > 0.8f) ctx.station = "galley";
                     if (MarsOutpostBuilder.Greenhouse.Contains(p.x, p.z)) ctx.station = "greenhouse";
                     if (MarsOutpostBuilder.Medical.Contains(p.x, p.z)) ctx.station = "medical";
                     if (MarsOutpostBuilder.Quarters.Contains(p.x, p.z)) ctx.station = "quarters";

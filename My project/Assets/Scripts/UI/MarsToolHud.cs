@@ -49,6 +49,10 @@ namespace MarsSurvival.UI
         private readonly List<TMP_Text> popups = new List<TMP_Text>();
         private Image flash;
         private RawImage warning;
+        // Mini-game widget: a bar with a green zone and a needle, and a heat bar for drilling.
+        private RectTransform gameRoot;
+        private Image gameTrack, gameZone, gameFill, gameNeedle, heatTrack, heatFill, heatRed;
+        private TMP_Text gameCount;
         private RectTransform viewfinder;
 
         private void Start()
@@ -185,7 +189,8 @@ namespace MarsSurvival.UI
             AddShadow(toolHint);
 
             // Tool readout, right side above the mission HUD's power panel.
-            Image readout = Panel(canvasRect, "Readout", round, new Vector2(1f, 0.535f), new Vector2(-28f, 0f), new Vector2(420f, 120f), WithAlpha(purple, 0.82f));
+            // Bottom right, clear of the minimap and daily plan above it.
+            Image readout = Panel(canvasRect, "Readout", round, new Vector2(1f, 0.11f), new Vector2(-28f, 0f), new Vector2(420f, 120f), WithAlpha(purple, 0.82f));
             readout.rectTransform.pivot = new Vector2(1f, 0f);
             readoutCard = readout.rectTransform;
             readoutTitle = Label(readoutCard, "", 16, orange, FontStyle.Bold, TextAnchor.UpperLeft);
@@ -202,6 +207,24 @@ namespace MarsSurvival.UI
                 AddShadow(popup);
                 popups.Add(popup);
             }
+
+            // Mini-game bars under the prompt.
+            gameRoot = NewRect("Mini-game", canvasRect, new Vector2(0.5f, 0.5f), new Vector2(0f, -140f), new Vector2(440f, 70f));
+            Image gamePlate = Panel(gameRoot, "Plate", round, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(470f, 80f), WithAlpha(purple, 0.75f));
+            gamePlate.pixelsPerUnitMultiplier = 2f;
+            gameTrack = Panel(gameRoot, "Track", round, new Vector2(0.5f, 0.5f), new Vector2(-20f, 12f), new Vector2(380f, 22f), WithAlpha(pink, 0.25f));
+            gameTrack.pixelsPerUnitMultiplier = 4f;
+            gameZone = Panel(gameTrack.rectTransform, "Zone", null, Vector2.zero, Vector2.zero, Vector2.zero, new Color(0.55f, 0.85f, 0.8f, 0.9f));
+            gameFill = Panel(gameTrack.rectTransform, "Fill", null, Vector2.zero, Vector2.zero, Vector2.zero, WithAlpha(orange, 0.9f));
+            gameNeedle = Panel(gameTrack.rectTransform, "Needle", null, Vector2.zero, Vector2.zero, Vector2.zero, Color.white);
+            gameCount = Label(gameRoot, "", 20, pink, FontStyle.Bold, TextAnchor.MiddleLeft);
+            Place(gameCount.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(205f, 12f), new Vector2(60f, 30f));
+            heatTrack = Panel(gameRoot, "Heat", round, new Vector2(0.5f, 0.5f), new Vector2(-20f, -18f), new Vector2(380f, 12f), WithAlpha(pink, 0.2f));
+            heatTrack.pixelsPerUnitMultiplier = 6f;
+            heatRed = Panel(heatTrack.rectTransform, "Red", null, Vector2.zero, Vector2.zero, Vector2.zero, new Color(1f, 0.45f, 0.4f, 0.55f));
+            heatFill = Panel(heatTrack.rectTransform, "Fill", null, Vector2.zero, Vector2.zero, Vector2.zero, orange);
+            Span(heatRed.rectTransform, 0.85f, 1f, 0f, 1f);
+            gameRoot.gameObject.SetActive(false);
 
             flash = Panel(canvasRect, "Camera Flash", null, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero, new Color(1f, 1f, 1f, 0f));
             Stretch(flash.rectTransform);
@@ -243,7 +266,22 @@ namespace MarsSurvival.UI
             crosshair.rectTransform.localScale = Vector3.one * (1f + pop * 1.5f);
             crosshair.color = pop > 0f ? orange : pink;
 
-            if (working)
+            MiniGame game = belt.Game;
+            UpdateGame(game, now);
+            MarsToolPickup pickup = MarsMissionController.Instance == null ? null : MarsMissionController.Instance.Tools;
+            string use = pickup == null ? null : pickup.UseLabel;
+            if (game != null)
+            {
+                prompt.text = belt.AimLost ? "Keep aiming at it!" : game.Status + "   <color=" + orangeHex + ">X</color> to stop";
+                bool missed = now - game.MissedAt < 0.5f;
+                prompt.color = missed || game.Jammed ? new Color(1f, 0.5f, 0.45f) : now - game.HitAt < 0.4f ? new Color(0.6f, 0.95f, 0.85f) : pink;
+            }
+            else if (!working && use != null && (plan == null || plan.Blocked))
+            {
+                prompt.text = "<color=" + orangeHex + ">E</color>  to " + use;
+                prompt.color = pink;
+            }
+            else if (working)
             {
                 prompt.text = belt.AimLost ? "Keep aiming at it!" : Capitalize(belt.Working.Label) + "...";
                 prompt.color = belt.AimLost ? WithAlpha(pink, 0.6f + 0.4f * Mathf.Abs(Mathf.Sin(now * 8f))) : orange;
@@ -393,6 +431,49 @@ namespace MarsSurvival.UI
                 used++;
             }
             for (int i = used; i < PopupCount; i++) popups[i].gameObject.SetActive(false);
+        }
+
+        private void UpdateGame(MiniGame game, float now)
+        {
+            gameRoot.gameObject.SetActive(game != null);
+            if (game == null) return;
+            bool heat = game.View == MiniGameView.Heat;
+            bool zone = game.View != MiniGameView.Heat;
+            bool needle = game.View == MiniGameView.Dial || game.View == MiniGameView.Scan || game.View == MiniGameView.Soak;
+            heatTrack.gameObject.SetActive(heat);
+            gameZone.gameObject.SetActive(zone);
+            gameNeedle.gameObject.SetActive(needle);
+            gameFill.gameObject.SetActive(heat || game.View == MiniGameView.Soak);
+            Span(gameZone.rectTransform, game.ZoneStart, game.ZoneEnd, 0f, 1f);
+            float shake = Mathf.Clamp01(1f - (now - game.MissedAt) / 0.35f);
+            gameRoot.anchoredPosition = new Vector2(Mathf.Sin(now * 70f) * 8f * shake, -140f);
+            if (game.View == MiniGameView.Soak)
+            {
+                float level = game.Fill / SoakGame.Max;
+                Span(gameFill.rectTransform, 0f, level, 0.2f, 0.8f);
+                Span(gameNeedle.rectTransform, level - 0.006f, level + 0.006f, -0.35f, 1.35f);
+                gameCount.text = Mathf.RoundToInt(game.Fill * 100f) + "%";
+            }
+            else if (heat)
+            {
+                Span(gameFill.rectTransform, 0f, game.Fill, 0f, 1f);
+                Span(heatFill.rectTransform, 0f, Mathf.Clamp01(game.Heat), 0f, 1f);
+                heatFill.color = Color.Lerp(MarsPalette.WarmOrange, new Color(1f, 0.35f, 0.3f), Mathf.Clamp01((game.Heat - 0.5f) * 2f));
+                gameCount.text = game.Jammed ? "JAM" : Mathf.RoundToInt(game.Fill * 100f) + "%";
+            }
+            else
+            {
+                Span(gameNeedle.rectTransform, game.Needle - 0.007f, game.Needle + 0.007f, -0.35f, 1.35f);
+                gameCount.text = game.Count + "/" + game.Total;
+            }
+        }
+
+        /// <summary>Stretches a child across a fraction of its parent.</summary>
+        private static void Span(RectTransform rect, float x0, float x1, float y0, float y1)
+        {
+            rect.anchorMin = new Vector2(Mathf.Clamp01(x0), y0);
+            rect.anchorMax = new Vector2(Mathf.Clamp01(x1), y1);
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
         }
 
         // ------------------------------------------------------------------ helpers

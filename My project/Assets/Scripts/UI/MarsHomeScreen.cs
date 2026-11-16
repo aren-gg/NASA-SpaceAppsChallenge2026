@@ -27,9 +27,10 @@ namespace MarsSurvival.UI
 
         [Header("Text")]
         public string eyebrow = "GALE CRATER  ·  4.6° S  137.4° E";
-        public string titleTop = "MARS";
-        public string titleBottom = "OUTPOST";
-        [TextArea] public string tagline = "Explore real Mars terrain, collect rock samples and keep your camp running.";
+        [Tooltip("Marsivity: Mars + immersivity. The first part is drawn in white, the second in orange.")]
+        public string titleWhite = "MARS";
+        public string titleOrange = "IVITY";
+        [TextArea] public string tagline = "The connection between nature, technology, and humanity";
         public string credit = "Terrain from NASA / USGS elevation data of Gale Crater  ·  NASA Space Apps Challenge 2026";
 
         [Header("Background camera (real metres)")]
@@ -377,10 +378,11 @@ namespace MarsSurvival.UI
             TMP_Text eyebrowText = NewText(column, eyebrow, 26, orange, FontStyle.Bold, TextAnchor.UpperLeft);
             Place(eyebrowText.rectTransform, ref y, 900f, 34f, 22f, index++);
 
-            TMP_Text title = NewText(column, titleTop + "\n<color=#" + ColorUtility.ToHtmlStringRGB(orange) + ">" + titleBottom + "</color>",
-                                 156, pink, FontStyle.Bold, TextAnchor.UpperLeft);
-            title.lineSpacing = -18f;
-            Place(title.rectTransform, ref y, 900f, 300f, 26f, index++);
+            // One word on one line: MARS in white, IVITY in orange.
+            TMP_Text title = NewText(column, titleWhite + "<color=#" + ColorUtility.ToHtmlStringRGB(orange) + ">" + titleOrange + "</color>",
+                                 150, Color.white, FontStyle.Bold, TextAnchor.UpperLeft);
+            title.enableWordWrapping = false;
+            Place(title.rectTransform, ref y, 1100f, 170f, 26f, index++);
 
             Image rule = NewRect("Rule", column).gameObject.AddComponent<Image>();
             rule.sprite = roundFill;
@@ -393,7 +395,7 @@ namespace MarsSurvival.UI
             TMP_Text taglineText = NewText(column, tagline, 32, WithAlpha(pink, 0.92f), FontStyle.Normal, TextAnchor.UpperLeft);
             taglineText.enableWordWrapping = true;
             taglineText.lineSpacing = 10f;
-            Place(taglineText.rectTransform, ref y, 700f, 84f, 56f, index++);
+            Place(taglineText.rectTransform, ref y, 1100f, 50f, 56f, index++);
 
             RectTransform start = MakeButton(column, "Start mission", ButtonStyle.Primary, StartMission);
             Place(start, ref y, 460f, 92f, 18f, index++);

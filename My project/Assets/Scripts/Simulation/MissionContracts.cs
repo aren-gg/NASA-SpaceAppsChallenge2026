@@ -14,6 +14,12 @@ namespace MarsSurvival.Simulation
     public sealed class MissionSettings
     {
         public const double SolSeconds = 88775.244;
+        /// <summary>Game seconds per real second: one sol lasts about 15 real minutes.</summary>
+        public const double TimeScale = SolSeconds / 900.0;
+        /// <summary>Mars-local hour the astronaut wakes up and the daily plan starts.</summary>
+        public const double MorningHour = 7;
+        /// <summary>Game seconds in one Mars-local hour.</summary>
+        public const double HourSeconds = SolSeconds / 24.0;
         public const double SolsPerYear = 668.5921;
         public double fixedStepSeconds = 10;
         public double batteryCapacityKwh = 180;
@@ -43,7 +49,7 @@ namespace MarsSurvival.Simulation
         public double harmfulDoseRateMicrograyPerHour = 150;
         public double chargeEfficiency = 0.95;
         public double portableChargeEfficiency = 0.9;
-        public double cropLeafySols = 5, cropStapleSols = 10;
+        public double cropLeafySols = 3, cropStapleSols = 6;
         /// <summary>Water one leafy bed uses per sol; set from the KSC Veggie crop estimates (MissionDataSources).</summary>
         public double leafyWaterLitersPerSol = 1;
         public static double Duration(MissionLength length)
@@ -85,11 +91,37 @@ namespace MarsSurvival.Simulation
     [Serializable]
     public sealed class CropState
     {
+        /// <summary>Plant spots in each greenhouse bed; each is sown and picked by hand.</summary>
+        public const int Slots = 12;
+        public const int AllSlots = (1 << Slots) - 1;
         public int bed;
         public string crop = "leafy";
         public bool planted, ready;
         public double growth, stress;
         public int harvests;
+        /// <summary>Bit per plant spot: sown with the shovel, picked when ripe.</summary>
+        public int sownMask, pickedMask;
+        /// <summary>Soil moisture 0-1 (above 1 is waterlogged). Dries out over about one sol; plants only grow while moist.</summary>
+        public double moisture;
+
+        public static int Count(int mask) { int n = 0; for (int i = 0; i < Slots; i++) if ((mask & (1 << i)) != 0) n++; return n; }
+    }
+
+    /// <summary>
+    /// One sol of the daily plan: breakfast, power, greenhouse, maintenance, field trip,
+    /// report, dinner and sleep. Flags record what the player did today.
+    /// </summary>
+    [Serializable]
+    public sealed class DayState
+    {
+        public int number;
+        public double startSeconds;
+        public bool ateMorning, drankMorning, powerChecked, fieldDone, reportDone, ateEvening, drankEvening;
+        /// <summary>Set when the astronaut wakes from sleep; the HUD shows the sol summary once.</summary>
+        public bool summaryPending;
+        public double foodAtStart, waterAtStart, foodHarvested;
+        public int researchAtStart, repairs, panelsSwept, plantsPicked, plantsSown;
+        public string yesterday = "";
     }
 
     [Serializable]
@@ -154,6 +186,12 @@ namespace MarsSurvival.Simulation
         public double totalGeneratedKwh, totalConsumedKwh, totalLossKwh, totalCurtailedKwh;
         public double totalWaterLostLiters, totalOxygenProducedGrams, totalFoodHarvested;
         public int reportsCreated, repairsCompleted, panelsCleaned;
+        public DayState day = new DayState();
+        /// <summary>A sparking fault somewhere in the base (index into the outpost's fault spots), fixed with the wrench.</summary>
+        public bool faultActive;
+        public int faultSpot = -1;
+        /// <summary>Dust on each of the six array panels; equipment.panelDust is their average.</summary>
+        public double[] panelDustEach;
     }
 
     public struct EnvironmentSample
@@ -169,6 +207,8 @@ namespace MarsSurvival.Simulation
     {
         public PlayerZone zone;
         public bool moving, sprinting, driving, roverAtBase;
+        /// <summary>True while the player is fast-forwarding time (+1 hour); the daily routine only runs then.</summary>
+        public bool advancing;
         public double distanceFromBase, roverDistanceKm;
         public string nearbySiteId, station;
         public bool photoFramingValid;

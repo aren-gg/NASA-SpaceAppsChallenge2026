@@ -31,9 +31,13 @@ namespace MarsSurvival.Gameplay
         public string Notice = "Choose a mission length to begin.";
         public string SelectedSiteId = "";
         public double AdvanceRemaining { get; private set; }
+        /// <summary>Game seconds per real second (MissionSettings.TimeScale; the QA run slows it to 1).</summary>
+        public double ClockScale { get; set; } = MissionSettings.TimeScale;
         public bool IsRunning { get { return Simulation != null && Simulation.State.phase == MissionPhase.Running; } }
         // Tasks do not block walking: the simulation already pauses task progress while the astronaut moves.
-        public bool InputBlocked { get { return !IsRunning || Paused || PanelOpen || AdvanceRemaining > 0; } }
+        public bool InputBlocked { get { return !IsRunning || Paused || PanelOpen || MapOpen || AdvanceRemaining > 0; } }
+        /// <summary>True while the large map is open (the astronaut stands still, the cursor is free).</summary>
+        public bool MapOpen { get; set; }
         private MarsTerrain terrain;
         private MarsOutpost outpost;
         private MarsAstronautPlayer player;
@@ -122,23 +126,33 @@ namespace MarsSurvival.Gameplay
             Simulation.State.playerYaw = player.transform.eulerAngles.y;
             if (!IsRunning || Paused) return;
             if (environmentModel == null) environmentModel = MissionEnvironment.LoadBundled(MissionDataSources.Seasons(), MissionDataSources.ScheduleSourceLabel);
-            if (AdvanceRemaining <= 0) pendingTime += Time.unscaledDeltaTime;
+            // One sol lasts about 15 real minutes (MissionSettings.TimeScale game seconds per real second).
+            if (AdvanceRemaining <= 0) pendingTime += Time.unscaledDeltaTime * ClockScale;
             int budget = AdvanceRemaining > 0 ? 1000 : 10;
             for (int i = 0; i < budget && IsRunning; i++)
             {
-                double dt = AdvanceRemaining > 0 ? Math.Min(10, AdvanceRemaining) : Math.Min(1, pendingTime);
+                double dt = AdvanceRemaining > 0 ? Math.Min(10, AdvanceRemaining) : Math.Min(10, pendingTime);
                 if (dt < 0.999 && AdvanceRemaining <= 0) break;
                 var loc = terrain.GetLatLon(player.transform.position);
                 Environment = environmentModel.Sample(Simulation.State.elapsedSeconds, Simulation.State.startUnix,
                     Simulation.State.seed, loc.x, loc.y);
                 var ctx = Context;
+                ctx.advancing = AdvanceRemaining > 0;
                 if (rover != null) { ctx.roverDistanceKm = Math.Max(0, rover.OdometerKm - lastOdometer); lastOdometer = rover.OdometerKm; }
                 TaskKind before = Simulation.State.task.kind;
                 Simulation.Step(dt, Environment, ctx);
                 if (AdvanceRemaining > 0) AdvanceRemaining = Math.Max(0, AdvanceRemaining - dt); else pendingTime = Math.Max(0, pendingTime - dt);
                 string warning = Simulation.Warnings.Count > 0 ? Simulation.Warnings[0] : "";
-                if (AdvanceRemaining > 0 && ((warning != "" && warning != lastWarning) || (before != TaskKind.None && Simulation.State.task.kind == TaskKind.None)))
-                    StopAdvance(warning == "" ? "Task complete." : warning);
+                bool asleep = Simulation.State.task.kind == TaskKind.Rest && Simulation.State.task.targetId == "sleep";
+                // Asleep, only a solar storm or failing health wakes you; awake, any new warning stops the wait.
+                bool alarm = asleep ? (Environment.solarEvent > 0.05 || Simulation.State.astronaut.health < 30) : warning != "" && warning != lastWarning;
+                if (AdvanceRemaining > 0 && (alarm || (before != TaskKind.None && Simulation.State.task.kind == TaskKind.None)))
+                {
+                    bool woken = asleep;
+                    if (woken && warning == "") warning = Environment.solarEvent > 0.05 ? "solar storm, go to the shelter!" : "your health is failing.";
+                    if (woken) Simulation.CancelTask();
+                    StopAdvance(woken ? "You were woken up: " + warning : warning == "" ? Simulation.LastResult : warning);
+                }
                 lastWarning = warning;
             }
             if (cycle != null) cycle.SetTime(Simulation.State.startUnix + Simulation.State.elapsedSeconds);
@@ -160,6 +174,8 @@ namespace MarsSurvival.Gameplay
         }
         private void UpdateTutorial()
         {
+            // The daily plan (MissionDailyPlan) now guides the player; the old objectives stay off.
+            if (Simulation != null) return;
             var s = Simulation.State;
             if (s.tutorialStep < 0 || s.tutorialStep >= 10) return;
             bool completed = false;
@@ -187,16 +203,17 @@ namespace MarsSurvival.Gameplay
         {
             if (!Ready) { Notice = "Waiting for the astronaut and outpost."; return; }
             Simulation = new MissionSimulation(MissionDataSources.CreateSettings(), MissionSimulation.NewMission(length, 2026));
+            StartAtMorning();
             rover.RestoreMissionPose(initialRoverPosition, initialRoverYaw, 0);
             World.CreateSites(terrain, outpost, Simulation.State);
             player.RestoreMissionPose(outpost.transform.TransformPoint(new Vector3(0, 0.05f, 0)), outpost.transform.eulerAngles.y);
             pendingTime = 0; AdvanceRemaining = 0; Paused = false; lastSaveSol = 0;
             lastOdometer = rover == null ? 0 : rover.OdometerKm;
             lastZone = PlayerZone.Habitat;
-            Dashboard.RequireTakeover(); SetPanelOpen(true); Notice = "Mission started. Balance the three power controls, then plant the greenhouse.";
+            Dashboard.RequireTakeover(); SetPanelOpen(false); Notice = "Sol 1, 07:00. Your daily plan is on the right: start with breakfast in the galley.";
         }
         public bool SetPowerRequest(PowerChannel channel, double value) { return Simulation != null && Simulation.SetPowerRequest(channel, value); }
-        public void SetPanelOpen(bool value) { PanelOpen = value; Cursor.visible = value || Paused; Cursor.lockState = Cursor.visible ? CursorLockMode.None : CursorLockMode.Locked; }
+        public void SetPanelOpen(bool value) { PanelOpen = value; Cursor.visible = value || Paused || MapOpen; Cursor.lockState = Cursor.visible ? CursorLockMode.None : CursorLockMode.Locked; }
         public void SetPaused(bool value) { Paused = value; if (value) StopAdvance("Paused."); SetPanelOpen(PanelOpen); }
         public void StopAdvance(string reason) { AdvanceRemaining = 0; Notice = reason; }
         public void Advance(double seconds)
@@ -221,6 +238,68 @@ namespace MarsSurvival.Gameplay
             foreach (string tool in MarsToolPickup.ToolsFor(kind)) { Tools.Hold(tool); break; }
             Simulation.StartTask(kind, target, Context, out reason); Notice = reason;
         }
+        /// <summary>Moves the mission start so sol 1 begins at 07:00 local time at the outpost.</summary>
+        private void StartAtMorning()
+        {
+            if (environmentModel == null) environmentModel = MissionEnvironment.LoadBundled(MissionDataSources.Seasons(), MissionDataSources.ScheduleSourceLabel);
+            var loc = terrain.GetLatLon(player.transform.position);
+            var s = Simulation.State;
+            for (int pass = 0; pass < 2; pass++)
+            {
+                double hour = environmentModel.Sample(s.elapsedSeconds, s.startUnix, s.seed, loc.x, loc.y).localHour;
+                double shift = MissionSettings.MorningHour - hour;
+                while (shift < 0) shift += 24;
+                s.startUnix += shift * MissionSettings.HourSeconds;
+            }
+            Environment = environmentModel.Sample(s.elapsedSeconds, s.startUnix, s.seed, loc.x, loc.y);
+            Simulation.Environment = Environment;
+        }
+
+        private bool CanWorkOn(TaskKind kind, out string reason)
+        {
+            string station = kind == TaskKind.Plant || kind == TaskKind.Harvest ? "greenhouse" : kind == TaskKind.Treat ? "medical" : kind == TaskKind.Analyze ? "lab" : kind == TaskKind.Install ? "energy" : kind == TaskKind.DustPanels ? "array" : kind == TaskKind.RepairRover ? "rover" : "";
+            if (station != "" && Context.station != station) { reason = "Go to the " + station.Replace('_', ' ') + " to start this task."; return false; }
+            return Tools.HasAll(MarsToolPickup.ToolsFor(kind), out reason);
+        }
+
+        /// <summary>
+        /// Does a task now, after its mini-game: starts it and runs the clock through its duration
+        /// (needs, power and weather keep ticking). Returns false, with the reason in Notice, if it cannot.
+        /// </summary>
+        public bool FinishTask(TaskKind kind, string target = "")
+        {
+            if (Simulation == null) return false;
+            string reason;
+            if (!CanWorkOn(kind, out reason)) { Notice = reason; return false; }
+            var ctx = Context; ctx.moving = false; ctx.sprinting = false;
+            if (!Simulation.StartTask(kind, target, ctx, out reason)) { Notice = reason; return false; }
+            for (int i = 0; i < 600 && IsRunning && Simulation.State.task.kind == kind; i++)
+            {
+                double left = Simulation.State.task.durationSeconds - Simulation.State.task.progressSeconds;
+                Simulation.Step(Math.Min(10, Math.Max(1, left)), Environment, ctx);
+            }
+            if (Simulation.State.task.kind == kind)
+            {
+                Simulation.CancelTask();
+                Notice = "Could not finish: not enough power for the work.";
+                return false;
+            }
+            Notice = Simulation.LastResult;
+            return true;
+        }
+
+        /// <summary>Sleep in a bunk: fast-forwards to 07:00 next morning (needs keep ticking), unless something wakes you.</summary>
+        public void Sleep()
+        {
+            if (Simulation == null) return;
+            string reason;
+            if (!Simulation.Command("sleep", "", Context, out reason)) { Notice = reason; return; }
+            Notice = reason;
+            Paused = false;
+            AdvanceRemaining = Simulation.State.task.durationSeconds + 60;
+            lastWarning = Simulation.DecisionReason;
+        }
+
         public void Research(string id) { if (Simulation == null) return; string reason; Simulation.Research(id, out reason); Notice = reason; }
         public void SelectSite(string id) { SelectedSiteId = id; }
         public void Restart() { NewMission(Simulation == null ? MissionLength.Month : Simulation.State.length); }

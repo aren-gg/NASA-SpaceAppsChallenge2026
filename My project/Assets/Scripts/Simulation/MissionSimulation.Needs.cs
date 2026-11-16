@@ -50,12 +50,13 @@ namespace MarsSurvival.Simulation
                 double resourceFraction = Math.Min(1, Math.Min(waterNeed > 0 ? r.cleanWaterLiters / waterNeed : 1,
                     nutrientNeed > 0 ? r.nutrients / nutrientNeed : 1));
                 double supported = Math.Min(greenhousePowerFraction, resourceFraction) * temperatureFactor;
-                double usedWater = waterNeed * supported;
-                r.cleanWaterLiters -= usedWater;
-                r.wasteWaterLiters += usedWater * 0.8;
-                State.totalWaterLostLiters += usedWater * 0.2;
+                // Water now comes from the sprayer: the bed only grows while its soil is moist.
+                bool moist = crop.moisture > 0.15;
+                bool waterlogged = crop.moisture > 1.15;
+                crop.moisture = Math.Max(0, crop.moisture - sols * 1.1);
+                if (!moist) supported = 0;
                 r.nutrients -= nutrientNeed * supported;
-                crop.stress = Clamp(crop.stress + sols * (supported < 0.5 ? (Installed("H0") ? 0.08 : 0.15) : -0.1), 0, 1);
+                crop.stress = Clamp(crop.stress + sols * (supported < 0.5 || waterlogged ? (Installed("H0") ? 0.08 : 0.15) : -0.1), 0, 1);
                 double cycle = crop.crop == "staple" ? Settings.cropStapleSols : Settings.cropLeafySols;
                 crop.growth = Math.Min(1, crop.growth + sols / Math.Max(0.1, cycle) * supported * (1 - crop.stress * 0.75));
                 if (crop.growth >= 1 - 0.0000001)

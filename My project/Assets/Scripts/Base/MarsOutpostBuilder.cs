@@ -154,6 +154,23 @@ namespace MarsSurvival.Base
             current = new GameObject(objectName);
             current.transform.SetParent(root, false);
             g = new OutpostGeometry();
+            hull = new OutpostGeometry();
+        }
+
+        /// <summary>
+        /// Collision copy of curved or sloped shapes (roofs, dome, mound, tube, pad slopes), so the
+        /// astronaut stands on and is stopped by the surface that is drawn, not a box around it.
+        /// </summary>
+        private OutpostGeometry hull;
+
+        /// <summary>Draws the shapes, then draws them again into the collision hull.</summary>
+        private void AlsoSolid(System.Action draw)
+        {
+            draw();
+            OutpostGeometry drawn = g;
+            g = hull;
+            try { draw(); }
+            finally { g = drawn; }
         }
 
         private Room BeginRoom(string roomName, FloorRect rect, string feature, string tools)
@@ -174,6 +191,16 @@ namespace MarsSurvival.Base
                 current.AddComponent<MeshFilter>().sharedMesh = mesh;
                 current.AddComponent<MeshRenderer>().sharedMaterials = used;
             }
+            if (hull != null && !hull.IsEmpty)
+            {
+                Material[] unused;
+                Mesh shape = hull.ToMesh(current.name + " hull", materials, out unused);
+                owned.Add(shape);
+                GameObject solid = new GameObject("Hull collider");
+                solid.transform.SetParent(current.transform, false);
+                solid.AddComponent<MeshCollider>().sharedMesh = shape;
+            }
+            hull = null;
             g = null;
             current = null;
         }
@@ -199,12 +226,14 @@ namespace MarsSurvival.Base
             frameOrigin = origin;
             frameYaw = yawDegrees;
             g.SetFrame(origin, yawDegrees);
+            if (hull != null) hull.SetFrame(origin, yawDegrees);
         }
 
         private void ClearFrame()
         {
             framed = false;
             g.ClearFrame();
+            if (hull != null) hull.ClearFrame();
         }
 
         private void AddCollider(float x0, float y0, float z0, float x1, float y1, float z1)
@@ -401,8 +430,8 @@ namespace MarsSurvival.Base
 
             float top = height + 0.12f;
             g.Box(White, outer, height, top);
-            Vault(outer, top, roofRise, wallMaterial == White ? White : accent, accent);
-            AddCollider(outer.x0, height, outer.z0, outer.x1, top + roofRise, outer.z1);
+            AlsoSolid(() => Vault(outer, top, roofRise, wallMaterial == White ? White : accent, accent));
+            AddCollider(outer.x0, height, outer.z0, outer.x1, top, outer.z1);
             if (roundEnd >= 0) RoundEnd(roundEnd, outer, top, roofRise);
 
             g.Box(GlowWarm, r.CentreX - 0.7f, height - 0.05f, r.CentreZ - 0.3f, r.CentreX + 0.7f, height, r.CentreZ + 0.3f);
@@ -456,6 +485,7 @@ namespace MarsSurvival.Base
             Vector3 inside = new Vector3(0f, 1f, radius * 0.3f);
             Vector3 apex = new Vector3(0f, top + rise, 0f);
             const int steps = 8;
+            AlsoSolid(() => {
             for (int k = 0; k < steps; k++)
             {
                 float t0 = Mathf.PI * k / steps, t1 = Mathf.PI * (k + 1) / steps;
@@ -470,6 +500,7 @@ namespace MarsSurvival.Base
                     g.Quad(Charcoal, q0 + Vector3.up * 1f, q1 + Vector3.up * 1f, q1 + Vector3.up * 1.9f, q0 + Vector3.up * 1.9f, inside);
                 }
             }
+            });
             AddCollider(-radius, -depth, 0f, radius, top, radius * 0.45f);
             AddCollider(-radius * 0.7f, -depth, radius * 0.45f, radius * 0.7f, top, radius * 0.85f);
             ClearFrame();
@@ -597,12 +628,13 @@ namespace MarsSurvival.Base
             g.Prism(White, 0f, 0f, Corner(a + T), h, top, 12);
             float[] ringRadius = { a + T + 0.12f, 4.85f, 3.9f, 2.6f, 1.1f };
             float[] ringHeight = { top, top + 0.95f, top + 1.7f, top + 2.25f, top + 2.5f };
-            for (int i = 0; i + 1 < ringRadius.Length; i++)
-            {
-                g.Prism(White, 0f, 0f, Corner(ringRadius[i]), ringHeight[i], ringHeight[i + 1], 12, Corner(ringRadius[i + 1]));
-            }
             float domeTop = top + 2.75f;
-            g.Prism(DarkRed, 0f, 0f, Corner(1.1f), top + 2.5f, domeTop, 12, Corner(0.7f));
+            AlsoSolid(() =>
+            {
+                for (int i = 0; i + 1 < ringRadius.Length; i++)
+                    g.Prism(White, 0f, 0f, Corner(ringRadius[i]), ringHeight[i], ringHeight[i + 1], 12, Corner(ringRadius[i + 1]));
+                g.Prism(DarkRed, 0f, 0f, Corner(1.1f), top + 2.5f, domeTop, 12, Corner(0.7f));
+            });
             g.Prism(DarkRed, 0f, 0f, Corner(a + T + 0.16f), h - 0.25f, top + 0.02f, 12);
             for (int band = 0; band < 4; band++)
             {
@@ -616,7 +648,7 @@ namespace MarsSurvival.Base
                 }
                 ClearFrame();
             }
-            AddCollider(-a - T, h, -a - T, a + T, domeTop, a + T);
+            AddCollider(-a - T, h, -a - T, a + T, top, a + T);
 
             g.Prism(GlowWarm, 0f, 0f, 1.2f, h - 0.05f, h, 12);
             Lamp(0f, h - 0.45f, 0f, 12f);
@@ -781,8 +813,9 @@ namespace MarsSurvival.Base
 
             // Regolith piled over the roof and against the three outside walls. The tunnel side is left clear.
             FloorRect o = r.Grow(T);
-            g.Frustum(Terracotta, h + 0.1f, o.Grow(0.3f), h + 1.1f, o.Grow(-0.7f));
             float top = h + 0.3f;
+            AlsoSolid(() => {
+            g.Frustum(Terracotta, h + 0.1f, o.Grow(0.3f), h + 1.1f, o.Grow(-0.7f));
             g.Hexa(Terracotta,
                 new Vector3(o.x0 - 3f, -depth, o.z0 - 3f), new Vector3(o.x0, -depth, o.z0 - 3f),
                 new Vector3(o.x0, -depth, o.z1 + 3f), new Vector3(o.x0 - 3f, -depth, o.z1 + 3f),
@@ -798,6 +831,7 @@ namespace MarsSurvival.Base
                 new Vector3(o.x1, -depth, o.z1 + 3f), new Vector3(o.x0, -depth, o.z1 + 3f),
                 new Vector3(o.x0, top, o.z1), new Vector3(o.x1, top, o.z1),
                 new Vector3(o.x1, top, o.z1 + 0.3f), new Vector3(o.x0, top, o.z1 + 0.3f));
+            });
             // The mound blocks the astronaut roughly where it is taller than a step.
             AddCollider(o.x0 - 2.2f, -depth, o.z0 - 2.2f, o.x0, top, o.z1 + 2.2f);
             AddCollider(o.x0, -depth, o.z0 - 2.2f, o.x1, top, o.z0);
@@ -900,22 +934,7 @@ namespace MarsSurvival.Base
                 g.Box(Purple, x0 + 0.95f, 2.2f, -15.5f, x0 + 1.05f, h, -15.4f);
                 g.Box(Purple, x0 + 0.95f, 2.2f, -9.3f, x0 + 1.05f, h, -9.2f);
 
-                int index = 0;
-                for (float z = -15.85f; z < -8.7f; z += 0.62f)
-                {
-                    for (int row = 0; row < 3; row++, index++)
-                    {
-                        float px = x0 + 0.4f + row * 0.6f;
-                        float size = 0.13f + 0.1f * Noise(index, side);
-                        float tall = 0.18f + 0.38f * Noise(index + 91, side);
-                        g.Prism(Olive, px, z, size, 0.83f, 0.83f + tall, 6, size * 0.45f);
-                        if (Noise(index + 17, side) > 0.72f)
-                        {
-                            g.Box(Orange, px - 0.05f, 0.83f + tall * 0.5f, z + size * 0.5f, px + 0.05f,
-                                0.93f + tall * 0.5f, z + size * 0.5f + 0.1f);
-                        }
-                    }
-                }
+                // The plants themselves are live: MarsWorldTasks draws 12 plant spots per bed from the crop state.
             }
             // Water tank, potting bench and tools at the far end.
             Tank(Mauve, -2.6f, -17.25f, 0.5f, 1.5f, Purple);
@@ -1044,7 +1063,7 @@ namespace MarsSurvival.Base
             AddCollider(-w - t, h, 0f, w + t, h + 0.15f, length);
             g.Box(GlowWarm, -0.12f, h - 0.03f, 0.3f, 0.12f, h, length - 0.3f);
 
-            g.Loft(White, new[] { TubeRing(1.8f, 0f), TubeRing(1.8f, length) }, false, false);
+            AlsoSolid(() => g.Loft(White, new[] { TubeRing(1.8f, 0f), TubeRing(1.8f, length) }, false, false));
             g.Loft(DarkRed, new[] { TubeRing(1.93f, 0.1f), TubeRing(1.93f, 0.4f) }, false, false);
             g.Loft(DarkRed, new[] { TubeRing(1.93f, length - 0.4f), TubeRing(1.93f, length - 0.1f) }, false, false);
             ClearFrame();
@@ -1072,7 +1091,7 @@ namespace MarsSurvival.Base
             // The levelled pad: regolith graded flat, with sloping sides down to the natural ground.
             Begin("Levelled pad");
             float spread = padDepth * 1.6f;
-            g.Frustum(Terracotta, -padDepth, Pad.Grow(spread), PadTop, Pad);
+            AlsoSolid(() => g.Frustum(Terracotta, -padDepth, Pad.Grow(spread), PadTop, Pad));
             AddCollider(Pad.x0, -padDepth, Pad.z0, Pad.x1, PadTop, Pad.z1);
 
             // If the front edge of the pad stands above the ground, an apron ramp leads up onto it.

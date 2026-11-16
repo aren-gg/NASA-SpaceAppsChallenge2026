@@ -215,7 +215,19 @@ namespace MarsSurvival.Tools
             if (outpost == null) outpost = FindObjectOfType<MarsOutpost>();
             if (Outdoors && outpost != null && outpost.IsPlaced)
                 Waypoints.Add(new Waypoint { position = outpost.DoorPosition + Vector3.up * Units(2.4f), label = "Airlock", paint = Paint.WarmOrange });
-            if (GuidedSite != null)
+            // Today's plan: a marker on where the current step happens.
+            string planLabel = null;
+            if (Mission != null && Mission.Simulation != null)
+            {
+                List<PlanStep> steps = MissionDailyPlan.Steps(Mission);
+                int current = MissionDailyPlan.Current(steps, Mission.Simulation.LocalHour);
+                if (current >= 0 && steps[current].waypoint.HasValue)
+                {
+                    planLabel = steps[current].waypointLabel;
+                    Waypoints.Add(new Waypoint { position = steps[current].waypoint.Value, label = steps[current].title + ": " + planLabel, paint = Paint.WarmOrange });
+                }
+            }
+            if (GuidedSite != null && GuidedSite.name != planLabel)
                 Waypoints.Add(new Waypoint { position = new Vector3((float)GuidedSite.x, (float)GuidedSite.y + Units(2.2f), (float)GuidedSite.z),
                                              label = GuidedSite.name, paint = Paint.PalePink });
             for (int i = Popups.Count - 1; i >= 0; i--)

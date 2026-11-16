@@ -25,6 +25,10 @@ namespace MarsSurvival.Gameplay
 
         /// <summary>The tool rack item under the crosshair that E would pick up, or null.</summary>
         public MarsBaseTool Aimed { get; private set; }
+        /// <summary>The galley locker, water dispenser, bunk, bed, bike or ripe plant E would use, or null.</summary>
+        public MarsTaskTarget AimedUse { get; private set; }
+        /// <summary>What E does to <see cref="AimedUse"/> ("eat", "sleep until morning"...), or null.</summary>
+        public string UseLabel { get; private set; }
 
         // ------------------------------------------------------------------ requirements
 
@@ -34,7 +38,6 @@ namespace MarsSurvival.Gameplay
             switch (kind)
             {
                 case TaskKind.Plant: return new[] { "regolith_shovel" };
-                case TaskKind.Harvest: return new[] { "hydro_sprayer" };
                 case TaskKind.RepairBase:
                 case TaskKind.RepairRover:
                 case TaskKind.Install: return new[] { "power_wrench" };
@@ -56,6 +59,8 @@ namespace MarsSurvival.Gameplay
                 case "canister_fill":
                 case "canister_use": return new[] { "oxygen_canister" };
                 case "water_crop": return new[] { "hydro_sprayer" };
+                case "plant_slot": return new[] { "regolith_shovel" };
+                case "dust_panel": return new[] { "panel_brush" };
                 case "radio": return target == "off" ? new string[0] : new[] { "comm_radio" };
                 default: return new string[0];
             }
@@ -125,19 +130,77 @@ namespace MarsSurvival.Gameplay
             if (state != syncedState) Sync(state);
 
             Aimed = null;
+            AimedUse = null;
+            UseLabel = null;
             var mission = MarsMissionController.Instance;
             if (player == null) player = FindObjectOfType<MarsAstronautPlayer>();
             if (state == null || mission.InputBlocked || MarsHomeScreen.IsOpen || player == null || !player.IsReady || player.IsDriving || player.ViewCamera == null) return;
 
             Aimed = FindAimed(player.ViewCamera.transform);
+            string label = null;
+            if (Aimed == null) AimedUse = FindUse(player.ViewCamera.transform, state, out label);
+            UseLabel = AimedUse == null ? null : label;
 #if ENABLE_LEGACY_INPUT_MANAGER
             if (Input.GetKeyDown(KeyCode.E) && Aimed != null) mission.Notice = TryPickUp(Aimed);
+            else if (Input.GetKeyDown(KeyCode.E) && AimedUse != null) Use(AimedUse, mission);
             bool inside = mission.Context.zone != PlayerZone.Outdoors;
             if (Input.GetKeyDown(KeyCode.Q) && state.carriedTools.Count > 0)
                 mission.Notice = inside ? PutBackSelected() : "Put tools back inside the base.";
             if (Input.GetKeyDown(KeyCode.B) && state.carriedTools.Count > 0)
                 mission.Notice = inside ? PutAllBack() : "Put tools back inside the base.";
 #endif
+        }
+
+        /// <summary>The usable thing nearest the centre of view within reach, and what E does to it.</summary>
+        public MarsTaskTarget FindUse(Transform eye, MissionState state, out string label)
+        {
+            label = null;
+            MarsTaskTarget found = null;
+            float best = aimDegrees;
+            foreach (MarsTaskTarget t in MarsTaskTarget.Usables)
+            {
+                if (t == null) continue;
+                Vector3 to = t.transform.position - eye.position;
+                if (to.magnitude > reachMeters + 0.6f) continue;
+                string what = UseLabelFor(t, state);
+                if (what == null) continue;
+                float angle = Vector3.Angle(eye.forward, to);
+                if (angle < best) { best = angle; found = t; label = what; }
+            }
+            return found;
+        }
+
+        private static string UseLabelFor(MarsTaskTarget t, MissionState state)
+        {
+            switch (t.kind)
+            {
+                case MarsTaskTarget.Kind.Food: return "eat a meal";
+                case MarsTaskTarget.Kind.Water: return "drink water";
+                case MarsTaskTarget.Kind.Bunk: return "sleep until 07:00";
+                case MarsTaskTarget.Kind.MedicalBed: return "get medical treatment";
+                case MarsTaskTarget.Kind.Bike: return "exercise (30 min)";
+                case MarsTaskTarget.Kind.Plant:
+                    CropState crop = state.crops.Find(c => c.bed == t.bed);
+                    return crop != null && crop.ready && (crop.pickedMask & (1 << t.slot)) == 0 ? "pick this ripe plant" : null;
+                default: return null;
+            }
+        }
+
+        private static void Use(MarsTaskTarget t, MarsMissionController mission)
+        {
+            switch (t.kind)
+            {
+                case MarsTaskTarget.Kind.Food: mission.Execute("eat"); break;
+                case MarsTaskTarget.Kind.Water: mission.Execute("drink"); break;
+                case MarsTaskTarget.Kind.Bunk: mission.Sleep(); break;
+                case MarsTaskTarget.Kind.MedicalBed: mission.FinishTask(TaskKind.Treat); break;
+                case MarsTaskTarget.Kind.Bike: mission.FinishTask(TaskKind.Exercise); break;
+                case MarsTaskTarget.Kind.Plant:
+                    mission.Execute("pick", t.bed + ":" + t.slot);
+                    if (MarsExpedition.Instance != null) MarsExpedition.Instance.Pop("+ food", t.transform.position + Vector3.up * 0.5f);
+                    MarsSfx.Play(MarsSfx.Sound.Select);
+                    break;
+            }
         }
 
         /// <summary>The closest hand tool roughly in the centre of view and within reach, or null.</summary>
@@ -229,9 +292,9 @@ namespace MarsSurvival.Gameplay
                 case "oxygen_canister": return "Top up your suit on EVA; refill it inside.";
                 case "work_lamp": return "Click to switch the light on or off.";
                 case "panel_brush": return "Dust the solar array outside the energy room.";
-                case "power_wrench": return "Repair the base and rover; install upgrades in the energy room.";
-                case "regolith_shovel": return "Plant a greenhouse bed. R picks the crop.";
-                case "hydro_sprayer": return "Harvest ready beds or water a stressed one.";
+                case "power_wrench": return "Fix the sparking fault and the rover; install upgrades in the energy room.";
+                case "regolith_shovel": return "Sow an empty bed spot by spot. R picks the crop.";
+                case "hydro_sprayer": return "Water each growing bed once a day: hold, let go in the green.";
                 default: return "Fixed outpost equipment.";
             }
         }
