@@ -4,15 +4,12 @@ using UnityEngine.UI;
 namespace MarsTrainer.UI
 {
     /// <summary>
-    /// The shared panel shape (see <see cref="UiTheme"/>): a retro instrument plate. A
-    /// semi-transparent smoky fill set in a gunmetal steel frame whose bevel is lit at the
-    /// top-left and shaded at the bottom-right, with small corner cuts and, on large panels,
-    /// four rivets. Flat polygons only, no textures or blur.
+    /// The shared panel shape (see <see cref="UiTheme"/>), NASA-punk: a flat semi-transparent
+    /// smoky plate with two cut corners and a hairline edge. Large panels carry a short amber
+    /// stencil bar along the top, like the tab on mission hardware. Flat polygons only.
     /// </summary>
     public sealed class FacetedImage : Image
     {
-        private static readonly Vector2 LightFrom = new Vector2(-0.6f, 0.8f); // light comes from the top-left
-
         protected override void OnPopulateMesh(VertexHelper mesh)
         {
             mesh.Clear();
@@ -27,21 +24,17 @@ namespace MarsTrainer.UI
             Vector2[] outer = Shape(rect, cut);
             if (small < 14f) { Fan(mesh, outer, fill); return; }
 
-            float frame = large ? UiTheme.Frame : Mathf.Max(2f, UiTheme.Frame * 0.66f);
-            Vector2[] middle = Shape(Inset(rect, frame - 1f), Mathf.Max(0f, cut - frame * 0.4f));
-            Vector2[] inner = Shape(Inset(rect, frame), Mathf.Max(0f, cut - frame * 0.5f));
+            Vector2[] inner = Shape(Inset(rect, 1f), Mathf.Max(0f, cut - 0.4f));
             Fan(mesh, inner, fill);
-            Bevel(mesh, outer, middle);
-            Strip(mesh, middle, inner, UiTheme.SteelDark);   // the dark seam between frame and plate
+            Color edge = UiTheme.WithAlpha(UiTheme.Text, large ? 0.26f : 0.2f);
+            Strip(mesh, outer, inner, edge);
 
             if (large && !screen)
             {
-                // Rivets just inside each corner of the frame.
-                float r = 1.6f, inset = frame + 6f;
-                Rivet(mesh, new Vector2(rect.xMin + inset + cut * 0.5f, rect.yMax - inset), r);
-                Rivet(mesh, new Vector2(rect.xMax - inset, rect.yMax - inset), r);
-                Rivet(mesh, new Vector2(rect.xMin + inset, rect.yMin + inset), r);
-                Rivet(mesh, new Vector2(rect.xMax - inset - cut * 0.5f, rect.yMin + inset), r);
+                // The amber stencil bar, just inside the top edge after the cut corner.
+                float length = Mathf.Min(44f, rect.width * 0.18f);
+                float x = rect.xMin + cut + 6f, y = rect.yMax - 1f;
+                Quad(mesh, new Vector2(x, y - 3f), new Vector2(x + length, y - 3f), new Vector2(x + length, y), new Vector2(x, y), UiTheme.Accent);
             }
         }
 
@@ -62,26 +55,6 @@ namespace MarsTrainer.UI
                 new Vector2(r.xMin + cut, r.yMax),
                 new Vector2(r.xMin, r.yMax - cut),
             };
-        }
-
-        /// <summary>The steel frame: each side shaded by how much it faces the light.</summary>
-        private static void Bevel(VertexHelper mesh, Vector2[] outer, Vector2[] inner)
-        {
-            for (int i = 0; i < outer.Length; i++)
-            {
-                int j = (i + 1) % outer.Length;
-                Vector2 edge = outer[j] - outer[i];
-                Vector2 normal = new Vector2(edge.y, -edge.x).normalized;   // outward for this winding
-                float lit = Mathf.Clamp01(Vector2.Dot(normal, LightFrom.normalized) * 0.5f + 0.5f);
-                Color steel = Color.Lerp(UiTheme.SteelDark, UiTheme.SteelLight, lit);
-                Quad(mesh, outer[i], outer[j], inner[j], inner[i], steel);
-            }
-        }
-
-        private static void Rivet(VertexHelper mesh, Vector2 at, float r)
-        {
-            Quad(mesh, at + new Vector2(-r, -r), at + new Vector2(r, -r), at + new Vector2(r, r), at + new Vector2(-r, r), UiTheme.SteelMid);
-            Quad(mesh, at + new Vector2(-r, 0f), at + new Vector2(0f, 0f), at + new Vector2(0f, r), at + new Vector2(-r, r), UiTheme.SteelLight);
         }
 
         private static void Fan(VertexHelper mesh, Vector2[] poly, Color tint)

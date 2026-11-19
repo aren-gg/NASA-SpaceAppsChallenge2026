@@ -8,7 +8,7 @@ namespace MarsTrainer.UI
     public sealed class StatBar : MonoBehaviour
     {
         [SerializeField] private TMP_Text caption;
-        [SerializeField] private Image fill;
+        [SerializeField] private SegmentGauge fill;
         [SerializeField] private bool compact;
         [SerializeField] private ResourceSymbol symbol;
         public void Show(string label, double value, double maximum = GameConstants.StatMaximum)
@@ -16,7 +16,8 @@ namespace MarsTrainer.UI
             float fraction = maximum > 0 ? Mathf.Clamp01((float)(value / maximum)) : 0;
             caption.text = compact ? (label == "Air" ? "Oxygen" : label) + "  " + value.ToString("0") + "%"
                 : label + "  " + value.ToString("0") + " / " + maximum.ToString("0");
-            fill.rectTransform.anchorMax = new Vector2(fraction, 1);
+            fill.Fraction = fraction;
+            fill.Hazard = fraction <= GameConstants.StatEmergencyThreshold / GameConstants.StatMaximum;
             fill.color = ColorOf(fraction <= GameConstants.StatEmergencyThreshold / GameConstants.StatMaximum
                 ? GameConstants.UiCritical : fraction <= GameConstants.StatCriticalThreshold / GameConstants.StatMaximum
                 ? GameConstants.UiWarn : ResourceGlyph.ColorFor(symbol));
@@ -29,8 +30,8 @@ namespace MarsTrainer.UI
             if (compact) { var plate=owner.gameObject.AddComponent<FacetedImage>(); plate.color=ColorOf(GameConstants.UiSurface); plate.raycastTarget=false; }
             var bar = owner.gameObject.AddComponent<StatBar>(); bar.compact = compact; bar.symbol = ResourceGlyph.ForLabel(label);
             bar.caption = Text(owner, label, GameConstants.UiBody, GameConstants.UiLine);
-            var track = Frame(owner, "Track", 0, 0, 1, 0.16f, GameConstants.UiButtonColor);
-            bar.fill = Frame(track, "Fill", 0, 0, 1, 1, GameConstants.UiSafe).GetComponent<Image>();
+            bar.fill = SegmentGauge.Create(owner, 0, 0, 1, 0.16f, ColorOf(GameConstants.UiSafe));
+            var track = bar.fill.rectTransform;
 
             if (compact)
             {
@@ -77,8 +78,9 @@ namespace MarsTrainer.UI
             var rect = Frame(parent, content, 0, 0, 1, 1); Height(rect, height);
             var text = rect.gameObject.AddComponent<TextMeshProUGUI>();
             bool readout = size < GameConstants.UiHeading && UiTypeface.LooksNumeric(content);
-            text.font = size >= GameConstants.UiHeading ? UiTypeface.Strong : readout ? UiTypeface.Mono : UiTypeface.Font;
-            if (readout) size *= UiTypeface.MonoScale;
+            text.font = UiTypeface.Font;
+            if (size >= GameConstants.UiHeading) UiStyle.Caps(text, 3f);
+            else if (readout) UiStyle.Readout(text);
             text.text = content; text.fontSize = size; text.color = ColorOf(GameConstants.UiText);
             text.lineSpacing = GameConstants.UiTextLineSpacing; text.wordSpacing = GameConstants.UiTextWordSpacing;
             text.enableWordWrapping = true; text.raycastTarget = false; text.richText = false;

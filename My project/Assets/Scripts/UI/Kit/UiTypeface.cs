@@ -12,8 +12,8 @@ namespace MarsTrainer.UI
         public const string StrongResource = "Fonts/BarlowCondensed-SemiBold";
         /// <summary>VT323 (SIL OFL 1.1, Peter Hull), a retro CRT terminal face for readouts. License: Assets/Fonts/VT323-OFL.txt.</summary>
         public const string MonoResource = "Fonts/VT323-Regular";
-        /// <summary>VT323 draws small for its size; readouts are scaled up by this much to match the text face.</summary>
-        public const float MonoScale = 1.3f;
+        /// <summary>Readouts use the text face (see <see cref="UiStyle.Readout"/>), so they need no extra scaling.</summary>
+        public const float MonoScale = 1f;
         private static TMP_FontAsset font, strong, mono;
 
         /// <summary>
@@ -42,15 +42,15 @@ namespace MarsTrainer.UI
             }
         }
 
-        /// <summary>VT323, for numbers that change (clock, percentages, readouts): fixed-width, so they do not jitter.</summary>
-        public static TMP_FontAsset Mono
-        {
-            get
-            {
-                if (mono == null) mono = Make(MonoResource, "VT323 SDF");
-                return mono != null ? mono : Font;
-            }
-        }
+        /// <summary>
+        /// The readout face for numbers (clock, percentages, vitals): Barlow Condensed SemiBold,
+        /// the same face as the slot and label text, so numbers match the rest of the UI. Wrap
+        /// changing numbers in <see cref="Digits"/> so they keep a fixed width and do not jitter.
+        /// </summary>
+        public static TMP_FontAsset Mono => Strong;
+
+        /// <summary>Gives digits a fixed advance (TMP mspace) so a changing readout does not shift.</summary>
+        public static string Digits(string text) => "<mspace=0.52em>" + text + "</mspace>";
 
         private static TMP_FontAsset Make(string resource, string assetName)
         {

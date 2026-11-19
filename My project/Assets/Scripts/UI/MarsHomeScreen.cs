@@ -375,7 +375,8 @@ namespace MarsSurvival.UI
             float y = 0f;
             int index = 0;
 
-            TMP_Text eyebrowText = NewText(column, eyebrow, 26, orange, FontStyle.Bold, TextAnchor.UpperLeft);
+            TMP_Text eyebrowText = NewText(column, eyebrow, 24, orange, FontStyle.Bold, TextAnchor.UpperLeft);
+            MarsTrainer.UI.UiStyle.Caps(eyebrowText, 5f);
             Place(eyebrowText.rectTransform, ref y, 900f, 34f, 22f, index++);
 
             // One word on one line: MARS in white, IVITY in orange.
@@ -384,13 +385,12 @@ namespace MarsSurvival.UI
             title.enableWordWrapping = false;
             Place(title.rectTransform, ref y, 1100f, 170f, 26f, index++);
 
-            Image rule = NewRect("Rule", column).gameObject.AddComponent<Image>();
-            rule.sprite = roundFill;
-            rule.type = Image.Type.Sliced;
-            rule.pixelsPerUnitMultiplier = 8f;
+            // NASA-punk stencil: a strip of amber hazard stripes under the title.
+            var rule = NewRect("Hazard stripes", column).gameObject.AddComponent<MarsTrainer.UI.HazardTab>();
+            rule.Stripe = 7f; rule.Period = 14f;
             rule.color = orange;
             rule.raycastTarget = false;
-            Place(rule.rectTransform, ref y, 120f, 8f, 30f, index++);
+            Place(rule.rectTransform, ref y, 150f, 12f, 30f, index++);
 
             TMP_Text taglineText = NewText(column, tagline, 32, WithAlpha(pink, 0.92f), FontStyle.Normal, TextAnchor.UpperLeft);
             taglineText.enableWordWrapping = true;

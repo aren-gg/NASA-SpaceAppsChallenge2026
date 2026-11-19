@@ -15,16 +15,25 @@ namespace MarsTrainer.UI
         private static readonly Vector2[] Bolt = { new(.1f,1), new(-.75f,-.1f), new(-.1f,-.1f), new(-.3f,-1), new(.8f,.2f), new(.15f,.2f) };
         private static readonly Vector2[] Flask = { new(-.25f,1), new(.25f,1), new(.25f,.3f), new(.8f,-.65f), new(.6f,-.85f), new(-.6f,-.85f), new(-.8f,-.65f), new(-.25f,.3f) };
         private static readonly Vector2[] House = { new(-.8f,-.8f), new(.8f,-.8f), new(.8f,0), new(1,0), new(0,.9f), new(-1,0), new(-.8f,0) };
+        private static readonly Vector2[] Tank = { new(-.21f,.95f), new(.21f,.95f), new(.21f,.74f), new(.42f,.74f), new(.53f,.53f), new(.53f,-.84f), new(.42f,-.95f), new(-.42f,-.95f), new(-.53f,-.84f), new(-.53f,.53f), new(-.42f,.74f), new(-.21f,.74f) };
+        private static readonly Vector2[] Cross = { new(-.32f,.95f), new(.32f,.95f), new(.32f,.32f), new(.95f,.32f), new(.95f,-.32f), new(.32f,-.32f), new(.32f,-.95f), new(-.32f,-.95f), new(-.32f,-.32f), new(-.95f,-.32f), new(-.95f,.32f), new(-.32f,.32f) };
+        [SerializeField] private bool plain;
         private VertexHelper mesh;
         private Vector2 center;
         private float radius;
         public ResourceSymbol Symbol { get => symbol; set { symbol = value; SetVerticesDirty(); } }
+        /// <summary>Just the pictogram in its colour, with no medallion: the NASA-punk HUD style.</summary>
+        public bool Plain { get => plain; set { plain = value; SetVerticesDirty(); } }
+        /// <summary>Overrides the pictogram colour (a vital running low turns red).</summary>
+        public Color? Tint { get => tint; set { tint = value; SetVerticesDirty(); } }
+        private Color? tint;
 
         protected override void OnPopulateMesh(VertexHelper output)
         {
             mesh = output; mesh.Clear(); var rect = GetPixelAdjustedRect(); center = rect.center;
             radius = Mathf.Min(rect.width, rect.height) / 2;
-            var face = StatBar.ColorOf(ColorFor(symbol)); var ink = StatBar.ColorOf(GameConstants.UiIconInk);
+            var face = tint ?? StatBar.ColorOf(ColorFor(symbol)); var ink = StatBar.ColorOf(GameConstants.UiIconInk);
+            if (plain) { radius *= .92f; PlainShape(face); mesh = null; return; }
             Circle(Vector2.zero, 1, ink); Circle(Vector2.zero, .9f, face * .65f); Circle(new Vector2(0,.035f), .77f, face);
             radius *= .52f;
             switch (symbol)
@@ -54,6 +63,44 @@ namespace MarsTrainer.UI
             }
             mesh = null;
         }
+        private void PlainShape(Color face)
+        {
+            switch (symbol)
+            {
+                case ResourceSymbol.Air: Polygon(Tank, face); break;
+                case ResourceSymbol.Health: Polygon(Cross, face); break;
+                case ResourceSymbol.Water: Polygon(Drop, face); break;
+                case ResourceSymbol.Food: Polygon(Leaf, face); break;
+                case ResourceSymbol.Rest: Crescent(face); break;
+                case ResourceSymbol.Power: Polygon(Bolt, face); break;
+                default: Polygon(Cross, face); break;
+            }
+        }
+
+        /// <summary>A crescent moon: the strip between an outer circle and an offset inner one.</summary>
+        private void Crescent(Color tint)
+        {
+            Vector2 c0 = Vector2.zero, c1 = new Vector2(.4f, .24f);
+            float r0 = .9f, r1 = .74f;
+            float d = Vector2.Distance(c0, c1), a = (r0 * r0 - r1 * r1 + d * d) / (2 * d), h = Mathf.Sqrt(Mathf.Max(0, r0 * r0 - a * a));
+            Vector2 dir = (c1 - c0) / d, mid = c0 + dir * a, perp = new Vector2(-dir.y, dir.x);
+            Vector2 upper = mid + perp * h, lower = mid - perp * h;
+            float o0 = Angle(upper - c0), o1 = Angle(lower - c0), i0 = Angle(upper - c1), i1 = Angle(lower - c1);
+            if (o1 < o0) o1 += Mathf.PI * 2; if (i1 < i0) i1 += Mathf.PI * 2;
+            const int steps = 14;
+            for (int k = 0; k < steps; k++)
+            {
+                float t0 = k / (float)steps, t1 = (k + 1) / (float)steps;
+                Vector2 a0 = c0 + Polar(Mathf.Lerp(o0, o1, t0)) * r0, a1 = c0 + Polar(Mathf.Lerp(o0, o1, t1)) * r0;
+                Vector2 b0 = c1 + Polar(Mathf.Lerp(i0, i1, t0)) * r1, b1 = c1 + Polar(Mathf.Lerp(i0, i1, t1)) * r1;
+                int first = mesh.currentVertCount;
+                Add(a0, tint); Add(a1, tint); Add(b1, tint); Add(b0, tint);
+                mesh.AddTriangle(first, first + 1, first + 2); mesh.AddTriangle(first, first + 2, first + 3);
+            }
+        }
+        private static float Angle(Vector2 v) { float a = Mathf.Atan2(v.y, v.x); return a < 0 ? a + Mathf.PI * 2 : a; }
+        private static Vector2 Polar(float a) => new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+
         private void Circle(Vector2 offset, float size, Color tint)
         {
             int first=mesh.currentVertCount; Add(offset,tint);

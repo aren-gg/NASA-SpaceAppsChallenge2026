@@ -3,11 +3,12 @@ using UnityEngine;
 namespace MarsTrainer.UI
 {
     /// <summary>
-    /// The game's one UI look, shared by every screen: retro instrument panels. Semi-transparent
-    /// smoky plates set in brushed gunmetal steel frames (bevelled light at the top-left, dark
-    /// at the bottom-right, rivets on big panels), off-white text, warm amber CRT readouts and
-    /// red only for danger. Fonts live in <see cref="UiTypeface"/>: Barlow Condensed for text,
-    /// VT323 (a CRT terminal face) for numbers.
+    /// The game's one UI look, shared by every screen: NASA-punk mission hardware. Flat
+    /// semi-transparent smoky plates with cut corners, a hairline edge and an amber stencil bar;
+    /// slanted segment gauges (<see cref="SegmentGauge"/>); hazard-stripe tabs on headers;
+    /// off-white text, amber readouts and red only for danger. Type rules live in
+    /// <see cref="UiStyle"/>: Barlow Condensed throughout, tracked capitals for labels and
+    /// SemiBold italic for numbers.
     /// </summary>
     public static class UiTheme
     {

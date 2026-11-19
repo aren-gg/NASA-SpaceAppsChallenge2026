@@ -20,6 +20,9 @@ using ResourceGlyph = MarsTrainer.UI.ResourceGlyph;
 using ResourceSymbol = MarsTrainer.UI.ResourceSymbol;
 using StatBar = MarsTrainer.UI.StatBar;
 using UiTypeface = MarsTrainer.UI.UiTypeface;
+using UiStyle = MarsTrainer.UI.UiStyle;
+using UiTheme = MarsTrainer.UI.UiTheme;
+using SegmentGauge = MarsTrainer.UI.SegmentGauge;
 using SimClock = MarsTrainer.Sim.SimClock;
 using Ui = MarsTrainer.Sim.GameConstants;
 
@@ -27,7 +30,7 @@ namespace MarsSurvival.UI
 {
     /// <summary>
     /// The mission HUD and outpost console, drawn with the MarsTrainer UI kit in the Barlow Condensed
-    /// typeface (VT323 for readouts). The HUD stays minimal: a small sol / battery / radiation block top left, quiet key
+    /// typeface in the NASA-punk style (tracked capitals, SemiBold italic readouts, slanted segment gauges). The HUD stays minimal: a small sol / battery / radiation block top left, quiet key
     /// hints top right, one warning at a time, suit vitals (oxygen first) that brighten only when
     /// low, small eat/drink buttons and one fading message line. The console (Tab) holds the three
     /// power knobs, crew care, greenhouse, equipment, research, field sites, radio and learning as
@@ -55,9 +58,13 @@ namespace MarsSurvival.UI
         private Button backButton;
         private string detailId;
         private TMP_Text solText, navigation, notice, guide, batteryText, radiationText, alertText;
-        private Image batteryFill, radiationFill, noticePlate;
+        private SegmentGauge batteryFill, radiationFill;
+        private Image noticePlate;
         private TMP_Text[] vitalLabels;
-        private Image[] vitalFills;
+        private SegmentGauge[] vitalFills;
+        private ResourceGlyph[] vitalIcons;
+        private Color[] vitalColors;
+        private TMP_Text diagnosticState, oxygenState;
         private CanvasGroup[] vitalGroups;
         private TMP_Text[] vitalValues;
         private PauseMenu pause;
@@ -232,29 +239,74 @@ namespace MarsSurvival.UI
             Button ok = HintButton(alertPlate, "OK", DismissWarning);
             Place((RectTransform)ok.transform, .88f, .15f, .98f, .85f);
 
-            // Bottom left: suit vitals, oxygen first, with no plate behind them. Each row is an
-            // icon, a label, a big amber CRT readout (100/100) and a gauge in a steel housing.
-            RectTransform vitalsArea = StatBar.Frame(gameplay, "Suit vitals", .012f, .018f, .215f, .265f);
+            // Bottom left: suit diagnostics, NASA-punk. Oxygen is the hero (big italic readout and a
+            // wide slanted gauge); health, water, food and rest sit under it in a 2x2 grid. No plate.
+            RectTransform vitalsArea = StatBar.Frame(gameplay, "Suit vitals", .012f, .018f, .235f, .30f);
+            diagnosticState = UiStyle.Header(vitalsArea, "Suit diagnostic", "// EVA-07 · nominal", 15f, .90f, 1f);
             string[] labels = { "Oxygen", "Health", "Water", "Food", "Rest" };
             ResourceSymbol[] symbols = { ResourceSymbol.Air, ResourceSymbol.Health, ResourceSymbol.Water, ResourceSymbol.Food, ResourceSymbol.Rest };
-            vitalLabels = new TMP_Text[5]; vitalValues = new TMP_Text[5]; vitalFills = new Image[5]; vitalGroups = new CanvasGroup[5];
+            vitalLabels = new TMP_Text[5]; vitalValues = new TMP_Text[5]; vitalFills = new SegmentGauge[5];
+            vitalGroups = new CanvasGroup[5]; vitalIcons = new ResourceGlyph[5]; vitalColors = new Color[5];
             for (int i = 0; i < 5; i++)
             {
-                float top = 1 - i * .2f, bottom = top - .2f;
-                RectTransform row = StatBar.Frame(vitalsArea, labels[i], 0f, bottom, 1f, top);
-                vitalGroups[i] = row.gameObject.AddComponent<CanvasGroup>();
-                ResourceGlyph icon = ResourceGlyph.Create(row, symbols[i], 26);
-                icon.rectTransform.anchoredPosition = new Vector2(2, 4);
-                vitalLabels[i] = Text(row, labels[i].ToUpperInvariant(), Small, paper, .17f, .42f, .60f, 1);
-                vitalLabels[i].font = UiTypeface.Strong;
-                vitalLabels[i].characterSpacing = 4f;
+                bool hero = i == 0;
+                int column = (i - 1) % 2, line = (i - 1) / 2;
+                RectTransform cell = hero
+                    ? StatBar.Frame(vitalsArea, labels[i], 0f, .50f, 1f, .88f)
+                    : StatBar.Frame(vitalsArea, labels[i], column == 0 ? 0f : .53f, line == 0 ? .25f : 0f, column == 0 ? .47f : 1f, line == 0 ? .45f : .20f);
+                vitalGroups[i] = cell.gameObject.AddComponent<CanvasGroup>();
+                vitalColors[i] = StatBar.ColorOf(ResourceGlyph.ColorFor(symbols[i]));
+
+                // Label row: plain pictogram and tracked capitals.
+                RectTransform tag = hero ? StatBar.Frame(cell, "Tag", .37f, .62f, .70f, .98f) : StatBar.Frame(cell, "Tag", 0f, .40f, .62f, 1f);
+                vitalIcons[i] = ResourceGlyph.Create(tag, symbols[i], hero ? 17f : 15f);
+                vitalIcons[i].Plain = true;
+                vitalIcons[i].rectTransform.anchoredPosition = Vector2.zero;
+                vitalLabels[i] = Text(tag, labels[i], 15f, paper, 0f, 0f, 1f, 1f);
+                vitalLabels[i].rectTransform.offsetMin = new Vector2(hero ? 24f : 21f, 0f);
+                UiStyle.Caps(vitalLabels[i], 3.5f);
                 Readable(vitalLabels[i]);
-                vitalValues[i] = Text(row, "100/100", Small * UiTypeface.MonoScale * 1.55f, accent, .50f, .36f, 1, 1.1f);
-                vitalValues[i].font = UiTypeface.Mono;
-                vitalValues[i].alignment = TextAlignmentOptions.MidlineRight;
+
+                // The readout: SemiBold italic amber, with a smaller dim "/100".
+                vitalValues[i] = hero ? Text(cell, "100", 62f, accent, 0f, 0f, .35f, 1.02f) : Text(cell, "100", 27f, accent, .45f, .30f, 1f, 1.12f);
+                UiStyle.Readout(vitalValues[i]);
+                vitalValues[i].richText = true;
+                vitalValues[i].alignment = hero ? TextAlignmentOptions.BottomLeft : TextAlignmentOptions.BottomRight;
+                vitalValues[i].overflowMode = TextOverflowModes.Overflow;
                 Readable(vitalValues[i]);
-                vitalFills[i] = SteelGauge(row, .17f, .08f, 1f, .38f, StatBar.ColorOf(ResourceGlyph.ColorFor(symbols[i])));
+
+                vitalFills[i] = hero ? SegmentGauge.Create(cell, .375f, .30f, 1f, .52f, vitalColors[i], 20)
+                                     : SegmentGauge.Create(cell, .01f, 0f, 1f, .26f, vitalColors[i], 12);
+                if (hero)
+                {
+                    oxygenState = Text(cell, "nominal", 13f, muted, .70f, .62f, 1f, .98f);
+                    oxygenState.alignment = TextAlignmentOptions.MidlineRight;
+                    UiStyle.Caps(oxygenState, 2.5f);
+                    oxygenState.font = font;
+                    Readable(oxygenState);
+                    // Scale under the hero gauge: 0, three ticks, 100.
+                    TMP_Text zero = Text(cell, "0", 12f, muted, .375f, 0f, .5f, .26f);
+                    TMP_Text full = Text(cell, "100", 12f, muted, .85f, 0f, 1f, .26f);
+                    full.alignment = TextAlignmentOptions.MidlineRight;
+                    UiStyle.Readout(zero); UiStyle.Readout(full); Readable(zero); Readable(full);
+                    for (int t = 1; t <= 3; t++)
+                    {
+                        float x = Mathf.Lerp(.375f, 1f, t / 4f);
+                        RectTransform tick = NewRect("Tick", cell);
+                        Place(tick, x, .1f, x, .22f);
+                        tick.offsetMin = new Vector2(-0.75f, 0f); tick.offsetMax = new Vector2(0.75f, 0f);
+                        Image mark = tick.gameObject.AddComponent<Image>();
+                        mark.color = WithAlpha(paper, 0.55f);
+                        mark.raycastTarget = false;
+                    }
+                }
             }
+            RectTransform split = NewRect("Rule", vitalsArea);
+            Place(split, 0f, .475f, 1f, .475f);
+            split.offsetMin = new Vector2(0f, -0.5f); split.offsetMax = new Vector2(0f, 0.5f);
+            Image splitLine = split.gameObject.AddComponent<Image>();
+            splitLine.color = WithAlpha(paper, 0.3f);
+            splitLine.raycastTarget = false;
 
             // Bottom right: small eat and drink buttons.
             // Top right, under the keys: today's plan, one line per job, the current one explained.
@@ -441,17 +493,31 @@ namespace MarsSurvival.UI
             AstronautState a = s.astronaut;
             double[] values = { a.oxygen, a.health, a.hydration, a.satiety, 100 - a.fatigue };
             string[] labels = { "Oxygen", "Health", "Water", "Food", "Rest" };
+            int worst = 0;
             for (int i = 0; i < 5; i++)
             {
                 double v = Math.Max(0, Math.Min(100, values[i]));
-                vitalValues[i].text = v.ToString("0", CultureInfo.InvariantCulture) + "/100";
-                SetBar(vitalFills[i], v / 100);
-                bool low = v < 40;
-                Color state = v < 20 ? StatBar.ColorOf(Ui.UiDanger) : low ? StatBar.ColorOf(Ui.UiWarn) : accent;
+                bool low = v < 40, critical = v < 20;
+                worst = Math.Max(worst, critical ? 2 : low ? 1 : 0);
+                Color state = critical ? StatBar.ColorOf(Ui.UiDanger) : low ? StatBar.ColorOf(Ui.UiWarn) : accent;
+                string unit = i == 0 ? "<size=40%><alpha=#8C> /100</size>" : "<size=55%><alpha=#8C> /100</size>";
+                vitalValues[i].text = UiTypeface.Digits(v.ToString("0", CultureInfo.InvariantCulture)) + unit;
                 vitalValues[i].color = state;
+                vitalFills[i].Fraction = (float)(v / 100);
+                vitalFills[i].Hazard = critical;
+                vitalFills[i].color = critical ? StatBar.ColorOf(Ui.UiDanger) : low ? StatBar.ColorOf(Ui.UiWarn) : vitalColors[i];
+                vitalIcons[i].Tint = critical ? StatBar.ColorOf(Ui.UiDanger) : (Color?)null;
+                vitalLabels[i].text = labels[i] + (low ? " · low" : "");
                 vitalLabels[i].color = low ? state : paper;
                 vitalGroups[i].alpha = 1f;
+                if (i == 0)
+                {
+                    oxygenState.text = critical ? "critical" : low ? "low" : "nominal";
+                    oxygenState.color = low ? state : WithAlpha(paper, 0.8f);
+                }
             }
+            diagnosticState.text = "// EVA-07 · " + (worst == 2 ? "warning" : worst == 1 ? "caution" : "nominal");
+            diagnosticState.color = worst == 2 ? StatBar.ColorOf(Ui.UiDanger) : worst == 1 ? StatBar.ColorOf(Ui.UiWarn) : UiTheme.Dim;
             RefreshPlan(s);
 
             // Warnings: one at a time; OK hides it until it clears and comes back.
@@ -1386,8 +1452,7 @@ namespace MarsSurvival.UI
                 if (inline) Place(text.rectTransform, 0, 0, .52f, 1);
                 else Place(text.rectTransform, 0, .4f, 1, 1);
             }
-            Image fill = inline ? Bar(row, .54f, .3f, 1, .62f, paper) : hasLabel ? Bar(row, 0, 0, 1, .26f, paper) : Bar(row, 0, 0, 1, 1, paper);
-            fill.transform.parent.GetComponent<Image>().raycastTarget = false;
+            SegmentGauge fill = inline ? Bar(row, .54f, .3f, 1, .62f, paper) : hasLabel ? Bar(row, 0, 0, 1, .26f, paper) : Bar(row, 0, 0, 1, 1, paper);
             live.Add(() =>
             {
                 if (text != null) text.text = label();
@@ -1650,14 +1715,13 @@ namespace MarsSurvival.UI
         {
             TextMeshProUGUI label = NewRect("Text", parent).gameObject.AddComponent<TextMeshProUGUI>();
             bool readout = size < 28f && UiTypeface.LooksNumeric(value);
-            label.font = size >= 28f ? UiTypeface.Strong : readout ? UiTypeface.Mono : font;
-            if (readout) size *= UiTypeface.MonoScale;
-            if (color == accent)
+            label.font = font;
+            if (size >= 28f) UiStyle.Caps(label, 3f);          // titles: tracked capitals
+            else if (readout) UiStyle.Readout(label);            // numbers: SemiBold italic
+            if (color == accent && !readout)
             {
                 // Accent text is a section label: small tracked capitals in the semibold face.
-                label.font = UiTypeface.Strong;
-                label.fontStyle = FontStyles.UpperCase;
-                label.characterSpacing = 6f;
+                UiStyle.Caps(label, 6f);
                 size *= 0.85f;
             }
             label.text = value;
@@ -1747,33 +1811,10 @@ namespace MarsSurvival.UI
             return text;
         }
 
-        /// <summary>A thin progress bar; returns the fill to resize with <see cref="SetBar"/>.</summary>
-        private static Image Bar(Transform parent, float x0, float y0, float x1, float y1, Color color)
+        /// <summary>A slanted segment gauge (the NASA-punk bar); set it with <see cref="SetBar"/>.</summary>
+        private static SegmentGauge Bar(Transform parent, float x0, float y0, float x1, float y1, Color color)
         {
-            RectTransform track = NewRect("Bar", parent);
-            Place(track, x0, y0, x1, y1);
-            track.gameObject.AddComponent<Image>().color = WithAlpha(MarsTrainer.UI.UiTheme.SteelDark, 0.85f);
-            RectTransform fill = NewRect("Fill", track);
-            Stretch(fill);
-            Image image = fill.gameObject.AddComponent<Image>();
-            image.color = color;
-            image.raycastTarget = false;
-            return image;
-        }
-
-        /// <summary>A gauge in a small steel housing: frame, dark well, coloured fill (set with SetBar).</summary>
-        private static Image SteelGauge(Transform parent, float x0, float y0, float x1, float y1, Color color)
-        {
-            RectTransform housing = Box("Gauge", parent, StatBar.ColorOf(Ui.UiSurface));
-            Place(housing, x0, y0, x1, y1);
-            RectTransform well = NewRect("Well", housing);
-            Anchor(well, Vector2.zero, Vector2.one, new Vector2(4f, 4f), new Vector2(-4f, -4f));
-            RectTransform fill = NewRect("Fill", well);
-            Stretch(fill);
-            Image image = fill.gameObject.AddComponent<Image>();
-            image.color = color;
-            image.raycastTarget = false;
-            return image;
+            return SegmentGauge.Create(parent, x0, y0, x1, y1, color);
         }
 
         /// <summary>A dark outline so HUD text with no plate behind it stays readable over bright ground and sky.</summary>
@@ -1783,9 +1824,9 @@ namespace MarsSurvival.UI
             text.outlineColor = new Color32(10, 12, 14, 230);
         }
 
-        private static void SetBar(Image fill, double fraction)
+        private static void SetBar(SegmentGauge gauge, double fraction)
         {
-            fill.rectTransform.anchorMax = new Vector2(Mathf.Clamp01((float)fraction), 1);
+            gauge.Fraction = (float)fraction;
         }
 
         private Slider Slider(Transform parent, float initial, UnityAction<float> changed)

@@ -37,6 +37,8 @@ namespace MarsTrainer.UI
                 Place(key.rectTransform, 0, GameConstants.UiControlKeyFraction);
                 key.margin = new Vector4(GameConstants.UiControlIndent, 0, GameConstants.UiGap, 0);
                 key.color = StatBar.ColorOf(GameConstants.UiCopper);
+                key.font = UiTypeface.Strong;                       // key names: SemiBold, never italic
+                key.fontStyle &= ~TMPro.FontStyles.Italic;
                 var action = StatBar.Text(line, controls[i, 1]);
                 Place(action.rectTransform, GameConstants.UiControlKeyFraction, 1);
                 action.margin = new Vector4(GameConstants.UiGap, 0, GameConstants.UiGap, 0);

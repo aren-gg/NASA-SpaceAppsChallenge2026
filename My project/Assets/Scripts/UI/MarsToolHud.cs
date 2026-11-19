@@ -525,11 +525,12 @@ namespace MarsSurvival.UI
         {
             TextMeshProUGUI text = NewRect("Text", parent, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(100f, 30f)).gameObject.AddComponent<TextMeshProUGUI>();
             bool readout = style != FontStyle.Bold && MarsTrainer.UI.UiTypeface.LooksNumeric(content);
-            text.font = style == FontStyle.Bold ? MarsTrainer.UI.UiTypeface.Strong : readout ? MarsTrainer.UI.UiTypeface.Mono : font;
-            if (readout) size = Mathf.RoundToInt(size * MarsTrainer.UI.UiTypeface.MonoScale);
+            text.font = font;
             text.text = content;
             text.fontSize = size;
             text.fontStyle = FontStyles.Normal;
+            if (style == FontStyle.Bold) MarsTrainer.UI.UiStyle.Caps(text, 2f);
+            else if (readout) MarsTrainer.UI.UiStyle.Readout(text);
             text.color = color;
             text.alignment = anchor == TextAnchor.UpperLeft ? TextAlignmentOptions.TopLeft
                 : anchor == TextAnchor.UpperCenter ? TextAlignmentOptions.Top
