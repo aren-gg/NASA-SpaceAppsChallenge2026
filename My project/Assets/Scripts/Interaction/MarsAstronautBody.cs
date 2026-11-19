@@ -6,23 +6,31 @@ using UnityEngine.Rendering;
 namespace MarsSurvival.Interaction
 {
     /// <summary>
-    /// Procedural low-poly astronaut, 1.8 m tall, built in metres with the feet at the
-    /// local origin and +Z forward. Made for a first-person camera at eye height:
-    /// the arms, pelvis and legs are drawn; the chest, backpack and helmet only cast
-    /// shadows, so they never block or clip the view.
+    /// Procedural blocky astronaut, about 1.9 m to the top of the head, built in metres with the
+    /// feet at the local origin and +Z forward. The style follows classic blocky avatars (Roblox's
+    /// R6 rig, voxel characters): every part is a box - a cube head with a flat pixel face, a slab
+    /// torso, square arms and legs - in flat colours with hard edges. Built as a modular template,
+    /// the way CC0 modular character kits are organised: one fixed skeleton (hips, spine, two-bone arms and legs, animated by
+    /// <see cref="Animate"/>) carrying swappable mesh slots - pelvis, torso, arms, legs, head
+    /// and face, hair, helmet and backpack. Every slot reads the player's
+    /// <see cref="AstronautLook"/> (body frame, skin, hair, suit and accent colours, visor,
+    /// helmet and backpack), so the wardrobe only changes that look and calls
+    /// <see cref="Apply"/>; adding an item means one entry in AstronautLook and one case here.
     ///
-    /// The suit uses four small generated pixel textures (white panelled fabric, dark
-    /// joint fabric, blue-grey trim, glove/boot) at 64 pixels per metre, point filtered.
-    /// Idle, walk, sprint and airborne poses are computed in <see cref="Animate"/>.
+    /// Suit details after NASA's xEMU, in blocks: a chest control box, joint bands, accent ID
+    /// bands, gloves, boots, a life-support pack, and a box helmet with a sun visor and lamps.
+    /// The helmet comes off indoors (optional), showing the face and hair.
+    ///
+    /// The arms, pelvis and legs are always drawn. The torso, backpack, head, hair and helmet
+    /// only cast shadows in first person (they would block the view) and are drawn in third
+    /// person (<see cref="SetHeadVisible"/>).
     /// </summary>
     public sealed class MarsAstronautBody : MonoBehaviour
     {
-        private const int Suit = 0, Dark = 1, Trim = 2, Boot = 3;
-        private const int TextureSize = 32;
-        private const float PixelsPerMeter = 64f;
-        // Widens every part. Parts grow sideways and backwards only: their front faces stay
-        // where they were and the arms sit further out, so the view is no more blocked.
-        private const float Bulk = 1.22f;
+        // Material slots (one solid colour each).
+        private const int Suit = 0, Joint = 1, Accent = 2, Trim = 3, Glove = 4, Boot = 5, Visor = 6,
+            Skin = 7, Hair = 8, Eye = 9, Pack = 10, Screen = 11, Lamp = 12, Lip = 13;
+        private const int SlotCount = 14;
 
         private const float HipHeight = 0.92f;
         private const float ThighLength = 0.42f;
@@ -36,80 +44,330 @@ namespace MarsSurvival.Interaction
         private Transform thighL, thighR, shinL, shinR;
         private Transform upperArmL, upperArmR, forearmL, forearmR;
         private bool built;
+        private AstronautLook look;
+
+        // Renderers that only cast shadows in first person, and the groups the helmet toggles.
+        private readonly List<MeshRenderer> upper = new List<MeshRenderer>();
+        private GameObject helmetPart, headPart, hairPart, hairExtrasPart;
+        private bool headVisible = true, helmetOn = true;
+
+        /// <summary>Which look the body was last built with (a copy).</summary>
+        public AstronautLook Look { get { return look; } }
+
+        /// <summary>
+        /// Draws the torso, backpack, head and helmet for a third-person camera. In first person
+        /// they only cast shadows so they never block the view.
+        /// </summary>
+        public void SetHeadVisible(bool visible)
+        {
+            headVisible = visible;
+            ShadowCastingMode mode = visible ? ShadowCastingMode.On : ShadowCastingMode.ShadowsOnly;
+            foreach (MeshRenderer r in upper)
+            {
+                if (r != null && r.shadowCastingMode != mode) r.shadowCastingMode = mode;
+            }
+        }
+
+        /// <summary>Puts the helmet on or takes it off (showing the face and the full hairstyle).</summary>
+        public void SetHelmet(bool on)
+        {
+            helmetOn = on;
+            bool clear = look != null && look.ClearVisor;
+            if (helmetPart != null) helmetPart.SetActive(on);
+            if (headPart != null) headPart.SetActive(!on || clear);
+            if (hairPart != null) hairPart.SetActive(!on || clear);
+            // Ponytails, buns and long hair would poke through the helmet.
+            if (hairExtrasPart != null) hairExtrasPart.SetActive(!on);
+        }
 
         // ------------------------------------------------------------------ build
 
         public void Build()
         {
             if (built) return;
+            Apply(AstronautLook.Current);
+        }
+
+        /// <summary>(Re)builds every mesh slot for a look. The skeleton and animation carry on unchanged.</summary>
+        public void Apply(AstronautLook newLook)
+        {
+            look = (newLook ?? new AstronautLook()).Clone();
+            Clear();
             built = true;
             CreateMaterials();
+            bool frameB = AstronautLook.Mod(look.frame, AstronautLook.Frames.Length) == 1;
 
             hips = Node("Hips", transform, new Vector3(0f, HipHeight, 0f));
-            PartBuilder pelvis = new PartBuilder();
-            pelvis.Frustum(Suit, 0.22f, -0.06f, new Vector2(0.40f, 0.24f), new Vector2(0.36f, 0.22f));
-            pelvis.Frustum(Trim, 0.22f, 0.17f, new Vector2(0.41f, 0.25f), new Vector2(0.41f, 0.25f));
-            Attach(hips, "Pelvis", pelvis, ShadowCastingMode.On);
-
-            BuildLeg(-1f, out thighL, out shinL);
-            BuildLeg(1f, out thighR, out shinR);
+            AlwaysShown(hips, "Pelvis", BuildPelvis(frameB));
+            BuildLeg(-1f, frameB, out thighL, out shinL);
+            BuildLeg(1f, frameB, out thighR, out shinR);
 
             spine = Node("Spine", hips, new Vector3(0f, 0.22f, 0f));
-            PartBuilder torso = new PartBuilder();
-            torso.Frustum(Suit, 0.36f, 0f, new Vector2(0.46f, 0.28f), new Vector2(0.40f, 0.24f));
-            torso.Frustum(Suit, 0.45f, 0.02f, new Vector2(0.36f, 0.18f), new Vector2(0.36f, 0.18f),
-                new Vector2(0f, -0.2f), new Vector2(0f, -0.2f));
-            torso.Frustum(Suit, 0.66f, 0.36f, new Vector2(0.26f, 0.28f), new Vector2(0.32f, 0.32f));
-            Attach(spine, "Torso And Helmet (shadow only)", torso, ShadowCastingMode.ShadowsOnly);
+            Upper(spine, "Torso", BuildTorso(frameB));
+            Upper(spine, "Backpack", BuildBackpack(look.backpack, frameB));
+            Transform headRoot = spine;
+            headPart = Upper(headRoot, "Head", BuildHead(frameB)).gameObject;
+            PartBuilder extras = new PartBuilder();
+            hairPart = Upper(headRoot, "Hair", BuildHair(look.hairStyle, extras)).gameObject;
+            hairExtrasPart = Upper(headRoot, "Hair Extras", extras).gameObject;
+            helmetPart = Upper(spine, "Helmet", BuildHelmet(look.helmet)).gameObject;
 
-            BuildArm(-1f, out upperArmL, out forearmL);
-            BuildArm(1f, out upperArmR, out forearmR);
+            float shoulder = frameB ? 0.26f : 0.285f;
+            BuildArm(-1f, shoulder, frameB, out upperArmL, out forearmL);
+            BuildArm(1f, shoulder, frameB, out upperArmR, out forearmR);
 
+            SetHeadVisible(headVisible);
+            SetHelmet(helmetOn);
             Animate(0f, 0f, 0f, 0f, 0f, 0f);
         }
 
-        private void BuildLeg(float side, out Transform thigh, out Transform shin)
+        private void Clear()
+        {
+            upper.Clear();
+            for (int i = transform.childCount - 1; i >= 0; i--)
+            {
+                GameObject child = transform.GetChild(i).gameObject;
+                child.SetActive(false);
+                Destroy(child);
+            }
+            foreach (Object o in owned)
+            {
+                if (o != null) Destroy(o);
+            }
+            owned.Clear();
+        }
+
+        private void OnEnable() { AstronautLook.Changed += OnLookChanged; }
+        private void OnDisable() { AstronautLook.Changed -= OnLookChanged; }
+        private void OnLookChanged() { if (built) Apply(AstronautLook.Current); }
+
+        // ------------------------------------------------------------------ slots
+        // Every part is a box (centre, size) in its bone's space, in metres. Proportions follow
+        // the classic blocky avatar (Roblox R6 / voxel characters): a cube head, a slab torso and
+        // square limbs, with flat colours and hard edges.
+
+        private static PartBuilder BuildPelvis(bool frameB)
+        {
+            PartBuilder b = new PartBuilder();
+            b.Box(Suit, new Vector3(0f, 0.04f, 0f), new Vector3(frameB ? 0.42f : 0.38f, 0.22f, 0.23f));
+            b.Box(Joint, new Vector3(0f, 0.12f, 0f), new Vector3(frameB ? 0.43f : 0.39f, 0.05f, 0.24f));   // belt
+            b.Box(Trim, new Vector3(0f, 0.12f, 0.122f), new Vector3(0.07f, 0.04f, 0.012f));                // buckle
+            return b;
+        }
+
+        private static PartBuilder BuildTorso(bool frameB)
+        {
+            PartBuilder b = new PartBuilder();
+            if (frameB)
+            {
+                b.Box(Suit, new Vector3(0f, 0.11f, 0f), new Vector3(0.34f, 0.22f, 0.23f));                 // narrow waist
+                b.Box(Suit, new Vector3(0f, 0.36f, 0f), new Vector3(0.40f, 0.28f, 0.25f));                 // chest
+            }
+            else b.Box(Suit, new Vector3(0f, 0.25f, 0f), new Vector3(0.44f, 0.50f, 0.25f));
+            b.Box(Joint, new Vector3(0f, 0.0f, 0f), new Vector3(frameB ? 0.35f : 0.45f, 0.05f, 0.26f));    // waist ring
+            b.Box(Trim, new Vector3(0f, 0.51f, 0f), new Vector3(0.30f, 0.04f, 0.22f));                     // collar
+            // Chest control box: a grey block with a screen, a knob and a row of switches.
+            b.Box(Pack, new Vector3(0f, 0.32f, 0.14f), new Vector3(0.24f, 0.14f, 0.05f));
+            b.Box(Screen, new Vector3(-0.03f, 0.335f, 0.167f), new Vector3(0.12f, 0.05f, 0.008f));
+            b.Box(Accent, new Vector3(0.075f, 0.335f, 0.169f), new Vector3(0.035f, 0.035f, 0.012f));
+            b.Box(Joint, new Vector3(-0.01f, 0.28f, 0.166f), new Vector3(0.17f, 0.018f, 0.006f));
+            return b;
+        }
+
+        private static PartBuilder BuildBackpack(int style, bool frameB)
+        {
+            PartBuilder b = new PartBuilder();
+            const float back = -0.125f; // the torso's back face
+            switch (AstronautLook.Mod(style, AstronautLook.Backpacks.Length))
+            {
+                case 1: // Twin tanks on a harness plate.
+                    b.Box(Joint, new Vector3(0f, 0.26f, back - 0.012f), new Vector3(0.32f, 0.36f, 0.025f));
+                    for (int side = -1; side <= 1; side += 2)
+                    {
+                        float x = 0.085f * side;
+                        b.Box(Pack, new Vector3(x, 0.26f, back - 0.10f), new Vector3(0.15f, 0.42f, 0.15f));
+                        b.Box(Trim, new Vector3(x, 0.485f, back - 0.10f), new Vector3(0.10f, 0.03f, 0.10f));
+                        b.Box(Accent, new Vector3(x, 0.40f, back - 0.10f), new Vector3(0.16f, 0.03f, 0.16f));
+                    }
+                    break;
+                case 2: // Expedition pack: bigger, with side pouches and an antenna.
+                    b.Box(Pack, new Vector3(0f, 0.24f, back - 0.105f), new Vector3(0.42f, 0.48f, 0.21f));
+                    b.Box(Trim, new Vector3(0f, 0.495f, back - 0.105f), new Vector3(0.40f, 0.03f, 0.20f));
+                    for (int side = -1; side <= 1; side += 2)
+                        b.Box(Accent, new Vector3(0.235f * side, 0.14f, back - 0.105f), new Vector3(0.05f, 0.17f, 0.12f));
+                    b.Box(Accent, new Vector3(0f, 0.40f, back - 0.212f), new Vector3(0.30f, 0.03f, 0.008f));
+                    b.Box(Joint, new Vector3(0.15f, 0.60f, back - 0.15f), new Vector3(0.015f, 0.22f, 0.015f));      // antenna
+                    break;
+                default: // Slim pack.
+                    b.Box(Pack, new Vector3(0f, 0.26f, back - 0.075f), new Vector3(0.36f, 0.40f, 0.15f));
+                    b.Box(Trim, new Vector3(0f, 0.475f, back - 0.075f), new Vector3(0.34f, 0.03f, 0.14f));
+                    b.Box(Accent, new Vector3(0f, 0.38f, back - 0.152f), new Vector3(0.26f, 0.03f, 0.008f));
+                    for (int side = -1; side <= 1; side += 2)
+                        for (int i = 0; i < 3; i++)
+                            b.Box(Joint, new Vector3(0.181f * side, 0.30f - i * 0.06f, back - 0.075f), new Vector3(0.008f, 0.03f, 0.09f));
+                    break;
+            }
+            return b;
+        }
+
+        /// <summary>A cube head with a flat, pixel-style face: square eyes, brows, a nose block and a mouth line.</summary>
+        private static PartBuilder BuildHead(bool frameB)
+        {
+            PartBuilder b = new PartBuilder();
+            b.Box(Skin, new Vector3(0f, 0.49f, 0f), new Vector3(0.12f, 0.04f, 0.12f));                       // neck
+            b.Box(Skin, new Vector3(0f, 0.635f, 0f), new Vector3(0.26f, 0.27f, 0.25f));                      // head
+            for (int side = -1; side <= 1; side += 2)
+            {
+                float x = 0.055f * side;
+                b.Box(Eye, new Vector3(x, 0.655f, 0.127f), new Vector3(0.04f, 0.045f, 0.006f));
+                b.Box(Hair, new Vector3(x, 0.70f, 0.127f), new Vector3(0.06f, frameB ? 0.012f : 0.016f, 0.006f)); // brow
+            }
+            b.Box(Skin, new Vector3(0f, 0.625f, 0.133f), new Vector3(0.03f, 0.035f, 0.018f));                // nose
+            b.Box(Lip, new Vector3(0f, 0.585f, 0.127f), new Vector3(0.07f, 0.015f, 0.006f));                 // mouth
+            return b;
+        }
+
+        /// <summary>
+        /// Hair as blocks on the cube head (a cap, back and side slabs, a fringe). The part that
+        /// fits inside a helmet goes in the returned builder; ponytails, buns and long lengths go in
+        /// <paramref name="extras"/>, which is hidden while the helmet is on.
+        /// </summary>
+        private static PartBuilder BuildHair(int style, PartBuilder extras)
+        {
+            PartBuilder b = new PartBuilder();
+            switch (AstronautLook.Mod(style, AstronautLook.HairStyles.Length))
+            {
+                case 1: // Buzz
+                    Crop(b, 0.012f, 0.66f, 0.68f);
+                    b.Box(Hair, new Vector3(0f, 0.765f, 0.127f), new Vector3(0.26f, 0.02f, 0.008f));
+                    break;
+                case 2: // Side part: a crop with a swept block of fringe
+                    Crop(b, 0.025f, 0.62f, 0.66f);
+                    b.Box(Hair, new Vector3(-0.05f, 0.75f, 0.135f), new Vector3(0.18f, 0.06f, 0.025f));
+                    b.Box(Hair, new Vector3(-0.04f, 0.81f, 0.02f), new Vector3(0.18f, 0.035f, 0.20f));
+                    break;
+                case 3: // Bob, down to the jaw
+                    Crop(b, 0.03f, 0.53f, 0.53f);
+                    b.Box(Hair, new Vector3(0f, 0.75f, 0.135f), new Vector3(0.27f, 0.05f, 0.025f));
+                    break;
+                case 4: // Ponytail
+                    Crop(b, 0.025f, 0.60f, 0.66f);
+                    b.Box(Hair, new Vector3(0f, 0.755f, 0.132f), new Vector3(0.27f, 0.04f, 0.02f));
+                    extras.Box(Accent, new Vector3(0f, 0.68f, -0.15f), new Vector3(0.06f, 0.04f, 0.035f));
+                    extras.Box(Hair, new Vector3(0f, 0.58f, -0.17f), new Vector3(0.07f, 0.18f, 0.06f));
+                    break;
+                case 5: // High bun
+                    Crop(b, 0.025f, 0.60f, 0.66f);
+                    b.Box(Hair, new Vector3(0f, 0.755f, 0.132f), new Vector3(0.27f, 0.04f, 0.02f));
+                    extras.Box(Hair, new Vector3(0f, 0.83f, -0.04f), new Vector3(0.13f, 0.10f, 0.13f));
+                    break;
+                case 6: // Long, past the shoulders
+                    Crop(b, 0.03f, 0.53f, 0.53f);
+                    b.Box(Hair, new Vector3(0f, 0.755f, 0.135f), new Vector3(0.27f, 0.04f, 0.025f));
+                    extras.Box(Hair, new Vector3(0f, 0.455f, -0.145f), new Vector3(0.28f, 0.15f, 0.03f));
+                    break;
+                case 7: // Curly: chunky volume
+                    b.Box(Hair, new Vector3(0f, 0.80f, 0f), new Vector3(0.32f, 0.07f, 0.31f));
+                    b.Box(Hair, new Vector3(0f, 0.66f, -0.145f), new Vector3(0.32f, 0.30f, 0.05f));
+                    for (int side = -1; side <= 1; side += 2)
+                        b.Box(Hair, new Vector3(0.15f * side, 0.67f, -0.02f), new Vector3(0.05f, 0.26f, 0.24f));
+                    b.Box(Hair, new Vector3(0f, 0.76f, 0.14f), new Vector3(0.30f, 0.05f, 0.03f));
+                    b.Box(Hair, new Vector3(-0.08f, 0.845f, 0.05f), new Vector3(0.10f, 0.03f, 0.10f));
+                    b.Box(Hair, new Vector3(0.07f, 0.845f, -0.06f), new Vector3(0.10f, 0.03f, 0.10f));
+                    break;
+                default: // Short crop
+                    Crop(b, 0.025f, 0.62f, 0.66f);
+                    b.Box(Hair, new Vector3(0f, 0.755f, 0.132f), new Vector3(0.27f, 0.04f, 0.02f));
+                    break;
+            }
+            return b;
+        }
+
+        /// <summary>A hair cap <paramref name="thick"/> deep on the head, with back and side slabs down to the given heights.</summary>
+        private static void Crop(PartBuilder b, float thick, float backTo, float sidesTo)
+        {
+            const float top = 0.77f, halfW = 0.13f, halfD = 0.125f;
+            b.Box(Hair, new Vector3(0f, top + thick * 0.5f, 0f), new Vector3(halfW * 2f + thick, thick, halfD * 2f + thick));
+            b.Box(Hair, new Vector3(0f, (backTo + top) * 0.5f, -halfD - thick * 0.5f), new Vector3(halfW * 2f + thick, top - backTo, thick));
+            for (int side = -1; side <= 1; side += 2)
+                b.Box(Hair, new Vector3((halfW + thick * 0.5f) * side, (sidesTo + top) * 0.5f, -0.04f),
+                    new Vector3(thick, top - sidesTo, 0.17f + thick));
+        }
+
+        private static PartBuilder BuildHelmet(int style)
+        {
+            PartBuilder b = new PartBuilder();
+            if (AstronautLook.Mod(style, AstronautLook.Helmets.Length) == 1)
+            {
+                // Stepped dome: voxel layers narrowing to the top, the visor across the widest one.
+                b.Walls(Suit, new Vector3(0f, 0.51f, 0.01f), new Vector3(0.36f, 0.10f, 0.36f), 0.03f, true);
+                b.Walls(Suit, new Vector3(0f, 0.66f, 0.01f), new Vector3(0.42f, 0.20f, 0.40f), 0.03f, false);
+                b.Box(Suit, new Vector3(0f, 0.79f, 0.01f), new Vector3(0.36f, 0.06f, 0.36f));
+                b.Box(Suit, new Vector3(0f, 0.845f, 0.01f), new Vector3(0.26f, 0.05f, 0.26f));
+                b.Box(Visor, new Vector3(0f, 0.66f, 0.20f), new Vector3(0.36f, 0.20f, 0.02f));
+                Lamps(b, 0.225f, 0.72f, 0.14f);
+            }
+            else
+            {
+                // Classic: a big cube with a visor window, a chin plate and a brow plate.
+                b.Walls(Suit, new Vector3(0f, 0.665f, 0.01f), new Vector3(0.38f, 0.39f, 0.36f), 0.03f, false);
+                b.Box(Suit, new Vector3(0f, 0.855f, 0.01f), new Vector3(0.38f, 0.03f, 0.36f));               // top
+                b.Box(Suit, new Vector3(0f, 0.53f, 0.175f), new Vector3(0.38f, 0.12f, 0.03f));               // chin plate
+                b.Box(Suit, new Vector3(0f, 0.83f, 0.175f), new Vector3(0.38f, 0.06f, 0.03f));               // brow plate
+                b.Box(Visor, new Vector3(0f, 0.695f, 0.18f), new Vector3(0.32f, 0.21f, 0.025f));
+                b.Box(Trim, new Vector3(0f, 0.475f, 0.01f), new Vector3(0.39f, 0.03f, 0.37f));               // neck seal
+                Lamps(b, 0.205f, 0.77f, 0.10f);
+            }
+            return b;
+        }
+
+        private static void Lamps(PartBuilder b, float x, float y, float z)
+        {
+            for (int side = -1; side <= 1; side += 2)
+            {
+                b.Box(Pack, new Vector3(x * side, y, z), new Vector3(0.03f, 0.07f, 0.10f));
+                b.Box(Lamp, new Vector3(x * side, y, z + 0.055f), new Vector3(0.025f, 0.05f, 0.01f));
+            }
+        }
+
+        private void BuildLeg(float side, bool frameB, out Transform thigh, out Transform shin)
         {
             string label = side < 0f ? " L" : " R";
-            thigh = Node("Thigh" + label, hips, new Vector3(0.112f * side, 0f, 0f));
+            float w = frameB ? 0.18f : 0.17f;
+            thigh = Node("Thigh" + label, hips, new Vector3((frameB ? 0.11f : 0.10f) * side, 0f, 0f));
             PartBuilder t = new PartBuilder();
-            t.Frustum(Suit, 0.02f, -ThighLength, new Vector2(0.17f, 0.19f), new Vector2(0.15f, 0.16f));
-            t.Frustum(Trim, -0.20f, -0.23f, new Vector2(0.168f, 0.182f), new Vector2(0.166f, 0.18f));
-            Attach(thigh, "Mesh", t, ShadowCastingMode.On);
+            t.Box(Suit, new Vector3(0f, -0.19f, 0f), new Vector3(w, 0.46f, 0.19f));
+            t.Box(Accent, new Vector3(0f, -0.20f, 0f), new Vector3(w + 0.01f, 0.05f, 0.20f));            // ID band
+            AlwaysShown(thigh, "Mesh", t);
 
             shin = Node("Shin" + label, thigh, new Vector3(0f, -ThighLength, 0f));
             PartBuilder s = new PartBuilder();
-            s.Frustum(Dark, 0.03f, -0.07f, new Vector2(0.158f, 0.168f), new Vector2(0.158f, 0.168f));
-            s.Frustum(Suit, -0.07f, -0.37f, new Vector2(0.15f, 0.16f), new Vector2(0.165f, 0.185f));
-            s.Frustum(Trim, -0.33f, -0.37f, new Vector2(0.172f, 0.192f), new Vector2(0.175f, 0.195f));
-            // Boot: wider at the sole and pushed forward for the toe.
-            s.Frustum(Boot, -0.37f, -0.47f, new Vector2(0.17f, 0.20f), new Vector2(0.18f, 0.30f),
-                Vector2.zero, new Vector2(0f, 0.045f));
-            s.Frustum(Dark, -0.47f, -0.50f, new Vector2(0.185f, 0.305f), new Vector2(0.185f, 0.305f),
-                new Vector2(0f, 0.045f), new Vector2(0f, 0.045f));
-            Attach(shin, "Mesh", s, ShadowCastingMode.On);
+            s.Box(Joint, new Vector3(0f, -0.01f, 0f), new Vector3(w + 0.01f, 0.07f, 0.20f));             // knee
+            s.Box(Suit, new Vector3(0f, -0.20f, 0f), new Vector3(w - 0.01f, 0.36f, 0.18f));
+            s.Box(Boot, new Vector3(0f, -0.425f, 0.035f), new Vector3(w + 0.01f, 0.09f, 0.26f));        // boot
+            s.Box(Joint, new Vector3(0f, -0.485f, 0.035f), new Vector3(w + 0.02f, 0.03f, 0.27f));       // sole
+            s.Box(Trim, new Vector3(0f, -0.445f, 0.16f), new Vector3(w, 0.05f, 0.02f));                 // toe cap
+            AlwaysShown(shin, "Mesh", s);
         }
 
-        private void BuildArm(float side, out Transform upperArm, out Transform forearm)
+        private void BuildArm(float side, float shoulderX, bool frameB, out Transform upperArm, out Transform forearm)
         {
             string label = side < 0f ? " L" : " R";
-            upperArm = Node("Upper Arm" + label, spine, new Vector3(0.315f * side, 0.28f, 0f));
+            float w = frameB ? 0.115f : 0.13f;
+            upperArm = Node("Upper Arm" + label, spine, new Vector3(shoulderX * side, 0.44f, 0f));
             PartBuilder u = new PartBuilder();
-            u.Frustum(Suit, 0.06f, -0.06f, new Vector2(0.15f, 0.16f), new Vector2(0.15f, 0.16f));
-            u.Frustum(Suit, -0.06f, -UpperArmLength, new Vector2(0.13f, 0.14f), new Vector2(0.115f, 0.12f));
-            u.Frustum(Trim, -0.13f, -0.16f, new Vector2(0.134f, 0.142f), new Vector2(0.132f, 0.14f));
-            Attach(upperArm, "Mesh", u, ShadowCastingMode.On);
+            u.Box(Suit, new Vector3(0f, -0.12f, 0f), new Vector3(w, 0.32f, w + 0.01f));
+            u.Box(Accent, new Vector3(0f, -0.13f, 0f), new Vector3(w + 0.01f, 0.05f, w + 0.02f));        // ID band
+            AlwaysShown(upperArm, "Mesh", u);
 
             forearm = Node("Forearm" + label, upperArm, new Vector3(0f, -UpperArmLength, 0f));
             PartBuilder f = new PartBuilder();
-            f.Frustum(Dark, 0.03f, -0.05f, new Vector2(0.122f, 0.128f), new Vector2(0.122f, 0.128f));
-            f.Frustum(Suit, -0.05f, -0.24f, new Vector2(0.11f, 0.115f), new Vector2(0.10f, 0.105f));
-            f.Frustum(Trim, -0.23f, -0.26f, new Vector2(0.112f, 0.117f), new Vector2(0.112f, 0.117f));
-            // Glove with a thumb on the inner side.
-            f.Frustum(Boot, -0.26f, -0.38f, new Vector2(0.095f, 0.105f), new Vector2(0.08f, 0.075f));
-            f.Frustum(Boot, -0.27f, -0.33f, new Vector2(0.035f, 0.04f), new Vector2(0.03f, 0.035f),
-                new Vector2(-0.06f * side, 0.03f), new Vector2(-0.07f * side, 0.045f));
-            Attach(forearm, "Mesh", f, ShadowCastingMode.On);
+            f.Box(Joint, new Vector3(0f, 0f, 0f), new Vector3(w + 0.005f, 0.06f, w + 0.015f));           // elbow
+            f.Box(Suit, new Vector3(0f, -0.13f, 0f), new Vector3(w - 0.01f, 0.22f, w));
+            f.Box(Joint, new Vector3(0f, -0.245f, 0f), new Vector3(w + 0.005f, 0.03f, w + 0.015f));      // cuff
+            f.Box(Glove, new Vector3(0f, -0.30f, 0.005f), new Vector3(w, 0.12f, w + 0.01f));             // glove
+            f.Box(Glove, new Vector3(-0.07f * side, -0.28f, 0.03f), new Vector3(0.03f, 0.05f, 0.05f));    // thumb
+            AlwaysShown(forearm, "Mesh", f);
         }
 
         private static Transform Node(string nodeName, Transform parent, Vector3 localPosition)
@@ -120,7 +378,19 @@ namespace MarsSurvival.Interaction
             return node;
         }
 
-        private void Attach(Transform parent, string partName, PartBuilder part, ShadowCastingMode shadows)
+        private MeshRenderer AlwaysShown(Transform parent, string partName, PartBuilder part)
+        {
+            return Attach(parent, partName, part, ShadowCastingMode.On);
+        }
+
+        private MeshRenderer Upper(Transform parent, string partName, PartBuilder part)
+        {
+            MeshRenderer r = Attach(parent, partName, part, ShadowCastingMode.On);
+            upper.Add(r);
+            return r;
+        }
+
+        private MeshRenderer Attach(Transform parent, string partName, PartBuilder part, ShadowCastingMode shadows)
         {
             GameObject go = new GameObject(partName);
             go.transform.SetParent(parent, false);
@@ -131,6 +401,7 @@ namespace MarsSurvival.Interaction
             MeshRenderer renderer = go.AddComponent<MeshRenderer>();
             renderer.sharedMaterials = used;
             renderer.shadowCastingMode = shadows;
+            return renderer;
         }
 
         private void OnDestroy()
@@ -146,67 +417,54 @@ namespace MarsSurvival.Interaction
 
         private void CreateMaterials()
         {
-            materials = new Material[4];
-            materials[Suit] = SuitMaterial("Astronaut Suit", new Color(0.93f, 0.92f, 0.96f), 0.05f,
-                new Color(0.62f, 0.68f, 0.79f), 16, 32);
-            materials[Dark] = SuitMaterial("Astronaut Joint", new Color(0.43f, 0.39f, 0.48f), 0.05f,
-                new Color(0.34f, 0.31f, 0.40f), 4, 0);
-            materials[Trim] = SuitMaterial("Astronaut Trim", new Color(0.60f, 0.66f, 0.78f), 0.04f,
-                new Color(0.50f, 0.56f, 0.69f), 0, 0);
-            materials[Boot] = SuitMaterial("Astronaut Glove", new Color(0.86f, 0.86f, 0.91f), 0.04f,
-                new Color(0.66f, 0.69f, 0.78f), 8, 0);
+            Color suit = look.Suit;
+            bool darkSuit = suit.grayscale < 0.45f;
+            materials = new Material[SlotCount];
+            materials[Suit] = Solid("Astronaut Suit", suit);
+            materials[Joint] = Solid("Astronaut Joint", darkSuit ? new Color(0.16f, 0.17f, 0.21f) : new Color(0.46f, 0.47f, 0.53f));
+            materials[Accent] = Solid("Astronaut Accent", look.Accent);
+            materials[Trim] = Solid("Astronaut Trim", Color.Lerp(suit, new Color(0.55f, 0.60f, 0.70f), 0.55f));
+            materials[Glove] = Solid("Astronaut Glove", new Color(0.52f, 0.54f, 0.60f));
+            materials[Boot] = Solid("Astronaut Boot", new Color(0.60f, 0.61f, 0.66f));
+            materials[Visor] = Solid("Astronaut Visor", look.Visor, 0.85f);
+            if (look.ClearVisor) MakeSeeThrough(materials[Visor], 0.28f);
+            materials[Skin] = Solid("Astronaut Skin", look.Skin);
+            materials[Hair] = Solid("Astronaut Hair", look.Hair);
+            materials[Eye] = Solid("Astronaut Eye", new Color(0.12f, 0.10f, 0.11f));
+            materials[Pack] = Solid("Astronaut Pack", Color.Lerp(suit, new Color(0.78f, 0.79f, 0.83f), 0.5f));
+            materials[Screen] = Solid("Astronaut Screen", new Color(0.18f, 0.42f, 0.48f), 0.6f);
+            materials[Lamp] = Solid("Astronaut Lamp", new Color(1f, 0.96f, 0.86f));
+            if (materials[Lamp].HasProperty("_EmissionColor"))
+            {
+                materials[Lamp].EnableKeyword("_EMISSION");
+                materials[Lamp].SetColor("_EmissionColor", new Color(1f, 0.93f, 0.78f) * 1.5f);
+            }
+            materials[Lip] = Solid("Astronaut Lip", Color.Lerp(look.Skin, new Color(0.55f, 0.22f, 0.24f), 0.45f));
         }
 
-        /// <summary>
-        /// A mottled pixel texture with seam lines every <paramref name="rowSpacing"/> pixels
-        /// horizontally and every <paramref name="columnSpacing"/> pixels vertically (0 = none).
-        /// </summary>
-        private Material SuitMaterial(string materialName, Color baseColor, float mottle, Color seam,
-            int rowSpacing, int columnSpacing)
+        private Material Solid(string materialName, Color color, float smoothness = -1f)
         {
-            Texture2D texture = new Texture2D(TextureSize, TextureSize, TextureFormat.RGBA32, false);
-            texture.name = materialName;
-            texture.filterMode = FilterMode.Point;
-            texture.wrapMode = TextureWrapMode.Repeat;
-            Color32[] pixels = new Color32[TextureSize * TextureSize];
-            int seed = materialName.Length * 7919;
-            for (int y = 0; y < TextureSize; y++)
-            {
-                for (int x = 0; x < TextureSize; x++)
-                {
-                    // Blocky 2x2 mottling, slightly lavender in the darker patches.
-                    float noise = Hash(x / 2, y / 2, seed) - 0.5f;
-                    Color c = baseColor;
-                    c.r += noise * mottle * 2.2f;
-                    c.g += noise * mottle * 2.4f;
-                    c.b += noise * mottle * 1.4f;
-                    bool onRow = rowSpacing > 0 && y % rowSpacing == 0;
-                    bool onColumn = columnSpacing > 0 && x % columnSpacing == 0;
-                    if (onRow || onColumn) c = Color.Lerp(seam, c, 0.15f);
-                    c.a = 1f;
-                    pixels[y * TextureSize + x] = c;
-                }
-            }
-            texture.SetPixels32(pixels);
-            texture.Apply(false, true);
-            owned.Add(texture);
-
-            Material material = MarsPalette.CreateMatteMaterial(materialName, Color.white);
-            material.mainTexture = texture;
-            if (material.HasProperty("_BaseMap")) material.SetTexture("_BaseMap", texture);
+            Material material = MarsPalette.CreateMatteMaterial(materialName, color);
+            if (smoothness >= 0f && material.HasProperty("_Smoothness")) material.SetFloat("_Smoothness", smoothness);
+            if (smoothness >= 0f && material.HasProperty("_Glossiness")) material.SetFloat("_Glossiness", smoothness);
             owned.Add(material);
             return material;
         }
 
-        private static float Hash(int x, int y, int seed)
+        /// <summary>Turns a URP Lit (or built-in Standard) material into an alpha-blended glass.</summary>
+        private static void MakeSeeThrough(Material m, float alpha)
         {
-            unchecked
-            {
-                uint h = (uint)(x * 374761393 + y * 668265263 + seed * 144665);
-                h = (h ^ (h >> 13)) * 1274126177u;
-                h ^= h >> 16;
-                return (h & 0xFFFF) / 65535f;
-            }
+            Color c = m.color; c.a = alpha; m.color = c;
+            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
+            if (m.HasProperty("_Surface")) m.SetFloat("_Surface", 1f);
+            if (m.HasProperty("_Mode")) m.SetFloat("_Mode", 3f);
+            m.SetOverrideTag("RenderType", "Transparent");
+            m.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
+            m.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
+            m.SetInt("_ZWrite", 0);
+            m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            m.EnableKeyword("_ALPHABLEND_ON");
+            m.renderQueue = (int)RenderQueue.Transparent;
         }
 
         // ------------------------------------------------------------------ holding things
@@ -357,88 +615,79 @@ namespace MarsSurvival.Interaction
         {
             return Mathf.Lerp(Mathf.Lerp(apex, rising, rise), falling, fall);
         }
+        // ------------------------------------------------------------------ mesh template
 
-        // ------------------------------------------------------------------ mesh helper
-
-        /// <summary>Collects flat-shaded tapered boxes into one mesh with a submesh per material.</summary>
+        /// <summary>
+        /// Collects flat-shaded boxes into one mesh with a submesh per material slot (the
+        /// blocky template's only primitive, plus hollow walls for helmets).
+        /// </summary>
         private sealed class PartBuilder
         {
             private readonly List<Vector3> vertices = new List<Vector3>();
             private readonly List<Vector3> normals = new List<Vector3>();
-            private readonly List<Vector2> uvs = new List<Vector2>();
-            private readonly List<int>[] triangles = { new List<int>(), new List<int>(), new List<int>(), new List<int>() };
+            private readonly List<int>[] triangles = NewLists();
+
+            private static List<int>[] NewLists()
+            {
+                List<int>[] lists = new List<int>[SlotCount];
+                for (int i = 0; i < lists.Length; i++) lists[i] = new List<int>();
+                return lists;
+            }
+
+            public bool IsEmpty { get { return vertices.Count == 0; } }
+
+            /// <summary>A box from its centre and size.</summary>
+            public void Box(int slot, Vector3 centre, Vector3 size)
+            {
+                Vector3 half = size * 0.5f;
+                Corners(slot, centre - half, centre + half);
+            }
 
             /// <summary>
-            /// A box between two heights whose top and bottom rectangles (x, z sizes) can
-            /// differ and be offset in x, z.
+            /// Four walls of a hollow box (no top or bottom), <paramref name="thickness"/> thick;
+            /// without <paramref name="front"/> the front wall is left out (a visor window).
             /// </summary>
-            public void Frustum(int material, float yTop, float yBottom, Vector2 topSize, Vector2 bottomSize,
-                Vector2 topOffset = default(Vector2), Vector2 bottomOffset = default(Vector2))
+            public void Walls(int slot, Vector3 centre, Vector3 size, float thickness, bool front)
             {
-                // Thicken without moving the front face forward (see Bulk).
-                topOffset = new Vector2(topOffset.x * Bulk, topOffset.y - topSize.y * (Bulk - 1f) * 0.5f);
-                bottomOffset = new Vector2(bottomOffset.x * Bulk, bottomOffset.y - bottomSize.y * (Bulk - 1f) * 0.5f);
-                topSize *= Bulk;
-                bottomSize *= Bulk;
-                Vector3[] t = Ring(yTop, topSize, topOffset);
-                Vector3[] b = Ring(yBottom, bottomSize, bottomOffset);
-                Vector3 centre = Vector3.zero;
-                for (int i = 0; i < 4; i++) centre += (t[i] + b[i]) * 0.125f;
-
-                for (int i = 0; i < 4; i++)
-                {
-                    int j = (i + 1) % 4;
-                    Quad(material, b[i], b[j], t[j], t[i], centre);
-                }
-                Quad(material, t[0], t[1], t[2], t[3], centre);
-                Quad(material, b[0], b[1], b[2], b[3], centre);
+                Vector3 h = size * 0.5f;
+                Corners(slot, new Vector3(centre.x - h.x, centre.y - h.y, centre.z - h.z), new Vector3(centre.x - h.x + thickness, centre.y + h.y, centre.z + h.z));
+                Corners(slot, new Vector3(centre.x + h.x - thickness, centre.y - h.y, centre.z - h.z), new Vector3(centre.x + h.x, centre.y + h.y, centre.z + h.z));
+                Corners(slot, new Vector3(centre.x - h.x + thickness, centre.y - h.y, centre.z - h.z), new Vector3(centre.x + h.x - thickness, centre.y + h.y, centre.z - h.z + thickness));
+                if (front)
+                    Corners(slot, new Vector3(centre.x - h.x + thickness, centre.y - h.y, centre.z + h.z - thickness), new Vector3(centre.x + h.x - thickness, centre.y + h.y, centre.z + h.z));
             }
 
-            private static Vector3[] Ring(float y, Vector2 size, Vector2 offset)
+            /// <summary>A box between two opposite corners.</summary>
+            public void Corners(int slot, Vector3 min, Vector3 max)
             {
-                float hx = size.x * 0.5f, hz = size.y * 0.5f;
-                return new[]
-                {
-                    new Vector3(offset.x - hx, y, offset.y - hz),
-                    new Vector3(offset.x + hx, y, offset.y - hz),
-                    new Vector3(offset.x + hx, y, offset.y + hz),
-                    new Vector3(offset.x - hx, y, offset.y + hz),
-                };
+                Vector3 c = (min + max) * 0.5f;
+                Vector3 a = new Vector3(min.x, min.y, min.z), b = new Vector3(max.x, min.y, min.z);
+                Vector3 d = new Vector3(min.x, max.y, min.z), e = new Vector3(max.x, max.y, min.z);
+                Vector3 f = new Vector3(min.x, min.y, max.z), g = new Vector3(max.x, min.y, max.z);
+                Vector3 h = new Vector3(min.x, max.y, max.z), k = new Vector3(max.x, max.y, max.z);
+                Quad(slot, a, b, e, d, c); // back
+                Quad(slot, f, g, k, h, c); // front
+                Quad(slot, a, f, h, d, c); // left
+                Quad(slot, b, g, k, e, c); // right
+                Quad(slot, d, e, k, h, c); // top
+                Quad(slot, a, b, g, f, c); // bottom
             }
 
-            // a-b is the bottom edge, so texture rows run along it. The winding is chosen
-            // so the face points away from the box centre.
-            private void Quad(int material, Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 boxCentre)
+            /// <summary>A flat quad facing away from <paramref name="inside"/>.</summary>
+            private void Quad(int slot, Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 inside)
             {
-                Vector3 normal = Vector3.Cross(b - a, c - a).normalized;
-                bool flip = Vector3.Dot(normal, (a + b + c + d) * 0.25f - boxCentre) < 0f;
+                Vector3 normal = Vector3.Cross(b - a, c - a);
+                if (normal.sqrMagnitude < 1e-12f) normal = Vector3.Cross(c - a, d - a);
+                if (normal.sqrMagnitude < 1e-12f) return;
+                normal.Normalize();
+                bool flip = Vector3.Dot(normal, (a + b + c + d) * 0.25f - inside) < 0f;
                 if (flip) normal = -normal;
-
-                Vector3 uAxis = (b - a).normalized;
-                Vector3 vAxis = Vector3.Cross(uAxis, normal).normalized;
-                if (Vector3.Dot(vAxis, d - a) < 0f) vAxis = -vAxis;
-                float tilesPerMeter = PixelsPerMeter / TextureSize;
-
                 int start = vertices.Count;
-                Vector3[] corners = { a, b, c, d };
-                for (int i = 0; i < 4; i++)
-                {
-                    vertices.Add(corners[i]);
-                    normals.Add(normal);
-                    Vector3 offset = corners[i] - a;
-                    uvs.Add(new Vector2(Vector3.Dot(offset, uAxis), Vector3.Dot(offset, vAxis)) * tilesPerMeter);
-                }
-                List<int> list = triangles[material];
-                if (flip)
-                {
-                    list.Add(start); list.Add(start + 2); list.Add(start + 1);
-                    list.Add(start); list.Add(start + 3); list.Add(start + 2);
-                }
-                else
-                {
-                    list.Add(start); list.Add(start + 1); list.Add(start + 2);
-                    list.Add(start); list.Add(start + 2); list.Add(start + 3);
-                }
+                vertices.Add(a); vertices.Add(b); vertices.Add(c); vertices.Add(d);
+                for (int i = 0; i < 4; i++) normals.Add(normal);
+                List<int> list = triangles[slot];
+                if (flip) { list.Add(start); list.Add(start + 2); list.Add(start + 1); list.Add(start); list.Add(start + 3); list.Add(start + 2); }
+                else { list.Add(start); list.Add(start + 1); list.Add(start + 2); list.Add(start); list.Add(start + 2); list.Add(start + 3); }
             }
 
             public Mesh ToMesh(Material[] allMaterials, out Material[] usedMaterials)
@@ -446,7 +695,6 @@ namespace MarsSurvival.Interaction
                 Mesh mesh = new Mesh();
                 mesh.SetVertices(vertices);
                 mesh.SetNormals(normals);
-                mesh.SetUVs(0, uvs);
                 List<Material> used = new List<Material>();
                 int count = 0;
                 for (int i = 0; i < triangles.Length; i++)

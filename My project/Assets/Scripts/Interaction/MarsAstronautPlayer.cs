@@ -25,12 +25,17 @@ namespace MarsSurvival.Interaction
         public Camera viewCamera;
 
         [Header("Movement (real metres, seconds)")]
-        [Tooltip("3.4 km/h.")]
-        public float walkSpeed = 3.4f / 3.6f;
+        [Tooltip("6 km/h, a brisk human walk.")]
+        public float walkSpeed = 6f / 3.6f;
         [Tooltip("29 km/h.")]
         public float sprintSpeed = 29f / 3.6f;
-        public float groundAcceleration = 12f;
-        public float airAcceleration = 2f;
+        [Tooltip("Speeding up on the ground, m/s². Boots push off the regolith, so this is a firm but finite push.")]
+        public float groundAcceleration = 16f;
+        [Tooltip("Slowing down or reversing on the ground, m/s². Planting the feet stops you quicker than pushing off starts you.")]
+        public float groundBraking = 24f;
+        [Tooltip("Below this speed the astronaut reaches walking pace almost at once, the way a first step does.")]
+        public float stepOffSpeed = 1.2f;
+        public float airAcceleration = 2.5f;
         [Tooltip("Mars surface gravity.")]
         public float gravity = 3.71f;
         [Tooltip("Height of a standing jump under the gravity above.")]
@@ -39,10 +44,32 @@ namespace MarsSurvival.Interaction
         public float stepDown = 0.35f;
 
         [Header("View")]
+        [Tooltip("Base mouse look speed; the Camera Sensitivity setting multiplies it.")]
         public float lookSensitivity = 2f;
+        [Tooltip("With shift lock off, how fast the astronaut turns to face the way they walk (degrees per second).")]
+        public float turnSpeed = 600f;
+        [Tooltip("Sideways grip of the boots while changing direction (m/s²). Higher turns tighter at speed.")]
+        public float turnGrip = 20f;
         [Range(40f, 100f)] public float fieldOfView = 70f;
         [Tooltip("Eye height of the 1.8 m astronaut.")]
         public float eyeHeight = 1.68f;
+
+        [Header("Third-person camera (real metres); the scroll wheel zooms")]
+        [Tooltip("Distance behind the head at the start. 0 is first person.")]
+        public float thirdPersonDistance = 4f;
+        [Tooltip("Closest third-person distance; scrolling in past it switches to first person.")]
+        public float minCameraDistance = 1.4f;
+        public float maxCameraDistance = 9f;
+        [Tooltip("How far each scroll-wheel notch moves the camera.")]
+        public float scrollStep = 0.9f;
+        [Tooltip("Sideways camera offset in shift lock (metres, + is right), so the astronaut sits a little left of " +
+                 "the crosshair, like Roblox's shift lock (1.75 studs, about 0.5 m). The offset is swept out from the " +
+                 "head, so it shortens against walls and door frames instead of putting the camera inside them. " +
+                 "Without shift lock the camera stays centred.")]
+        public float shoulderOffset = 0.5f;
+        [Tooltip("How far above eye level the camera rides in third person, so the helmet sits just below the crosshair. " +
+                 "Kept low enough to pass under the 2.15 m door frames and the 2.3 m tunnel ceilings.")]
+        public float cameraLift = 0.35f;
 
         [Header("Collision with buildings (real metres)")]
         public float bodyRadius = 0.35f;
@@ -50,7 +77,7 @@ namespace MarsSurvival.Interaction
         public float stepUp = 0.45f;
 
         [Header("Stride length per full cycle (two steps), metres")]
-        public float walkStride = 1.25f;
+        public float walkStride = 1.55f;
         public float sprintStride = 3.6f;
 
         public bool IsGrounded { get { return grounded; } }
@@ -59,14 +86,53 @@ namespace MarsSurvival.Interaction
         public Camera ViewCamera { get { return viewCamera; } }
         /// <summary>True once the astronaut has been set down on the ground at the start.</summary>
         public bool IsReady { get { return placed && neck != null; } }
+        /// <summary>True while the camera sits behind the astronaut rather than at the eyes.</summary>
+        public bool IsThirdPerson { get { return cameraDistance > 0.5f; } }
+        /// <summary>
+        /// True when the mouse turns the view and the astronaut faces the camera: always in
+        /// first person, and in third person while shift lock is on (as in Roblox).
+        /// </summary>
+        public bool CameraLocked
+        {
+            // In the rover there is no first person: only shift lock captures the cursor.
+            get { return (!driving && cameraDistanceGoal < 0.5f) || MarsTrainer.UI.CameraPrefs.ShiftLockActive; }
+        }
+
+        /// <summary>
+        /// This frame's mouse turn in degrees (x right, y up), already scaled by the camera
+        /// sensitivity setting; zero while the mouse is not turning the view. The astronaut
+        /// applies it to its own view; the rover reads it for its chase camera.
+        /// </summary>
+        public Vector2 LookDelta { get; private set; }
+
+        /// <summary>True while the player is not using the scroll wheel for anything else (the cursor is in the game).</summary>
+        public bool ScrollFree { get { return !cursorReleased; } }
+        /// <summary>
+        /// The astronaut's eyes, turned toward whatever is under the crosshair. Reach checks,
+        /// tool aiming and the held tool use this, so they work the same in first and third person.
+        /// </summary>
+        public Transform AimTransform { get { return eye != null ? eye : (viewCamera != null ? viewCamera.transform : null); } }
         public bool IsSprinting { get { return sprinting; } }
+        /// <summary>The suited body (for the wardrobe preview).</summary>
+        public MarsAstronautBody Body { get { return body; } }
         /// <summary>Horizontal speed in real metres per second.</summary>
         public float Speed { get { return new Vector2(velocity.x, velocity.z).magnitude; } }
 
         private const float NeckHeight = 1.55f;
         private const float EyeForward = 0.10f;
 
-        private Transform neck;
+        private Transform neck, eye, rig;
+        private float cameraDistance, cameraDistanceGoal, shoulderBlend = 1f, bodyYaw, boomLength;
+        private bool cursorReleased, lookLocked;
+        private int relockFrames;
+        // Horizontal position kept in double precision, so tiny per-frame steps are never
+        // rounded away (which bends the walking line when far from the world origin).
+        private double exactX, exactZ;
+        private Vector3 lastWritten = new Vector3(float.NaN, 0f, 0f);
+        private float relockUntil;
+        // Right-drag camera turn with shift lock off: the OS pointer is pinned where it was clicked.
+        private bool dragActive, dragPinned;
+        private int skipLookFrames;
         private MarsAstronautBody body;
         private MarsTerrainFlyCamera flyCamera;
         private Vector3 velocity;          // metres per second, world axes
@@ -108,7 +174,7 @@ namespace MarsSurvival.Interaction
             // Start where the camera was, facing the way it faced.
             Transform cam = viewCamera.transform;
             transform.position = cam.position;
-            yaw = cam.eulerAngles.y;
+            yaw = bodyYaw = cam.eulerAngles.y;
             transform.rotation = Quaternion.Euler(0f, yaw, 0f);
             transform.localScale = Vector3.one * Units(1f);
 
@@ -123,6 +189,14 @@ namespace MarsSurvival.Interaction
             neck = new GameObject("Neck").transform;
             neck.SetParent(transform, false);
             neck.localPosition = new Vector3(0f, NeckHeight, 0f);
+            eye = new GameObject("Eyes").transform;
+            eye.SetParent(neck, false);
+            eye.localPosition = EyeLocal;
+            // The camera hangs off its own rig so it can orbit freely while the body turns to
+            // face where it walks (shift lock off); with shift lock on they turn together.
+            rig = new GameObject("Camera Rig").transform;
+            rig.SetParent(transform, false);
+            cameraDistance = cameraDistanceGoal = Mathf.Max(0f, thirdPersonDistance);
 
             flyCamera = viewCamera.GetComponent<MarsTerrainFlyCamera>();
             if (flyCamera != null) flyCamera.enabled = false;
@@ -135,6 +209,7 @@ namespace MarsSurvival.Interaction
             bodyObject.transform.SetParent(transform, false);
             body = bodyObject.AddComponent<MarsAstronautBody>();
             body.Build();
+            PlaceCamera(0f);
 
             LockCursor(true);
         }
@@ -142,10 +217,114 @@ namespace MarsSurvival.Interaction
         private void MountCamera()
         {
             Transform cam = viewCamera.transform;
-            cam.SetParent(neck, false);
-            cam.localPosition = new Vector3(0f, eyeHeight - NeckHeight, EyeForward);
+            cam.SetParent(rig, false);
+            cam.localPosition = EyeLocal;
             cam.localRotation = Quaternion.identity;
             cam.localScale = Vector3.one;
+            if (body != null) PlaceCamera(0f);
+        }
+
+        private Vector3 EyeLocal { get { return new Vector3(0f, eyeHeight - NeckHeight, EyeForward); } }
+
+        /// <summary>
+        /// Puts the camera at the eyes (first person) or behind and just above the head
+        /// (third person), pulled in when a wall or the ground is in the way. Then turns the
+        /// eyes toward what the crosshair is on, so aiming matches what the player sees.
+        /// </summary>
+        private void PlaceCamera(float dt)
+        {
+            if (neck == null || eye == null || rig == null || viewCamera == null || viewCamera.transform.parent != rig) return;
+            cameraDistance = dt <= 0f ? cameraDistanceGoal
+                : Mathf.Lerp(cameraDistance, cameraDistanceGoal, 1f - Mathf.Exp(-12f * dt));
+            if (Mathf.Abs(cameraDistance - cameraDistanceGoal) < 0.01f) cameraDistance = cameraDistanceGoal;
+
+            // The rig sits at the neck and turns with the camera's own yaw and pitch.
+            rig.position = neck.position;
+            rig.rotation = Quaternion.Euler(pitch, yaw, 0f);
+
+            // Blend the third-person offsets in over the first two metres so zooming is smooth.
+            float t = Mathf.Clamp01(cameraDistance / 2f);
+            float shoulderGoal = MarsTrainer.UI.CameraPrefs.ShiftLockActive ? 1f : 0f;
+            shoulderBlend = dt <= 0f ? shoulderGoal : Mathf.MoveTowards(shoulderBlend, shoulderGoal, dt * 4f);
+            Transform cam = viewCamera.transform;
+
+            // The boom pivots at the head, centred over the body, so it always starts inside
+            // the space the astronaut is standing in (a doorway, a tunnel), never in a wall.
+            Vector3 head = rig.TransformPoint(EyeLocal + new Vector3(0f, 0f, -EyeForward * t));
+            Vector3 pivot = head;
+            if (Mathf.Abs(shoulderOffset) > 1e-4f)
+            {
+                Vector3 side = rig.right * Units(shoulderOffset * t * shoulderBlend);
+                RaycastHit sideHit;
+                float sideLength = side.magnitude;
+                if (sideLength > 1e-5f && Physics.SphereCast(head, Units(0.12f), side / sideLength, out sideHit, sideLength,
+                        Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                    side = side / sideLength * sideHit.distance;
+                pivot = head + side;
+            }
+            // Behind the head along the view, and a little above eye level (world up, so looking
+            // down does not swing the camera into the floor).
+            Vector3 wanted = pivot - rig.forward * Units(cameraDistance) + Vector3.up * Units(cameraLift * t);
+            Vector3 toward = wanted - pivot;
+            float length = toward.magnitude;
+            float allowed = length;
+            if (length > 1e-5f)
+            {
+                RaycastHit hit;
+                if (Physics.SphereCast(pivot, Units(0.12f), toward / length, out hit, length,
+                        Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                {
+                    allowed = hit.distance;
+                }
+            }
+            // Pull in at once when something gets in the way, but ease back out, so walking
+            // through a doorway or past a door frame does not make the camera pop in and out.
+            if (dt <= 0f || allowed <= boomLength) boomLength = allowed;
+            else boomLength = Mathf.Min(allowed, boomLength + Units(6f) * dt);
+            wanted = length > 1e-5f ? pivot + toward / length * boomLength : pivot;
+            // Outside on bare terrain, keep the camera above the ground. Not on building floors:
+            // the terrain surface can lie above an outpost floor and would push the camera into the roof.
+            if (TerrainReady && t > 0f && transform.position.y <= terrain.GetGroundY(transform.position) + Units(0.3f))
+            {
+                float floor = terrain.GetGroundY(wanted) + Units(0.3f);
+                if (wanted.y < floor) wanted.y = floor;
+            }
+            cam.position = wanted;
+            cam.localRotation = Quaternion.identity;
+
+            eye.localPosition = EyeLocal;
+            eye.localRotation = Quaternion.identity;
+            // Hide the helmet when the camera is squeezed up against it (tight spots).
+            if (body != null) body.SetHeadVisible(t > 0.25f && Vector3.Distance(wanted, head) > Units(0.7f));
+            if (t <= 0f) return;
+
+            // Third person: aim the eyes at the point under the crosshair.
+            Ray ray = new Ray(cam.position, cam.forward);
+            float far = Units(40f);
+            Vector3 target = ray.GetPoint(far);
+            RaycastHit aimHit;
+            if (Physics.Raycast(ray, out aimHit, far, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+            {
+                target = aimHit.point;
+                far = aimHit.distance;
+            }
+            if (TerrainReady)
+            {
+                // The terrain may have no colliders, so march along the ray to find the ground.
+                float step = Units(0.5f);
+                for (float d = step; d < far; d += step)
+                {
+                    Vector3 p = ray.GetPoint(d);
+                    if (p.y <= terrain.GetGroundY(p)) { target = p; break; }
+                }
+            }
+            Vector3 look = target - eye.position;
+            // With shift lock off the body may face away from the camera; only turn the eyes
+            // toward the crosshair when it is in front of the astronaut.
+            Vector3 flat = new Vector3(look.x, 0f, look.z);
+            bool ahead = Vector3.Angle(flat, transform.forward) < 100f;
+            if (look.sqrMagnitude > Units(0.5f) * Units(0.5f) && Vector3.Dot(look, cam.forward) > 0f && ahead)
+                eye.rotation = Quaternion.LookRotation(look, Vector3.up);
         }
 
         private float Units(float meters)
@@ -229,7 +408,103 @@ namespace MarsSurvival.Interaction
 
         private void OnDisable()
         {
+            EndDrag();
             LockCursor(false);
+        }
+
+        private void OnApplicationFocus(bool focused)
+        {
+            if (focused) relockFrames = 2;
+            else EndDrag(); // never leave the pointer frozen while another app is in front
+        }
+
+        /// <summary>Ends a right-drag camera turn and frees the pointer.</summary>
+        private void EndDrag()
+        {
+            if (!dragActive) return;
+            dragActive = false;
+            if (dragPinned) SystemCursor.Pin(false);
+            dragPinned = false;
+        }
+
+        /// <summary>
+        /// Keeps the cursor in the state the camera mode wants. After a menu, Escape or a focus
+        /// change the cursor is taken again a couple of frames later (the mouse is ignored
+        /// until then, so the view does not jump).
+        ///
+        /// In the Unity Editor, pressing Escape in the Game view also switches off cursor
+        /// locking for scripts until the Game view is clicked, so Cursor.lockState = Locked is
+        /// silently ignored and the pointer roams free. <see cref="AllowEditorCursorLock"/>
+        /// switches it back on, the same way that click does. Builds are not affected.
+        /// </summary>
+        private void ApplyCursor(bool wantLocked)
+        {
+            if (!wantLocked)
+            {
+                lookLocked = false;
+                if (Cursor.lockState != CursorLockMode.None || !Cursor.visible) LockCursor(false);
+                return;
+            }
+            if (relockFrames > 0)
+            {
+                // Ignore the mouse for a couple of frames after returning, so the view does not jump.
+                relockFrames--;
+                lookLocked = false;
+                if (relockFrames > 0) return;
+                relockUntil = Time.unscaledTime + 1.5f;
+                AllowEditorCursorLock(true);
+                Cursor.lockState = CursorLockMode.None;
+                LockCursor(true);
+                return;
+            }
+            // For a moment after returning to the game, keep re-taking the cursor: the Editor
+            // handles the Escape key in its own GUI pass, which can land after our first
+            // attempt and switch the lock off again.
+            if (Time.unscaledTime < relockUntil)
+            {
+                AllowEditorCursorLock(true);
+                LockCursor(true);
+            }
+            else if (Cursor.lockState != CursorLockMode.Locked || Cursor.visible)
+            {
+                AllowEditorCursorLock(false);
+                LockCursor(true);
+            }
+            lookLocked = Cursor.lockState == CursorLockMode.Locked;
+        }
+
+        private static float nextEditorAllow;
+
+        /// <summary>
+        /// Automated checks only: when set, replaces the WASD keys (x = strafe, y = forward),
+        /// so a test can hold "W" without a keyboard.
+        /// </summary>
+        public static Vector2? SimulatedMove;
+
+        /// <param name="returning">True right after leaving a menu or pressing Escape in the game,
+        /// when the Game view is known to be the one in use.</param>
+        private static void AllowEditorCursorLock(bool returning)
+        {
+#if UNITY_EDITOR
+            // Otherwise only while the Game view has focus (never grab the pointer from another
+            // Editor window), and at most a few times a second.
+            if (!returning && !Application.isFocused) return;
+            if (Time.unscaledTime < nextEditorAllow) return;
+            nextEditorAllow = Time.unscaledTime + (returning ? 0.1f : 0.25f);
+            try
+            {
+                System.Type gameView = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.GameView");
+                System.Reflection.MethodInfo allow = gameView == null ? null : gameView.GetMethod("AllowCursorLockAndHide",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+                if (allow != null)
+                    foreach (Object view in Resources.FindObjectsOfTypeAll(gameView)) allow.Invoke(view, new object[] { true });
+                UnityEditor.Unsupported.SetAllowCursorHide(true);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("Could not re-enable the Editor cursor lock: " + e.Message);
+            }
+#endif
         }
 
         private void Update()
@@ -251,23 +526,63 @@ namespace MarsSurvival.Interaction
             }
 
             var mission = MarsSurvival.Gameplay.MarsMissionController.Instance;
-            if (mission != null && mission.InputBlocked) { velocity = Vector3.zero; sprinting = false; return; }
-            if (driving) return;
+#if ENABLE_LEGACY_INPUT_MANAGER
+            // Escape opens or closes the pause menu; either way, take the cursor again cleanly afterwards.
+            if (Input.GetKeyDown(KeyCode.Escape)) relockFrames = 2;
+#endif
+            if (mission != null && mission.InputBlocked)
+            {
+                // A menu or panel owns the cursor; re-capture it cleanly once it closes.
+                velocity = Vector3.zero; sprinting = false; lookLocked = false; relockFrames = 2;
+                EndDrag();
+                LookDelta = Vector2.zero;
+                return;
+            }
+            LookDelta = Vector2.zero;
 
             float forwardInput = 0f, sideInput = 0f;
             bool sprintHeld = false;
 #if ENABLE_LEGACY_INPUT_MANAGER
-            if (Debug.isDebugBuild && mission == null && Input.GetKeyDown(KeyCode.F2) && flyCamera != null) SetFlying(!flying);
+            if (!driving && Debug.isDebugBuild && mission == null && Input.GetKeyDown(KeyCode.F2) && flyCamera != null) SetFlying(!flying);
             if (flying) return;
 
-            if (Input.GetKeyDown(KeyCode.Escape)) LockCursor(false);
-            else if (Input.GetMouseButtonDown(0)) LockCursor(true);
+            // Shift lock toggle (Ctrl, since Shift sprints). Allowed only when the Shift Lock
+            // Switch setting is on, as in Roblox.
+            if ((Input.GetKeyDown(KeyCode.LeftControl) || Input.GetKeyDown(KeyCode.RightControl)) && MarsTrainer.UI.CameraPrefs.ShiftLockSwitch)
+                MarsTrainer.UI.CameraPrefs.ShiftLockOn = !MarsTrainer.UI.CameraPrefs.ShiftLockOn;
 
-            if (Cursor.lockState == CursorLockMode.Locked)
+            // Locked camera (first person or shift lock): the cursor is captured and the mouse
+            // turns the view. Free camera: the cursor moves, and holding the right mouse
+            // button turns the view. Escape frees it only where no pause menu takes over.
+            if (Input.GetKeyDown(KeyCode.Escape)) cursorReleased = mission == null;
+            else if (Input.GetMouseButtonDown(0)) cursorReleased = false;
+            // Right-drag (shift lock off): the pointer stays visible and frozen exactly where you
+            // clicked while the mouse turns the camera (Roblox style), and moves freely again on
+            // release. Unity's own lock is not used for this, since it hides the pointer and
+            // moves it to the centre. If the OS cannot pin it, fall back to the lock.
+            bool dragging = Input.GetMouseButton(1) && !CameraLocked && !cursorReleased;
+            if (dragging && !dragActive)
             {
-                yaw += Input.GetAxisRaw("Mouse X") * lookSensitivity;
-                pitch = Mathf.Clamp(pitch - Input.GetAxisRaw("Mouse Y") * lookSensitivity, -80f, 80f);
+                dragActive = true;
+                dragPinned = SystemCursor.Pin(true);
+                skipLookFrames = 1;
             }
+            else if (!dragging && dragActive) EndDrag();
+            ApplyCursor(!cursorReleased && (CameraLocked || (dragging && !dragPinned)));
+
+            bool mouseTurns = lookLocked || dragPinned;
+            if (mouseTurns && skipLookFrames > 0) skipLookFrames--;
+            else if (mouseTurns)
+            {
+                float sensitivity = lookSensitivity * MarsTrainer.UI.CameraPrefs.Sensitivity;
+                LookDelta = new Vector2(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y")) * sensitivity;
+            }
+            // In the rover the same cursor handling applies, but the rover turns its own chase
+            // camera with LookDelta and uses the scroll wheel for its own zoom.
+            if (driving) return;
+            yaw += LookDelta.x;
+            pitch = Mathf.Clamp(pitch - LookDelta.y, -80f, 80f);
+            if (!cursorReleased) Zoom(Input.mouseScrollDelta.y);
             if (Input.GetKey(KeyCode.W)) forwardInput += 1f;
             if (Input.GetKey(KeyCode.S)) forwardInput -= 1f;
             if (Input.GetKey(KeyCode.D)) sideInput += 1f;
@@ -275,13 +590,34 @@ namespace MarsSurvival.Interaction
             sprintHeld = Input.GetKey(KeyCode.LeftShift);
             if (Input.GetKeyDown(KeyCode.Space)) jumpBuffer = 0.15f;
 #endif
+            if (driving) return;
+            if (SimulatedMove.HasValue) { sideInput = SimulatedMove.Value.x; forwardInput = SimulatedMove.Value.y; }
             float dt = Time.deltaTime;
-            transform.rotation = Quaternion.Euler(0f, yaw, 0f);
             // The head pitches about the neck, so looking down also moves the eyes forward.
             neck.localRotation = Quaternion.Euler(pitch, 0f, 0f);
 
             Move(forwardInput, sideInput, sprintHeld, dt);
             AnimateBody(dt);
+            PlaceCamera(dt);
+            UpdateHelmet(mission);
+        }
+
+        /// <summary>Helmet on outside; off inside the pressurised base unless the look keeps it on.</summary>
+        private void UpdateHelmet(MarsSurvival.Gameplay.MarsMissionController mission)
+        {
+            if (body == null) return;
+            bool outdoors = mission == null || mission.Context.zone == MarsSurvival.Simulation.PlayerZone.Outdoors;
+            body.SetHelmet(outdoors || !AstronautLook.Current.HelmetOffIndoors);
+        }
+
+        /// <summary>Scroll up moves the camera in, past the closest distance into first person; scroll down moves it out.</summary>
+        private void Zoom(float notches)
+        {
+            if (Mathf.Abs(notches) < 0.01f) return;
+            float goal = cameraDistanceGoal - notches * scrollStep;
+            if (notches > 0f && goal < minCameraDistance) goal = 0f;
+            else if (notches < 0f && cameraDistanceGoal < minCameraDistance) goal = Mathf.Max(goal, minCameraDistance);
+            cameraDistanceGoal = Mathf.Clamp(goal, 0f, maxCameraDistance);
         }
 
         /// <summary>
@@ -301,15 +637,44 @@ namespace MarsSurvival.Interaction
 
         private void Move(float forwardInput, float sideInput, bool sprintHeld, float dt)
         {
-            Vector3 wish = transform.forward * forwardInput + transform.right * sideInput;
-            wish.y = 0f;
+            // Keys move relative to where the camera looks (its yaw), never the body's facing.
+            Quaternion heading = Quaternion.Euler(0f, yaw, 0f);
+            Vector3 wish = heading * new Vector3(sideInput, 0f, forwardInput);
             if (wish.sqrMagnitude > 1f) wish.Normalize();
 
-            // Sprinting needs forward motion; it carries through a jump.
-            sprinting = sprintHeld && forwardInput > 0f;
+            // Locked camera: the body faces the camera. Free camera: it turns to face the way it walks.
+            bool locked = CameraLocked;
+            if (locked) bodyYaw = yaw;
+            else if (wish.sqrMagnitude > 0.01f)
+                bodyYaw = Mathf.MoveTowardsAngle(bodyYaw, Mathf.Atan2(wish.x, wish.z) * Mathf.Rad2Deg, turnSpeed * dt);
+            transform.rotation = Quaternion.Euler(0f, bodyYaw, 0f);
+
+            // Sprinting works in any direction you are moving (W, A, S or D); it carries through a jump.
+            sprinting = sprintHeld && wish.sqrMagnitude > 0.01f;
             Vector3 target = wish * (sprinting ? sprintSpeed : walkSpeed);
             Vector3 horizontal = new Vector3(velocity.x, 0f, velocity.z);
-            horizontal = Vector3.MoveTowards(horizontal, target, (grounded ? groundAcceleration : airAcceleration) * dt);
+
+            // Steering: on the ground the boots redirect momentum toward the new heading instead
+            // of carrying the old direction sideways (which made W drift diagonally after
+            // turning). The turn rate is limited by boot grip, so walking turns crisply and a
+            // sprint carves a wider arc. Reversals (over ~100 degrees) brake instead.
+            float speedNow = horizontal.magnitude;
+            if (grounded && speedNow > 0.05f && target.sqrMagnitude > 1e-4f && Vector3.Angle(horizontal, target) < 100f)
+            {
+                float maxTurn = Mathf.Min(12f, turnGrip / speedNow) * dt; // radians this frame
+                horizontal = Vector3.RotateTowards(horizontal, target, maxTurn, 0f);
+            }
+            float rate = airAcceleration;
+            if (grounded)
+            {
+                // Speeding up in the direction of travel uses the push-off rate; stopping,
+                // reversing or cutting sideways uses the stronger braking rate. A first step
+                // from standing reaches walking pace quickly, as a real step does.
+                bool speedingUp = target.sqrMagnitude > horizontal.sqrMagnitude && Vector3.Dot(target, horizontal) >= 0f;
+                rate = speedingUp ? groundAcceleration : groundBraking;
+                if (speedingUp && horizontal.magnitude < stepOffSpeed) rate *= 2f;
+            }
+            horizontal = Vector3.MoveTowards(horizontal, target, rate * dt);
             velocity.x = horizontal.x;
             velocity.z = horizontal.z;
 
@@ -323,13 +688,25 @@ namespace MarsSurvival.Interaction
             if (!grounded) velocity.y -= gravity * dt;
             else velocity.y = 0f;
 
-            Vector3 position = transform.position + velocity * Units(1f) * dt;
-            if (TerrainBlocks(transform.position, position))
+            Vector3 current = transform.position;
+            if (current != lastWritten) { exactX = current.x; exactZ = current.z; } // moved by something else (teleport, vehicle)
+            double nextX = exactX + (double)velocity.x * Units(1f) * dt;
+            double nextZ = exactZ + (double)velocity.z * Units(1f) * dt;
+            Vector3 position = new Vector3((float)nextX, current.y + velocity.y * Units(1f) * dt, (float)nextZ);
+            if (TerrainBlocks(current, position))
             {
-                position.x = transform.position.x; position.z = transform.position.z;
+                position.x = current.x; position.z = current.z;
+                nextX = exactX; nextZ = exactZ;
                 velocity.x = 0; velocity.z = 0;
             }
+            Vector3 beforeWalls = position;
             position = ResolveWalls(position);
+            if (position.x != beforeWalls.x || position.z != beforeWalls.z)
+            {
+                // A wall pushed us: keep its correction exactly.
+                nextX += position.x - beforeWalls.x;
+                nextZ += position.z - beforeWalls.z;
+            }
             if (velocity.y > 0f && HitsCeiling(position))
             {
                 // Head under a roof: stop rising instead of passing through it.
@@ -354,6 +731,8 @@ namespace MarsSurvival.Interaction
                 }
             }
             transform.position = position;
+            exactX = nextX; exactZ = nextZ;
+            lastWritten = transform.position;
         }
 
         private void AnimateBody(float dt)
@@ -390,7 +769,8 @@ namespace MarsSurvival.Interaction
         {
             if (driving) LeaveVehicle(position, heading);
             transform.position = position;
-            yaw = heading; pitch = 0; velocity = Vector3.zero; grounded = true;
+            yaw = bodyYaw = heading; pitch = 0; velocity = Vector3.zero; grounded = true;
+            transform.rotation = Quaternion.Euler(0f, bodyYaw, 0f);
             MountCamera();
         }
 
@@ -401,14 +781,17 @@ namespace MarsSurvival.Interaction
             // The eyes sit ahead of the neck pivot, so refine the aim a few times from the eye.
             for (int pass = 0; pass < 4; pass++)
             {
-                Vector3 eye = viewCamera != null && viewCamera.transform.IsChildOf(transform) ? viewCamera.transform.position : neck.position;
-                Vector3 d = point - eye;
+                Vector3 from = eye != null ? eye.position : neck.position;
+                Vector3 d = point - from;
                 if (d.sqrMagnitude < 1e-6f) return;
                 yaw = Mathf.Atan2(d.x, d.z) * Mathf.Rad2Deg;
                 pitch = Mathf.Clamp(-Mathf.Atan2(d.y, new Vector2(d.x, d.z).magnitude) * Mathf.Rad2Deg, -80f, 80f);
+                bodyYaw = yaw;
                 transform.rotation = Quaternion.Euler(0f, yaw, 0f);
                 neck.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+                if (eye != null) eye.localRotation = Quaternion.identity;
             }
+            PlaceCamera(0f);
         }
 
         public bool BoardVehicle()
@@ -430,7 +813,8 @@ namespace MarsSurvival.Interaction
             driving = false;
             position.y = GroundY(position);
             transform.position = position;
-            yaw = heading;
+            yaw = bodyYaw = heading;
+            transform.rotation = Quaternion.Euler(0f, bodyYaw, 0f);
             pitch = 0f;
             velocity = Vector3.zero;
             grounded = true;
@@ -461,7 +845,8 @@ namespace MarsSurvival.Interaction
             Vector3 position = cam.position;
             position.y = GroundY(position);
             transform.position = position;
-            yaw = cam.eulerAngles.y;
+            yaw = bodyYaw = cam.eulerAngles.y;
+            transform.rotation = Quaternion.Euler(0f, bodyYaw, 0f);
             pitch = 0f;
             velocity = Vector3.zero;
             grounded = true;

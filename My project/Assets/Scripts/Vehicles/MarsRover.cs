@@ -57,7 +57,10 @@ namespace MarsSurvival.Vehicles
 
         [Header("Boarding and camera")]
         public float boardDistance = 7f;
+        [Tooltip("Chase camera distance (metres); the scroll wheel changes it between the limits below.")]
         public float cameraDistance = 14f;
+        public float minCameraDistance = 7f;
+        public float maxCameraDistance = 30f;
         public bool showHud = true;
 
         /// <summary>Forward speed in km/h; negative in reverse.</summary>
@@ -89,7 +92,7 @@ namespace MarsSurvival.Vehicles
         private float spin;             // degrees
         private readonly float[] wheelGround = new float[4];
         private readonly float[] nextGround = new float[4];
-        private float cameraYaw, cameraPitch = 16f, baseFieldOfView = 70f;
+        private float cameraYaw, cameraPitch = 16f, baseFieldOfView = 70f, boomLength = -1f;
         private bool playerNear;
         private string notice = "";
         private float noticeUntil;
@@ -237,14 +240,19 @@ namespace MarsSurvival.Vehicles
                 if (Input.GetKey(KeyCode.D)) steerInput += 1f;
                 if (Input.GetKey(KeyCode.A)) steerInput -= 1f;
                 handbrakeHeld = Input.GetKey(KeyCode.Space);
-                if (Cursor.lockState == CursorLockMode.Locked)
+                // The cursor is handled by the astronaut, exactly as on foot: captured with shift
+                // lock (and taken back cleanly after Escape or a menu), free without it, with the
+                // right mouse button turning the view and the pointer staying where it was clicked.
+                // Its mouse turn already includes the camera sensitivity setting.
+                if (player != null)
                 {
-                    cameraYaw += Input.GetAxisRaw("Mouse X") * 2f;
-                    cameraPitch = Mathf.Clamp(cameraPitch - Input.GetAxisRaw("Mouse Y") * 1.5f, 4f, 65f);
+                    Vector2 look = player.LookDelta;
+                    cameraYaw += look.x;
+                    cameraPitch = Mathf.Clamp(cameraPitch - look.y * 0.75f, 4f, 65f);
+                    float scroll = Input.mouseScrollDelta.y;
+                    if (player.ScrollFree && Mathf.Abs(scroll) > 0.01f)
+                        cameraDistance = Mathf.Clamp(cameraDistance * Mathf.Pow(0.88f, scroll), minCameraDistance, maxCameraDistance);
                 }
-                if (Input.GetKeyDown(KeyCode.Escape)) Cursor.lockState = CursorLockMode.None;
-                else if (Input.GetMouseButtonDown(0)) Cursor.lockState = CursorLockMode.Locked;
-                Cursor.visible = Cursor.lockState != CursorLockMode.Locked;
             }
 #endif
             playerNear = !driven && player != null && player.IsReady && !player.IsDriving &&
@@ -268,6 +276,7 @@ namespace MarsSurvival.Vehicles
         {
             if (!player.BoardVehicle()) return;
             driven = true;
+            boomLength = -1f;
             cameraYaw = 0f;
             cameraPitch = 16f;
             if (player.ViewCamera != null) baseFieldOfView = player.ViewCamera.fieldOfView;
@@ -444,7 +453,31 @@ namespace MarsSurvival.Vehicles
             float u = Units;
             Vector3 target = transform.position + Vector3.up * 1.7f * S * u;
             Quaternion orbit = Quaternion.Euler(cameraPitch, heading + cameraYaw, 0f);
-            Vector3 position = target - orbit * Vector3.forward * cameraDistance * u;
+            Vector3 back = -(orbit * Vector3.forward);
+            float wanted = cameraDistance * u;
+            // Pull in at once when a building or the outpost is between the camera and the rover,
+            // and ease back out, so the camera never sits inside walls and does not pop.
+            // The outpost's roofs are one-sided mesh colliders; seen from a module's open end the
+            // ray only meets their inner faces, so back faces must count here.
+            float allowed = wanted;
+            bool backfaces = Physics.queriesHitBackfaces;
+            Physics.queriesHitBackfaces = true;
+            for (int pass = 0; pass < 2; pass++)
+            {
+                int count = pass == 0
+                    ? Physics.SphereCastNonAlloc(target, 0.3f * u, back, hits, wanted, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)
+                    : Physics.RaycastNonAlloc(target, back, hits, wanted, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                for (int i = 0; i < count; i++)
+                {
+                    if (hits[i].collider == null || hits[i].collider.transform.IsChildOf(transform)) continue;
+                    if (terrain != null && hits[i].collider.transform.IsChildOf(terrain.transform)) continue;
+                    if (hits[i].distance > 0f) allowed = Mathf.Min(allowed, Mathf.Max(0f, hits[i].distance - 0.3f * u));
+                }
+            }
+            Physics.queriesHitBackfaces = backfaces;
+            if (boomLength < 0f || allowed <= boomLength) boomLength = allowed;
+            else boomLength = Mathf.Min(allowed, boomLength + 20f * u * Time.deltaTime);
+            Vector3 position = target + back * boomLength;
             float floor = terrain.GetGroundY(position) + 0.6f * u;
             if (position.y < floor) position.y = floor;
             cam.transform.SetPositionAndRotation(position, Quaternion.LookRotation(target - position, Vector3.up));

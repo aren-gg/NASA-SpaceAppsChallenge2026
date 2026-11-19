@@ -59,6 +59,7 @@ namespace MarsSurvival.UI
         private TMP_Text[] vitalLabels;
         private Image[] vitalFills;
         private CanvasGroup[] vitalGroups;
+        private TMP_Text[] vitalValues;
         private PauseMenu pause;
         private EndScreen end;
         // Daily plan (top right) and the morning summary card.
@@ -87,7 +88,7 @@ namespace MarsSurvival.UI
         {
             if (!built) return;
             mission = MarsMissionController.Instance;
-            bool visible = mission != null && mission.Ready && !MarsHomeScreen.IsOpen;
+            bool visible = mission != null && mission.Ready && !MarsHomeScreen.IsOpen && !MarsWardrobe.IsOpen;
             canvas.enabled = visible;
             if (!visible) return;
 
@@ -120,7 +121,8 @@ namespace MarsSurvival.UI
                     Cursor.visible = true;
                 }
             }
-            gameplay.gameObject.SetActive(state != null);
+            // The console replaces the walking HUD while it is open, so nothing shows through its glass.
+            gameplay.gameObject.SetActive(state != null && !mission.PanelOpen && !ScreenOpen);
             if (Time.unscaledTime >= nextRefresh)
             {
                 nextRefresh = Time.unscaledTime + Ui.UiRefreshSeconds;
@@ -173,9 +175,9 @@ namespace MarsSurvival.UI
         // ------------------------------------------------------------------ shell
 
         // Minimal HUD: only what matters now, small and quiet until it needs attention.
-        private const float Small = 17f, Tiny = 15f;
+        private const float Small = 18f, Tiny = 16f;
         // HUD plates (sol block, vitals) and the small key buttons share one backing so they read as one set.
-        private const float ChipAlpha = 0.8f;
+        private const float ChipAlpha = 0.6f;
 
         private void BuildShell()
         {
@@ -230,20 +232,28 @@ namespace MarsSurvival.UI
             Button ok = HintButton(alertPlate, "OK", DismissWarning);
             Place((RectTransform)ok.transform, .88f, .15f, .98f, .85f);
 
-            // Bottom left: suit vitals, oxygen first. Quiet while fine, bright when low.
-            RectTransform vitalsPlate = Plate(gameplay, "Suit vitals", .010f, .015f, .160f, .205f);
+            // Bottom left: suit vitals, oxygen first, with no plate behind them. Each row is an
+            // icon, a label, a big amber CRT readout (100/100) and a gauge in a steel housing.
+            RectTransform vitalsArea = StatBar.Frame(gameplay, "Suit vitals", .012f, .018f, .215f, .265f);
             string[] labels = { "Oxygen", "Health", "Water", "Food", "Rest" };
             ResourceSymbol[] symbols = { ResourceSymbol.Air, ResourceSymbol.Health, ResourceSymbol.Water, ResourceSymbol.Food, ResourceSymbol.Rest };
-            vitalLabels = new TMP_Text[5]; vitalFills = new Image[5]; vitalGroups = new CanvasGroup[5];
+            vitalLabels = new TMP_Text[5]; vitalValues = new TMP_Text[5]; vitalFills = new Image[5]; vitalGroups = new CanvasGroup[5];
             for (int i = 0; i < 5; i++)
             {
                 float top = 1 - i * .2f, bottom = top - .2f;
-                RectTransform row = StatBar.Frame(vitalsPlate, labels[i], .03f, bottom, .97f, top);
+                RectTransform row = StatBar.Frame(vitalsArea, labels[i], 0f, bottom, 1f, top);
                 vitalGroups[i] = row.gameObject.AddComponent<CanvasGroup>();
-                ResourceGlyph icon = ResourceGlyph.Create(row, symbols[i], 24);
-                icon.rectTransform.anchoredPosition = new Vector2(2, 0);
-                vitalLabels[i] = Text(row, labels[i], Tiny, paper, .22f, .38f, 1, 1);
-                vitalFills[i] = Bar(row, .22f, .18f, .98f, .30f, StatBar.ColorOf(ResourceGlyph.ColorFor(symbols[i])));
+                ResourceGlyph icon = ResourceGlyph.Create(row, symbols[i], 26);
+                icon.rectTransform.anchoredPosition = new Vector2(2, 4);
+                vitalLabels[i] = Text(row, labels[i].ToUpperInvariant(), Small, paper, .17f, .42f, .60f, 1);
+                vitalLabels[i].font = UiTypeface.Strong;
+                vitalLabels[i].characterSpacing = 4f;
+                Readable(vitalLabels[i]);
+                vitalValues[i] = Text(row, "100/100", Small * UiTypeface.MonoScale * 1.55f, accent, .50f, .36f, 1, 1.1f);
+                vitalValues[i].font = UiTypeface.Mono;
+                vitalValues[i].alignment = TextAlignmentOptions.MidlineRight;
+                Readable(vitalValues[i]);
+                vitalFills[i] = SteelGauge(row, .17f, .08f, 1f, .38f, StatBar.ColorOf(ResourceGlyph.ColorFor(symbols[i])));
             }
 
             // Bottom right: small eat and drink buttons.
@@ -434,11 +444,13 @@ namespace MarsSurvival.UI
             for (int i = 0; i < 5; i++)
             {
                 double v = Math.Max(0, Math.Min(100, values[i]));
-                vitalLabels[i].text = labels[i] + "  " + v.ToString("0", CultureInfo.InvariantCulture) + "%";
+                vitalValues[i].text = v.ToString("0", CultureInfo.InvariantCulture) + "/100";
                 SetBar(vitalFills[i], v / 100);
                 bool low = v < 40;
-                vitalLabels[i].color = v < 20 ? StatBar.ColorOf(Ui.UiDanger) : low ? StatBar.ColorOf(Ui.UiWarn) : paper;
-                vitalGroups[i].alpha = low ? 1f : 0.62f;
+                Color state = v < 20 ? StatBar.ColorOf(Ui.UiDanger) : low ? StatBar.ColorOf(Ui.UiWarn) : accent;
+                vitalValues[i].color = state;
+                vitalLabels[i].color = low ? state : paper;
+                vitalGroups[i].alpha = 1f;
             }
             RefreshPlan(s);
 
@@ -1006,7 +1018,7 @@ namespace MarsSurvival.UI
 
         private void BuildMap()
         {
-            RectTransform map = Box("Site map", content, WithAlpha(MarsPalette.Mauve, 0.22f));
+            RectTransform map = Box("Site map", content, WithAlpha(MarsTrainer.UI.UiTheme.Hover, 0.22f));
             Height(map, 330);
             double minX = State.playerX, maxX = minX, minZ = State.playerZ, maxZ = minZ;
             MarsOutpost outpost = FindObjectOfType<MarsOutpost>();
@@ -1029,7 +1041,7 @@ namespace MarsSurvival.UI
                 SiteState site = State.sites[i];
                 Button point = Button(map, (i + 1).ToString(CultureInfo.InvariantCulture), () => { mission.SelectSite(site.id); RebuildPanel(); });
                 MapPosition((RectTransform)point.transform, project(site.x, site.z), new Vector2(52, 34));
-                point.GetComponent<Image>().color = site.id == mission.SelectedSiteId ? accent : WithAlpha(MarsPalette.Mauve, site.analyzed ? 0.45f : 1f);
+                point.GetComponent<Image>().color = site.id == mission.SelectedSiteId ? accent : WithAlpha(MarsTrainer.UI.UiTheme.Hover, site.analyzed ? 0.45f : 1f);
             }
             TMP_Text player = Label(map, "●", 27, accent);
             live.Add(() => MapPosition(player.rectTransform, project(State.playerX, State.playerZ), new Vector2(26, 26)));
@@ -1156,13 +1168,25 @@ namespace MarsSurvival.UI
                 scaler.referenceResolution = new Vector2(Ui.UiWidth / uiScale, Ui.UiHeight / uiScale);
             });
 
+            List<RectTransform> cameraCells = Grid(2, 2, 132);
+            RectTransform sensitivityTile = Tile(cameraCells[0], "Camera sensitivity", null);
+            LiveLabel(sensitivityTile, () => MarsTrainer.UI.CameraPrefs.SensitivityText + "x   ·   drag to change", 20, () => paper);
+            const float minSens = MarsTrainer.UI.CameraPrefs.MinSensitivity, maxSens = MarsTrainer.UI.CameraPrefs.MaxSensitivity;
+            Slider(sensitivityTile, Mathf.InverseLerp(minSens, maxSens, MarsTrainer.UI.CameraPrefs.Sensitivity),
+                value => MarsTrainer.UI.CameraPrefs.Sensitivity = Mathf.Lerp(minSens, maxSens, value));
+            RectTransform shiftLockTile = Tile(cameraCells[1], "Shift Lock Switch (Ctrl toggles)",
+                () => MarsTrainer.UI.CameraPrefs.ShiftLockSwitch = !MarsTrainer.UI.CameraPrefs.ShiftLockSwitch);
+            LiveLabel(shiftLockTile, () => !MarsTrainer.UI.CameraPrefs.ShiftLockSwitch ? "Off   ·   click to allow shift lock"
+                : (MarsTrainer.UI.CameraPrefs.ShiftLockOn ? "On, locked   ·   Ctrl frees the mouse" : "On, mouse free   ·   Ctrl locks it"),
+                20, () => MarsTrainer.UI.CameraPrefs.ShiftLockSwitch ? Safe : paper);
+
             RectTransform sound = Card();
             LabelInFlow(sound, "Sound and text size", 22, accent);
             MarsTrainer.UI.MissionSettings.Create(sound);
 
             RectTransform keys = Card();
             LabelInFlow(keys, "Controls", 22, accent);
-            LabelInFlow(keys, "W A S D: move · Mouse: look · Shift: sprint · Space: jump / rover brake · E: pick up, board or leave rover\n1-9, 0: tools · Click / R: use tool · X: stop task · F / G: eat / drink\nTab: console · Esc: back / menu · H: help · P: pause · F5 / F9: save / load · F3: terrain sources", 18, paper);
+            LabelInFlow(keys, "W A S D: move · Mouse: look · C: wardrobe · Scroll: zoom · Ctrl: shift lock · Right mouse: turn camera · Shift: sprint · Space: jump / rover brake · E: pick up, board or leave rover\n1-9, 0: tools · Click / R: use tool · X: stop task · F / G: eat / drink\nTab: console · Esc: back / menu · H: help · P: pause · F5 / F9: save / load · F3: terrain sources", 18, paper);
 
             RectTransform hardware = Card();
             LabelInFlow(hardware, "Three-knob dashboard (Arduino)", 22, accent);
@@ -1283,8 +1307,13 @@ namespace MarsSurvival.UI
         /// <summary>A live display card filling a grid cell. With an action, the whole card is clickable.</summary>
         private RectTransform Tile(RectTransform cell, string title, UnityAction action)
         {
-            RectTransform tile = Box("Tile", cell, StatBar.ColorOf(Ui.UiPanel));
+            // No box per tile: a faint smoky wash (it brightens on hover) under a steel rule.
+            RectTransform tile = NewRect("Tile", cell);
+            Image wash = tile.gameObject.AddComponent<Image>();
+            wash.color = WithAlpha(MarsTrainer.UI.UiTheme.Panel, 0.28f);
+            wash.raycastTarget = false;
             Stretch(tile);
+            Rule(tile);
             VerticalLayoutGroup layout = tile.gameObject.AddComponent<VerticalLayoutGroup>();
             layout.padding = new RectOffset(18, 18, 14, 12);
             layout.spacing = 4;
@@ -1296,15 +1325,11 @@ namespace MarsSurvival.UI
             heading.enableWordWrapping = false;
             heading.overflowMode = TextOverflowModes.Ellipsis;
             if (action == null) return tile;
-            FacetedImage image = tile.GetComponent<FacetedImage>();
+            Image image = tile.GetComponent<Image>();
             image.raycastTarget = true;
             Button button = tile.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
-            ColorBlock colors = button.colors;
-            colors.highlightedColor = new Color(1.35f, 1.25f, 1.2f);
-            colors.selectedColor = colors.highlightedColor;
-            colors.pressedColor = StatBar.ColorOf(Ui.UiCopper);
-            button.colors = colors;
+            button.colors = StatBar.UiStates;
             button.navigation = new Navigation { mode = Navigation.Mode.Automatic };
             button.onClick.AddListener(action);
             controls.Add(button);
@@ -1578,7 +1603,9 @@ namespace MarsSurvival.UI
 
         private RectTransform Card()
         {
-            RectTransform card = Box("Card", content, StatBar.ColorOf(Ui.UiPanel));
+            // Sections are separated by a steel rule, not boxed in.
+            RectTransform card = NewRect("Card", content);
+            Rule(card);
             VerticalLayoutGroup layout = card.gameObject.AddComponent<VerticalLayoutGroup>();
             layout.padding = new RectOffset(20, 20, 16, 16);
             layout.spacing = 10;
@@ -1586,6 +1613,17 @@ namespace MarsSurvival.UI
             layout.childControlWidth = true;
             layout.childForceExpandHeight = false;
             return card;
+        }
+
+        /// <summary>A thin steel rule along the top edge, kept out of layout.</summary>
+        private static void Rule(RectTransform parent)
+        {
+            RectTransform rule = NewRect("Rule", parent);
+            rule.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            Anchor(rule, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -2f), Vector2.zero);
+            Image image = rule.gameObject.AddComponent<Image>();
+            image.color = MarsTrainer.UI.UiTheme.SteelMid;
+            image.raycastTarget = false;
         }
 
         private void Heading(string value) { LabelInFlow(content, Sentence(value), 28, accent); }
@@ -1598,20 +1636,30 @@ namespace MarsSurvival.UI
             else live.Add(() => { label.text = value(); label.color = color(); });
         }
 
-        /// <summary>Console text sizes were authored for the legacy font; the UI kit's font reads best a little larger.</summary>
-        private static float Size(float legacy) { return legacy; }
+        /// <summary>Barlow Condensed is narrow, so HUD text is set a little larger than the old face for the same readability.</summary>
+        private static float Size(float legacy) { return legacy * 1.15f; }
 
         private TMP_Text LabelInFlow(Transform parent, string value, float size, Color color)
         {
             TMP_Text label = Label(parent, value, size, color);
-            label.gameObject.AddComponent<LayoutElement>().minHeight = Size(size) + 8;
+            label.gameObject.AddComponent<LayoutElement>().minHeight = Size(size) * 1.3f + 6;
             return label;
         }
 
         private TMP_Text Label(Transform parent, string value, float size, Color color, bool exact = false)
         {
             TextMeshProUGUI label = NewRect("Text", parent).gameObject.AddComponent<TextMeshProUGUI>();
-            label.font = font;
+            bool readout = size < 28f && UiTypeface.LooksNumeric(value);
+            label.font = size >= 28f ? UiTypeface.Strong : readout ? UiTypeface.Mono : font;
+            if (readout) size *= UiTypeface.MonoScale;
+            if (color == accent)
+            {
+                // Accent text is a section label: small tracked capitals in the semibold face.
+                label.font = UiTypeface.Strong;
+                label.fontStyle = FontStyles.UpperCase;
+                label.characterSpacing = 6f;
+                size *= 0.85f;
+            }
             label.text = value;
             label.fontSize = exact ? size : Size(size);
             label.color = color;
@@ -1642,12 +1690,7 @@ namespace MarsSurvival.UI
             image.raycastTarget = true;
             Button button = rect.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
-            ColorBlock colors = button.colors;
-            colors.highlightedColor = StatBar.ColorOf(Ui.UiButtonFocus);
-            colors.selectedColor = colors.highlightedColor;
-            colors.pressedColor = StatBar.ColorOf(Ui.UiCopper);
-            colors.disabledColor = new Color(0.55f, 0.5f, 0.5f, 0.55f);
-            button.colors = colors;
+            button.colors = StatBar.UiStates;
             button.navigation = new Navigation { mode = Navigation.Mode.Automatic };
             button.onClick.AddListener(action);
             TMP_Text label = Label(rect, text, 19, paper);
@@ -1673,11 +1716,7 @@ namespace MarsSurvival.UI
             image.color = WithAlpha(ink, ChipAlpha);
             Button button = rect.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
-            ColorBlock colors = button.colors;
-            colors.highlightedColor = new Color(1.4f, 1.3f, 1.2f);
-            colors.pressedColor = StatBar.ColorOf(Ui.UiCopper);
-            colors.disabledColor = new Color(1f, 1f, 1f, 0.4f);
-            button.colors = colors;
+            button.colors = StatBar.UiStates;
             button.navigation = new Navigation { mode = Navigation.Mode.None };
             button.onClick.AddListener(action);
             TMP_Text label = Label(rect, text, Tiny, paper, true);
@@ -1713,13 +1752,35 @@ namespace MarsSurvival.UI
         {
             RectTransform track = NewRect("Bar", parent);
             Place(track, x0, y0, x1, y1);
-            track.gameObject.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.12f);
+            track.gameObject.AddComponent<Image>().color = WithAlpha(MarsTrainer.UI.UiTheme.SteelDark, 0.85f);
             RectTransform fill = NewRect("Fill", track);
             Stretch(fill);
             Image image = fill.gameObject.AddComponent<Image>();
             image.color = color;
             image.raycastTarget = false;
             return image;
+        }
+
+        /// <summary>A gauge in a small steel housing: frame, dark well, coloured fill (set with SetBar).</summary>
+        private static Image SteelGauge(Transform parent, float x0, float y0, float x1, float y1, Color color)
+        {
+            RectTransform housing = Box("Gauge", parent, StatBar.ColorOf(Ui.UiSurface));
+            Place(housing, x0, y0, x1, y1);
+            RectTransform well = NewRect("Well", housing);
+            Anchor(well, Vector2.zero, Vector2.one, new Vector2(4f, 4f), new Vector2(-4f, -4f));
+            RectTransform fill = NewRect("Fill", well);
+            Stretch(fill);
+            Image image = fill.gameObject.AddComponent<Image>();
+            image.color = color;
+            image.raycastTarget = false;
+            return image;
+        }
+
+        /// <summary>A dark outline so HUD text with no plate behind it stays readable over bright ground and sky.</summary>
+        private static void Readable(TMP_Text text)
+        {
+            text.outlineWidth = 0.22f;
+            text.outlineColor = new Color32(10, 12, 14, 230);
         }
 
         private static void SetBar(Image fill, double fraction)

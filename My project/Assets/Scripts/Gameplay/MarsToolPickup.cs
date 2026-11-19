@@ -138,9 +138,9 @@ namespace MarsSurvival.Gameplay
             if (player == null) player = FindObjectOfType<MarsAstronautPlayer>();
             if (state == null || mission.InputBlocked || MarsHomeScreen.IsOpen || player == null || !player.IsReady || player.IsDriving || player.ViewCamera == null) return;
 
-            Aimed = FindAimed(player.ViewCamera.transform);
+            Aimed = FindAimed(player.AimTransform);
             string label = null;
-            if (Aimed == null) AimedUse = FindUse(player.ViewCamera.transform, state, out label);
+            if (Aimed == null) AimedUse = FindUse(player.AimTransform, state, out label);
             UseLabel = AimedUse == null ? null : label;
 #if ENABLE_LEGACY_INPUT_MANAGER
             if (Input.GetKeyDown(KeyCode.E) && Aimed != null) mission.Notice = TryPickUp(Aimed);

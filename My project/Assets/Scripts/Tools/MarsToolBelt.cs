@@ -12,7 +12,7 @@ namespace MarsSurvival.Tools
     /// what the crosshair is aimed at, and runs the tool's action.
     ///
     /// Controls (while walking with the mouse captured): keys 1-9 and 0 pick a tool (the
-    /// mouse wheel also works), left click uses it, R is the tool's second action.
+    /// wheel zooms the camera instead), left click uses it, R is the tool's second action.
     /// One click starts an action; it carries on by itself while you keep aiming at the
     /// same thing (short glances away are forgiven), so nothing needs to be held down.
     /// A slot holds its tool once the astronaut has picked it up from its outpost rack
@@ -200,12 +200,24 @@ namespace MarsSurvival.Tools
             if (viewRoot != null) viewRoot.gameObject.SetActive(active);
             if (lamp != null) lamp.enabled = lampOn && active;
             if (!active) RestoreFov();
-            if (cam != null) lastCameraRotation = cam.transform.rotation;
+            if (cam != null) lastCameraRotation = MountFor(cam).rotation;
         }
 
         // ------------------------------------------------------------------ input and work
 
         private bool MouseCaptured { get { return Cursor.lockState == CursorLockMode.Locked; } }
+
+        /// <summary>
+        /// The astronaut's eyes: aiming, reach and the held tool hang off these rather than the
+        /// camera, so they stay with the astronaut when the camera pulls back into third person.
+        /// </summary>
+        private Transform MountFor(Camera cam)
+        {
+            Transform eyes = player != null ? player.AimTransform : null;
+            return eyes != null ? eyes : cam.transform;
+        }
+
+        private Transform Aim { get { return MountFor(ViewCamera); } }
 
         private void HandleInput()
         {
@@ -215,9 +227,7 @@ namespace MarsSurvival.Tools
                 if (Input.GetKeyDown(NumberKeys[i]) || Input.GetKeyDown(PadKeys[i])) Select(i);
             }
             if (!MouseCaptured) return;
-            float wheel = Input.GetAxisRaw("Mouse ScrollWheel");
-            if (wheel > 0.01f) Select(Selected - 1);
-            else if (wheel < -0.01f) Select(Selected + 1);
+            // The scroll wheel zooms the camera (see MarsAstronautPlayer), so tools use the number keys.
 
             if (Input.GetKeyDown(KeyCode.R) && SecondaryLabel != null)
             {
@@ -372,7 +382,7 @@ namespace MarsSurvival.Tools
         private ToolTarget FindTarget()
         {
             ToolTarget target = new ToolTarget();
-            Transform view = ViewCamera.transform;
+            Transform view = Aim;
             Ray ray = new Ray(view.position, view.forward);
             float reach = expedition.Reach;
 
@@ -468,7 +478,7 @@ namespace MarsSurvival.Tools
         {
             if (viewRoot != null) Destroy(viewRoot.gameObject);
             viewRoot = new GameObject("Held Tool").transform;
-            viewRoot.SetParent(cam.transform, false);
+            viewRoot.SetParent(MountFor(cam), false);
             pivots = new Transform[Tools.Length];
             models = new Transform[Tools.Length];
             for (int i = 0; i < Tools.Length; i++)
@@ -556,7 +566,7 @@ namespace MarsSurvival.Tools
             float settle = 1f - Mathf.Exp(-14f * dt);
 
             // Mouse sway: the tool lags a little behind where you look.
-            Quaternion now = ViewCamera.transform.rotation;
+            Quaternion now = Aim.rotation;
             Quaternion delta = Quaternion.Inverse(lastCameraRotation) * now;
             lastCameraRotation = now;
             Vector3 euler = delta.eulerAngles;
@@ -586,7 +596,7 @@ namespace MarsSurvival.Tools
                 velocity = moved.sqrMagnitude < expedition.Units(5f) * expedition.Units(5f) ? moved / dt : Vector3.zero; // ignore teleports
                 velocity /= Mathf.Max(1e-4f, expedition.Units(1f));
             }
-            Vector3 localVelocity = ViewCamera.transform.InverseTransformDirection(velocity);
+            Vector3 localVelocity = Aim.InverseTransformDirection(velocity);
             lag = Vector3.Lerp(lag, Vector3.ClampMagnitude(-localVelocity * 0.006f, 0.05f), 1f - Mathf.Exp(-6f * dt));
 
             float raise = Mathf.Clamp01((Time.unscaledTime - SwitchedAt) / 0.3f);
@@ -701,7 +711,7 @@ namespace MarsSurvival.Tools
 
             // Helmet light just above the eyes; used when the lamp is clipped on (another tool in hand).
             helmetMount = new GameObject("Helmet Lamp Mount").transform;
-            helmetMount.SetParent(cam.transform, false);
+            helmetMount.SetParent(MountFor(cam), false);
             helmetMount.localPosition = new Vector3(0f, 0.09f, 0.12f);
 
             GameObject lampObject = new GameObject("Work Lamp Light");

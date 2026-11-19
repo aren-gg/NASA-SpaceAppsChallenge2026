@@ -35,7 +35,9 @@ namespace MarsSurvival.Gameplay
         public double ClockScale { get; set; } = MissionSettings.TimeScale;
         public bool IsRunning { get { return Simulation != null && Simulation.State.phase == MissionPhase.Running; } }
         // Tasks do not block walking: the simulation already pauses task progress while the astronaut moves.
-        public bool InputBlocked { get { return !IsRunning || Paused || PanelOpen || MapOpen || AdvanceRemaining > 0; } }
+        public bool InputBlocked { get { return !IsRunning || Paused || PanelOpen || MapOpen || WardrobeOpen || AdvanceRemaining > 0; } }
+        /// <summary>True while the wardrobe (avatar customisation) screen is up.</summary>
+        public bool WardrobeOpen { get; set; }
         /// <summary>True while the large map is open (the astronaut stands still, the cursor is free).</summary>
         public bool MapOpen { get; set; }
         private MarsTerrain terrain;
@@ -213,7 +215,7 @@ namespace MarsSurvival.Gameplay
             Dashboard.RequireTakeover(); SetPanelOpen(false); Notice = "Sol 1, 07:00. Your daily plan is on the right: start with breakfast in the galley.";
         }
         public bool SetPowerRequest(PowerChannel channel, double value) { return Simulation != null && Simulation.SetPowerRequest(channel, value); }
-        public void SetPanelOpen(bool value) { PanelOpen = value; Cursor.visible = value || Paused || MapOpen; Cursor.lockState = Cursor.visible ? CursorLockMode.None : CursorLockMode.Locked; }
+        public void SetPanelOpen(bool value) { PanelOpen = value; Cursor.visible = value || Paused || MapOpen || WardrobeOpen; Cursor.lockState = Cursor.visible ? CursorLockMode.None : CursorLockMode.Locked; }
         public void SetPaused(bool value) { Paused = value; if (value) StopAdvance("Paused."); SetPanelOpen(PanelOpen); }
         public void StopAdvance(string reason) { AdvanceRemaining = 0; Notice = reason; }
         public void Advance(double seconds)
@@ -343,6 +345,7 @@ namespace MarsSurvival.Gameplay
                 MissionState s;
                 try { s = ReadSave(SavePath); }
                 catch { s = ReadSave(SavePath + ".bak"); Notice = "Recovered the previous backup save."; }
+                MigrateSaveOrigin(s);
                 Simulation = new MissionSimulation(MissionDataSources.CreateSettings(), s); World.CreateSites(terrain, outpost, s);
                 rover.RestoreMissionPose(new Vector3((float)s.roverX, (float)s.roverY, (float)s.roverZ), (float)s.roverYaw, s.roverOdometer);
                 lastOdometer = rover.OdometerKm;
@@ -352,6 +355,26 @@ namespace MarsSurvival.Gameplay
             }
             catch (Exception e) { Notice = "Load failed: " + e.Message; }
         }
+        /// <summary>
+        /// Saves written before the terrain was centred on the landing site (see
+        /// MarsTerrain.centreOnLandingSite) hold world positions about 50 km out. Move them into
+        /// the centred world, so an old save still puts the astronaut, rover and sites at the outpost.
+        /// </summary>
+        private void MigrateSaveOrigin(MissionState s)
+        {
+            if (terrain == null || outpost == null) return;
+            Vector3 shift = terrain.OriginShift;
+            if (shift.sqrMagnitude < 1f) return;
+            Vector3 home = outpost.transform.position;
+            Vector2 saved = new Vector2((float)s.playerX - home.x, (float)s.playerZ - home.z);
+            Vector2 moved = saved + new Vector2(shift.x, shift.z);
+            const float far = 5000f;
+            if (saved.magnitude < far || moved.magnitude > far) return;
+            s.playerX += shift.x; s.playerZ += shift.z;
+            s.roverX += shift.x; s.roverZ += shift.z;
+            foreach (SiteState site in s.sites) { site.x += shift.x; site.z += shift.z; }
+        }
+
         private static void ValidateSave(MissionState state)
         {
             if (state == null || state.schemaVersion != 1 || state.resources == null || state.astronaut == null || state.equipment == null || state.task == null || state.knobs == null || state.knobs.Length != 3 || !Enum.IsDefined(typeof(MissionLength), state.length))

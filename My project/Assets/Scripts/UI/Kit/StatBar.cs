@@ -43,6 +43,26 @@ namespace MarsTrainer.UI
             return bar;
         }
 
+        /// <summary>
+        /// Button states for the dark theme. UGUI multiplies these with the button colour, so
+        /// hover brightens the slot clearly and press flashes it Mars orange.
+        /// </summary>
+        public static ColorBlock UiStates
+        {
+            get
+            {
+                ColorBlock c = ColorBlock.defaultColorBlock;
+                c.normalColor = Color.white;
+                c.highlightedColor = new Color(1.6f, 1.65f, 1.75f, 1f);
+                c.selectedColor = c.highlightedColor;
+                c.pressedColor = new Color(3.2f, 1.7f, 1.05f, 1f);
+                c.disabledColor = new Color(1f, 1f, 1f, 0.4f);
+                c.colorMultiplier = 1f;
+                c.fadeDuration = 0.08f;
+                return c;
+            }
+        }
+
         public static Color ColorOf(uint value) => new Color32((byte)(value >> 16), (byte)(value >> 8), (byte)value, 255);
         public static RectTransform Frame(Transform parent, string name, float x0, float y0, float x1, float y1, uint color = 0)
         {
@@ -56,7 +76,9 @@ namespace MarsTrainer.UI
         {
             var rect = Frame(parent, content, 0, 0, 1, 1); Height(rect, height);
             var text = rect.gameObject.AddComponent<TextMeshProUGUI>();
-            text.font = UiTypeface.Font;
+            bool readout = size < GameConstants.UiHeading && UiTypeface.LooksNumeric(content);
+            text.font = size >= GameConstants.UiHeading ? UiTypeface.Strong : readout ? UiTypeface.Mono : UiTypeface.Font;
+            if (readout) size *= UiTypeface.MonoScale;
             text.text = content; text.fontSize = size; text.color = ColorOf(GameConstants.UiText);
             text.lineSpacing = GameConstants.UiTextLineSpacing; text.wordSpacing = GameConstants.UiTextWordSpacing;
             text.enableWordWrapping = true; text.raycastTarget = false; text.richText = false;
@@ -81,8 +103,7 @@ namespace MarsTrainer.UI
             Height(rect, GameConstants.UiButton);
             var image = rect.GetComponent<Image>(); image.raycastTarget = true;
             var button = rect.gameObject.AddComponent<Button>(); button.targetGraphic = image;
-            var colors = button.colors; colors.selectedColor = ColorOf(GameConstants.UiButtonFocus);
-            colors.highlightedColor = ColorOf(GameConstants.UiButtonFocus); button.colors = colors;
+            button.colors = UiStates;
             var text = Text(rect, label); text.alignment = TextAlignmentOptions.Center;
             text.margin = Vector4.one * GameConstants.UiGap;
             if (action != null) button.onClick.AddListener(action); return button;

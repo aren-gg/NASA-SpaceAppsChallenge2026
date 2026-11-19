@@ -195,7 +195,7 @@ namespace MarsSurvival.Gameplay
                     // Nothing solid should remain in the open doorway.
                     if (d.Open01 > 0.95f)
                     {
-                        Vector3 eye = player.ViewCamera.transform.position;
+                        Vector3 eye = player.AimTransform.position;
                         RaycastHit hit;
                         bool blocked = Physics.Raycast(eye, (centre - eye).normalized, out hit, Vector3.Distance(eye, centre) + 1.0f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
                         Check(!blocked, name + " side " + side + ": doorway clear when open", blocked ? "hit " + hit.collider.name + " in " + hit.collider.transform.parent.name : "");
@@ -264,12 +264,12 @@ namespace MarsSurvival.Gameplay
                 if (!found) continue;
                 Place(stand, c);
                 yield return Frames(3);
-                MarsBaseTool aimed = belt.FindAimed(player.ViewCamera.transform);
+                MarsBaseTool aimed = belt.FindAimed(player.AimTransform);
                 Check(aimed == tool, MarsBaseTool.NameOf(id) + ": looking at it selects it", aimed == null ? "nothing aimed" : aimed.toolId);
                 string msg = belt.TryPickUp(tool);
                 yield return new WaitForSeconds(0.8f); // the hotbar raises a newly selected tool into view
                 Transform held = hotbar == null ? null : hotbar.HeldView;
-                bool inHand = held != null && held.gameObject.activeInHierarchy && hotbar.Current.Id == id && held.IsChildOf(player.ViewCamera.transform);
+                bool inHand = held != null && held.gameObject.activeInHierarchy && hotbar.Current.Id == id && held.IsChildOf(player.AimTransform);
                 bool visible = false;
                 if (inHand)
                 {
@@ -465,7 +465,7 @@ namespace MarsSurvival.Gameplay
             mission.Execute("eat"); Check(s.astronaut.satiety <= sat, "Eating away from the galley is refused", mission.Notice);
             Place(Floor(-1.4f, 1.5f), MarsWorldTasks.World(new Vector3(-2.7f, 1.34f, 3.12f))); yield return Frames(3);
             Check(mission.Context.station == "galley", "Galley detected in the command hub", mission.Context.station);
-            MarsTaskTarget locker = mission.Tools.FindUse(player.ViewCamera.transform, s, out string useLabel);
+            MarsTaskTarget locker = mission.Tools.FindUse(player.AimTransform, s, out string useLabel);
             Check(locker != null && (locker.kind == MarsTaskTarget.Kind.Food || locker.kind == MarsTaskTarget.Kind.Water), "Looking at the galley offers E to eat or drink", useLabel);
             mission.Execute("eat"); Check(s.astronaut.satiety > sat, "Eat at the galley food locker", mission.Notice);
             mission.Execute("drink"); Check(s.astronaut.hydration > hyd, "Drink at the galley water dispenser", mission.Notice);

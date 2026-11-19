@@ -34,6 +34,13 @@ namespace MarsSurvival.World
         public bool manageFogAndSky = true;
         [Tooltip("Chunks stream around this transform. Defaults to the main camera.")]
         public Transform viewer;
+        [Tooltip("At play time, slide the terrain so the Curiosity landing site (where the outpost is built) sits at the " +
+                 "world origin. The site is about 50 km from the dataset's origin, and that far out 32-bit positions only " +
+                 "hold steps of 2-4 mm: walking drifted sideways and close surfaces (door leaves, frames) flickered.")]
+        public bool centreOnLandingSite = true;
+        private bool centred;
+        /// <summary>How far the terrain was moved at startup (add it to a position from before the move).</summary>
+        public Vector3 OriginShift { get; private set; }
 
         /// <summary>Live counters for the explicit data budget.</summary>
         public struct TerrainStats
@@ -151,6 +158,8 @@ namespace MarsSurvival.World
                 Debug.LogWarning("MarsTerrain: heightmap size minus one is not a multiple of chunkCells; " +
                                  "the east and north remainder is not drawn.", this);
             }
+
+            CentreOnLandingSite();
 
             chunkSizeX = chunkCells * map.CellX;
             chunkSizeZ = chunkCells * map.CellZ;
@@ -358,6 +367,21 @@ namespace MarsSurvival.World
                 DestroyChunk(chunk);
             }
             stats.pooledChunks = pool.Count;
+        }
+
+        /// <summary>
+        /// Floating origin, done once before anything else is placed: every terrain query goes
+        /// through this transform, and the outpost, astronaut and rover are all placed from
+        /// those queries afterwards, so the whole play area ends up around (0, 0, 0).
+        /// </summary>
+        private void CentreOnLandingSite()
+        {
+            if (!centreOnLandingSite || centred || !Application.isPlaying) return;
+            centred = true;
+            Vector3 site = LatLonToWorld(MarsSurvival.TimeAndWeather.MarsTime.CuriosityLatitude,
+                MarsSurvival.TimeAndWeather.MarsTime.CuriosityLongitudeEast);
+            OriginShift = new Vector3(-site.x, 0f, -site.z);
+            transform.position += OriginShift;
         }
 
         private Chunk CreateChunkObject()

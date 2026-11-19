@@ -66,23 +66,24 @@ namespace MarsTrainer.Sim
         public const float LookShellHeight = .32f;
         public const float LookHoursPerSol = 24f;
         public const float LookPreviewHour = 16f;
-        public const float UiFacetCut = 12;
+        public const float UiFacetCut = 6;
         public const float UiPlateInset = 4;
         public const int UiBadgeSegments = 12;
         public const float UiBadgeDiameter = 48;
         public const float UiBadgeInset = 8;
         public const float UiHudVitalHeight = 56;
         public const float UiHudVitalGap = 8;
-        public const uint UiIconInk = 0x362426;
-        public const uint UiHealth = 0xEF9E84;
-        public const uint UiFood = 0xB1CA7D;
-        public const uint UiWater = 0x8CBDEA;
-        public const uint UiRest = 0xE4C587;
-        public const uint UiPower = 0xF2CC72;
-        public const uint UiRadiation = 0xBFB6D3;
-        public const uint UiCopper = 0xD4A278;
+        public const uint UiIconInk = 0x15181C;
+        public const uint UiHealth = 0xFF7F72;
+        public const uint UiFood = 0x9ED36A;
+        public const uint UiWater = 0x5EC0F2;
+        public const uint UiRest = 0xB7A1FF;
+        public const uint UiPower = 0xF5C451;
+        public const uint UiRadiation = 0xC9A2FF;
+        /// <summary>Historical name: now the amber CRT accent (see MarsTrainer.UI.UiTheme).</summary>
+        public const uint UiCopper = 0xFFB547;
         public const float UiKitActionWidth = 380;
-        public const uint UiButtonFocus = 0x815E45;
+        public const uint UiButtonFocus = 0x4C535B;
         // P10 presentation tokens, in reference-canvas pixels. No simulation balance here.
         public const float UiWidth = 1920;
         public const float UiHeight = 1080;
@@ -103,14 +104,14 @@ namespace MarsTrainer.Sim
         public const float UiRefreshSeconds = 0.2f;
         public const float UiDialDegrees = 180;
         public const double UiDialMaxRate = 60;
-        public const uint UiSurface = 0x382729;
-        public const uint UiPanel = 0x503332;
-        public const uint UiText = 0xFFF2DB;
-        public const uint UiSafe = 0x8DD9D0;
-        public const uint UiWarn = 0xFFD278;
-        public const uint UiDanger = 0xFFAF82;
-        public const uint UiCritical = 0xFFB6DC;
-        public const uint UiButtonColor = 0x80523B;
+        public const uint UiSurface = 0x15181C;
+        public const uint UiPanel = 0x2A2E33;
+        public const uint UiText = 0xECE6DA;
+        public const uint UiSafe = 0x8FD694;
+        public const uint UiWarn = 0xFFD166;
+        public const uint UiDanger = 0xFF5A4A;
+        public const uint UiCritical = 0xFF3B3B;
+        public const uint UiButtonColor = 0x3A3F46;
         // P9 world and EVA balance. Distances are Unity metres; tank time is at clock speed 1.
         public const int WorldCells = 128;
         public const int WorldChunkCells = 32;

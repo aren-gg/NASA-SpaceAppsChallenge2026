@@ -164,13 +164,13 @@ namespace MarsSurvival.UI
             // MarsTrainer UI typeface (Counter-Strike UI SDF), shared with the mission HUD.
             font = MarsTrainer.UI.UiTypeface.Font;
             if (font == null) font = TMP_Settings.defaultFontAsset;
-            roundFill = RoundedSprite(64, 22f, 0f);
-            roundRing = RoundedSprite(64, 22f, 3f);
+            roundFill = MarsTrainer.UI.UiTheme.Slot(false);
+            roundRing = MarsTrainer.UI.UiTheme.Slot(true);
             EnsureEventSystem();
             BuildFade();
             BuildMenu();
             openedAt = Time.unscaledTime;
-            fade.color = WithAlpha(MarsPalette.DeepPurple, 1f);
+            fade.color = WithAlpha(MarsTrainer.UI.UiTheme.Ink, 1f);
         }
 
         private float Units(float meters)
@@ -222,7 +222,7 @@ namespace MarsSurvival.UI
             if (state == State.Open)
             {
                 // Fade in from deep purple, then slide the menu items in one after another.
-                fade.color = WithAlpha(MarsPalette.DeepPurple, 1f - Smooth(now / 1.2f));
+                fade.color = WithAlpha(MarsTrainer.UI.UiTheme.Ink, 1f - Smooth(now / 1.2f));
                 for (int i = 0; i < reveals.Count; i++)
                 {
                     float t = Smooth(Mathf.Clamp01((now - reveals[i].delay) / 0.7f));
@@ -232,7 +232,7 @@ namespace MarsSurvival.UI
                 if (hint != null)
                 {
                     float pulse = 0.5f + 0.5f * Mathf.Sin(now * 2.4f);
-                    hint.color = WithAlpha(MarsPalette.PalePink, Mathf.Lerp(0.35f, 0.75f, pulse) * Smooth((now - 1.4f) / 0.8f));
+                    hint.color = WithAlpha(MarsTrainer.UI.UiTheme.Text, Mathf.Lerp(0.35f, 0.75f, pulse) * Smooth((now - 1.4f) / 0.8f));
                 }
 
 #if ENABLE_LEGACY_INPUT_MANAGER
@@ -268,7 +268,7 @@ namespace MarsSurvival.UI
 
         private IEnumerator CloseRoutine()
         {
-            Color purple = MarsPalette.DeepPurple;
+            Color purple = MarsTrainer.UI.UiTheme.Ink;
             float start = fade.color.a;
             for (float t = 0f; t < 1f; t += Time.unscaledDeltaTime / 0.45f)
             {
@@ -350,9 +350,9 @@ namespace MarsSurvival.UI
         {
             menuCanvas = NewCanvas("Home Screen UI", 100);
             Transform root = menuCanvas.transform;
-            Color pink = MarsPalette.PalePink;
-            Color orange = MarsPalette.WarmOrange;
-            Color purple = MarsPalette.DeepPurple;
+            Color pink = MarsTrainer.UI.UiTheme.Text;
+            Color orange = MarsTrainer.UI.UiTheme.Accent;
+            Color purple = MarsTrainer.UI.UiTheme.Ink;
 
             // Soft deep-purple shade behind the menu so the text reads over any terrain.
             RawImage shade = NewRect("Shade", root).gameObject.AddComponent<RawImage>();
@@ -422,8 +422,8 @@ namespace MarsSurvival.UI
 
         private void BuildHelp(Transform root)
         {
-            Color pink = MarsPalette.PalePink;
-            Color purple = MarsPalette.DeepPurple;
+            Color pink = MarsTrainer.UI.UiTheme.Text;
+            Color purple = MarsTrainer.UI.UiTheme.Ink;
 
             RectTransform overlay = NewRect("How To Play", root);
             Stretch(overlay);
@@ -443,9 +443,9 @@ namespace MarsSurvival.UI
             Image card = helpCard.gameObject.AddComponent<Image>();
             card.sprite = roundFill;
             card.type = Image.Type.Sliced;
-            card.color = WithAlpha(Color.Lerp(purple, MarsPalette.Mauve, 0.12f), 0.97f);
+            card.color = WithAlpha(Color.Lerp(purple, MarsTrainer.UI.UiTheme.Hover, 0.12f), 0.97f);
 
-            TMP_Text heading = NewText(helpCard, "How to play", 40, MarsPalette.WarmOrange, FontStyle.Bold, TextAnchor.UpperLeft);
+            TMP_Text heading = NewText(helpCard, "How to play", 40, MarsTrainer.UI.UiTheme.Accent, FontStyle.Bold, TextAnchor.UpperLeft);
             TopLeft(heading.rectTransform, new Vector2(64f, -56f), new Vector2(700f, 50f));
 
             string[,] rows =
@@ -496,7 +496,7 @@ namespace MarsSurvival.UI
 
         private RectTransform MakeButton(Transform parent, string label, ButtonStyle style, UnityAction onClick)
         {
-            Color pink = MarsPalette.PalePink;
+            Color pink = MarsTrainer.UI.UiTheme.Text;
             RectTransform rect = NewRect(label, parent);
             Image background = rect.gameObject.AddComponent<Image>();
             background.sprite = style == ButtonStyle.Secondary ? roundRing : roundFill;
@@ -518,9 +518,9 @@ namespace MarsSurvival.UI
             switch (style)
             {
                 case ButtonStyle.Primary:
-                    fx.backgroundNormal = MarsPalette.WarmOrange;
-                    fx.backgroundHover = Color.Lerp(MarsPalette.WarmOrange, pink, 0.4f);
-                    fx.labelNormal = fx.labelHover = MarsPalette.DeepPurple;
+                    fx.backgroundNormal = MarsTrainer.UI.UiTheme.Accent;
+                    fx.backgroundHover = Color.Lerp(MarsTrainer.UI.UiTheme.Accent, pink, 0.4f);
+                    fx.labelNormal = fx.labelHover = MarsTrainer.UI.UiTheme.Ink;
                     break;
                 case ButtonStyle.Secondary:
                     fx.backgroundNormal = WithAlpha(pink, 0.6f);
@@ -576,7 +576,7 @@ namespace MarsSurvival.UI
         private TMP_Text NewText(Transform parent, string content, int size, Color color, FontStyle style, TextAnchor anchor)
         {
             TextMeshProUGUI text = NewRect("Text", parent).gameObject.AddComponent<TextMeshProUGUI>();
-            text.font = font;
+            text.font = style == FontStyle.Bold || size >= 40 ? MarsTrainer.UI.UiTypeface.Strong : font;
             text.text = content;
             text.fontSize = size;
             text.fontStyle = FontStyles.Normal;
@@ -656,7 +656,7 @@ namespace MarsSurvival.UI
             texture.wrapMode = TextureWrapMode.Clamp;
             texture.filterMode = FilterMode.Bilinear;
             texture.hideFlags = HideFlags.DontSave;
-            Color32 purple = MarsPalette.DeepPurple;
+            Color32 purple = MarsTrainer.UI.UiTheme.Ink;
             for (int x = 0; x < Width; x++)
             {
                 float t = x / (Width - 1f);

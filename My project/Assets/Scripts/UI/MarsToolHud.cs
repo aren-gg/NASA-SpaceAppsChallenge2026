@@ -61,8 +61,8 @@ namespace MarsSurvival.UI
             belt = GetComponent<MarsToolBelt>();
             font = MarsTrainer.UI.UiTypeface.Font;
             if (font == null) font = TMP_Settings.defaultFontAsset;
-            round = RoundedSprite(64, 18f, 0f);
-            ring = RoundedSprite(64, 18f, 3f);
+            round = MarsTrainer.UI.UiTheme.Slot(false);
+            ring = MarsTrainer.UI.UiTheme.Slot(true);
             circle = CircleSprite(128, 0.36f);
             disc = CircleSprite(64, 0f);
         }
@@ -83,15 +83,15 @@ namespace MarsSurvival.UI
             scaler.matchWidthOrHeight = 1f;
             canvasRect = (RectTransform)root.transform;
 
-            Color pink = MarsPalette.PalePink;
-            Color purple = MarsPalette.DeepPurple;
-            Color orange = MarsPalette.WarmOrange;
+            Color pink = MarsTrainer.UI.UiTheme.Text;
+            Color purple = MarsTrainer.UI.UiTheme.Ink;
+            Color orange = MarsTrainer.UI.UiTheme.Accent;
 
             // Low-oxygen glow around the screen edges (drawn first, under everything).
             warning = NewRect("Low Oxygen Glow", canvasRect, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero).gameObject.AddComponent<RawImage>();
             Stretch(warning.rectTransform);
             warning.texture = VignetteTexture();
-            warning.color = WithAlpha(MarsPalette.Terracotta, 0f);
+            warning.color = WithAlpha(MarsTrainer.UI.UiTheme.Danger, 0f);
             warning.raycastTarget = false;
 
             // Camera viewfinder: four corner brackets.
@@ -241,8 +241,8 @@ namespace MarsSurvival.UI
 
             float now = Time.unscaledTime;
             float dt = Time.unscaledDeltaTime;
-            Color pink = MarsPalette.PalePink;
-            Color orange = MarsPalette.WarmOrange;
+            Color pink = MarsTrainer.UI.UiTheme.Text;
+            Color orange = MarsTrainer.UI.UiTheme.Accent;
             MarsTool tool = belt.Current;
             ToolAction plan = belt.Plan;
             string orangeHex = "#" + ColorUtility.ToHtmlStringRGB(orange);
@@ -334,9 +334,11 @@ namespace MarsSurvival.UI
                 p.y = Mathf.Lerp(p.y, selected ? 10f : 0f, slotEase);
                 slots[i].anchoredPosition = p;
                 bool carried = belt.Carried(i);
-                slotBackgrounds[i].color = selected ? MarsPalette.Mauve : WithAlpha(MarsPalette.DeepPurple, carried ? 0.75f : 0.45f);
+                slotBackgrounds[i].color = selected ? MarsTrainer.UI.UiTheme.Hover : WithAlpha(MarsTrainer.UI.UiTheme.Panel, carried ? 0.85f : 0.55f);
                 slotIcons[i].color = carried ? Color.white : new Color(1f, 1f, 1f, 0.22f);
-                slotRings[i].enabled = selected;
+                // Every slot has a hairline edge; the selected one turns Mars orange.
+                slotRings[i].enabled = true;
+                slotRings[i].color = selected ? MarsTrainer.UI.UiTheme.Accent : MarsTrainer.UI.UiTheme.Line;
             }
             toolName.text = belt.CurrentCarried ? tool.Name : tool.Name + "  (empty slot)";
             toolHint.text = tool.Hint;
@@ -426,7 +428,7 @@ namespace MarsSurvival.UI
                 text.text = list[i].text;
                 text.rectTransform.anchoredPosition = local + new Vector2(0f, 30f + age * 70f + used * 36f);
                 float alpha = Mathf.Clamp01((1.6f - age) / 0.5f);
-                text.color = WithAlpha(MarsPalette.WarmOrange, alpha);
+                text.color = WithAlpha(MarsTrainer.UI.UiTheme.Accent, alpha);
                 text.rectTransform.localScale = Vector3.one * (1f + 0.4f * Mathf.Clamp01(1f - age / 0.2f));
                 used++;
             }
@@ -458,7 +460,7 @@ namespace MarsSurvival.UI
             {
                 Span(gameFill.rectTransform, 0f, game.Fill, 0f, 1f);
                 Span(heatFill.rectTransform, 0f, Mathf.Clamp01(game.Heat), 0f, 1f);
-                heatFill.color = Color.Lerp(MarsPalette.WarmOrange, new Color(1f, 0.35f, 0.3f), Mathf.Clamp01((game.Heat - 0.5f) * 2f));
+                heatFill.color = Color.Lerp(MarsTrainer.UI.UiTheme.Accent, new Color(1f, 0.35f, 0.3f), Mathf.Clamp01((game.Heat - 0.5f) * 2f));
                 gameCount.text = game.Jammed ? "JAM" : Mathf.RoundToInt(game.Fill * 100f) + "%";
             }
             else
@@ -522,7 +524,9 @@ namespace MarsSurvival.UI
         private TMP_Text Label(Transform parent, string content, int size, Color color, FontStyle style, TextAnchor anchor)
         {
             TextMeshProUGUI text = NewRect("Text", parent, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(100f, 30f)).gameObject.AddComponent<TextMeshProUGUI>();
-            text.font = font;
+            bool readout = style != FontStyle.Bold && MarsTrainer.UI.UiTypeface.LooksNumeric(content);
+            text.font = style == FontStyle.Bold ? MarsTrainer.UI.UiTypeface.Strong : readout ? MarsTrainer.UI.UiTypeface.Mono : font;
+            if (readout) size = Mathf.RoundToInt(size * MarsTrainer.UI.UiTypeface.MonoScale);
             text.text = content;
             text.fontSize = size;
             text.fontStyle = FontStyles.Normal;
@@ -542,7 +546,7 @@ namespace MarsSurvival.UI
         private static void AddShadow(TMP_Text text)
         {
             text.outlineWidth = 0.18f;
-            text.outlineColor = WithAlpha(MarsPalette.DeepPurple, 0.9f);
+            text.outlineColor = WithAlpha(MarsTrainer.UI.UiTheme.Ink, 0.9f);
         }
 
         private static Color WithAlpha(Color color, float alpha)

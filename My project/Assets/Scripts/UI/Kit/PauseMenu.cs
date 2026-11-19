@@ -12,6 +12,8 @@ namespace MarsTrainer.UI
         private bool wasPaused;
         private GameObject previousFocus;
         public System.Action Closed { get; set; }
+        /// <summary>Set by the game's wardrobe; the pause menu's Wardrobe button calls it.</summary>
+        public static System.Action OpenWardrobe { get; set; }
         public void Bind(SimClock source)
         {
             clock = source; resume.onClick.RemoveAllListeners(); resume.onClick.AddListener(Close);
@@ -42,6 +44,8 @@ namespace MarsTrainer.UI
             ControlGuide.Create(content, "Exploration Controls", ControlGuide.Exploration, 2);
             ControlGuide.Create(content, "Menu Controls", ControlGuide.Menus, 2);
             MissionSettings.Create(content);
+            CameraSettings.Create(content);
+            StatBar.Button(content, "Wardrobe [C]", () => { if (OpenWardrobe != null) OpenWardrobe(); });
             view.resume = StatBar.Button(content, "Back to Mars [Escape]", null);
             panel.gameObject.SetActive(false); return view;
         }

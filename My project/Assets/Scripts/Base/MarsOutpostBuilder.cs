@@ -334,10 +334,15 @@ namespace MarsSurvival.Base
         /// <summary>Dark red trim around a doorway, standing slightly proud of both wall faces.</summary>
         private void Frame(int side, FloorRect r, float o0, float o1, float top)
         {
-            const float w = 0.1f;
-            WallPiece(side, r, o0 - w, o0, 0f, top + w, DarkRed, -0.04f);
-            WallPiece(side, r, o1, o1 + w, 0f, top + w, DarkRed, -0.04f);
-            WallPiece(side, r, o0, o1, top, top + w, DarkRed, -0.04f);
+            // The trim reaches a hair into the doorway (e) so its faces never lie in the same
+            // plane as the wall's own doorway edges or the underside of the wall above the door
+            // (coplanar faces z-fight and flicker). The head piece sits a few millimetres behind
+            // the jambs' faces for the same reason where the two overlap. The sliding leaves'
+            // edges and tops tuck inside this trim when shut.
+            const float w = 0.1f, e = 0.015f;
+            WallPiece(side, r, o0 - w, o0 + e, 0f, top + w, DarkRed, -0.04f);
+            WallPiece(side, r, o1 - e, o1 + w, 0f, top + w, DarkRed, -0.04f);
+            WallPiece(side, r, o0, o1, top - e, top + w - 0.005f, DarkRed, -0.035f);
         }
 
         private readonly List<MarsOutpostDoor> doors = new List<MarsOutpostDoor>();
