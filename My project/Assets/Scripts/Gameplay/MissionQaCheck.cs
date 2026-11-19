@@ -663,7 +663,7 @@ namespace MarsSurvival.Gameplay
             var field = typeof(MarsMissionHud).GetField("guide", BindingFlags.NonPublic | BindingFlags.Instance);
             var text = field != null ? field.GetValue(hud) as TMPro.TMP_Text : null;
             Check(text != null && text.text.StartsWith("Next: "), "HUD shows the next-step guide", text != null ? text.text : "missing");
-            Check(text != null && text.font != null && text.font.name.Contains("Electrolize"), "HUD uses the Electrolize font", text != null && text.font != null ? text.font.name : "no font");
+            Check(text != null && text.font != null && text.font.name.Contains("Barlow Condensed"), "HUD uses the Barlow Condensed font", text != null && text.font != null ? text.font.name : "no font");
             var vitals = typeof(MarsMissionHud).GetField("vitalLabels", BindingFlags.NonPublic | BindingFlags.Instance);
             var bars = vitals != null ? vitals.GetValue(hud) as TMPro.TMP_Text[] : null;
             Check(bars != null && bars.Length == 5 && bars[0].text.StartsWith("Oxygen"), "HUD shows the five suit vitals (oxygen first)");

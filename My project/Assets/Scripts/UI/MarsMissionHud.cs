@@ -26,8 +26,8 @@ using Ui = MarsTrainer.Sim.GameConstants;
 namespace MarsSurvival.UI
 {
     /// <summary>
-    /// The mission HUD and outpost console, drawn with the MarsTrainer UI kit in the Electrolize
-    /// typeface. The HUD stays minimal: a small sol / battery / radiation block top left, quiet key
+    /// The mission HUD and outpost console, drawn with the MarsTrainer UI kit in the Barlow Condensed
+    /// typeface (VT323 for readouts). The HUD stays minimal: a small sol / battery / radiation block top left, quiet key
     /// hints top right, one warning at a time, suit vitals (oxygen first) that brighten only when
     /// low, small eat/drink buttons and one fading message line. The console (Tab) holds the three
     /// power knobs, crew care, greenhouse, equipment, research, field sites, radio and learning as
