@@ -7,7 +7,9 @@ namespace MarsTrainer.UI
     /// The NASA-punk gauge used across the UI: a row of slanted segments. Lit segments take the
     /// Graphic colour, empty ones sit dark. With <see cref="Hazard"/> on (a vital running out),
     /// the empty segments carry pulsing red hazard stripes so the warning is not colour alone.
-    /// Flat polygons only.
+    /// When a segment goes out it flashes white and fades, so a value ticking down is noticed
+    /// without reading the number; the hazard pulse speeds up as the value nears zero. Both
+    /// settle to a steady look while <see cref="ReducedMotion"/> is on. Flat polygons only.
     /// </summary>
     [RequireComponent(typeof(CanvasRenderer))]
     public sealed class SegmentGauge : MaskableGraphic
@@ -20,6 +22,12 @@ namespace MarsTrainer.UI
         public float Gap = 2f;
         public Color Empty = new Color(0.10f, 0.11f, 0.13f, 0.78f);
         private float pulse = -1f;
+        private int shownLit = -1, flashFrom, flashTo;
+        private float flashStart = -10f;
+        private const float FlashSeconds = 0.6f;
+
+        /// <summary>Set by the game from its reduced-motion option: no flashes, no pulsing.</summary>
+        public static bool ReducedMotion;
 
         public int Segments { get => segments; set { if (segments != value) { segments = value; SetVerticesDirty(); } } }
 
@@ -29,7 +37,13 @@ namespace MarsTrainer.UI
             set
             {
                 float v = Mathf.Clamp01(value);
-                if (Lit(v) != Lit(fraction)) SetVerticesDirty();
+                int now = Lit(v);
+                if (shownLit >= 0 && now < shownLit && !ReducedMotion)
+                {
+                    flashFrom = now; flashTo = shownLit; flashStart = Time.unscaledTime;
+                }
+                if (now != shownLit) SetVerticesDirty();
+                shownLit = now;
                 fraction = v;
             }
         }
@@ -48,10 +62,17 @@ namespace MarsTrainer.UI
             return value <= 0f ? 0 : Mathf.Clamp(Mathf.CeilToInt(value * n - 0.001f), 1, n);
         }
 
+        private bool Flashing => Time.unscaledTime - flashStart < FlashSeconds;
+
         private void Update()
         {
+            if (Flashing) SetVerticesDirty();
             if (!hazard) return;
-            float p = 0.55f + 0.45f * Mathf.Sin(Time.unscaledTime * 6f);
+            if (ReducedMotion) { if (pulse != 0.9f) { pulse = 0.9f; SetVerticesDirty(); } return; }
+            // Faster as the value nears zero: about 1 beat a second at the threshold, 3 near empty.
+            float urgency = 1f - Mathf.Clamp01(fraction / 0.2f);
+            float speed = Mathf.Lerp(6f, 19f, urgency);
+            float p = 0.55f + 0.45f * Mathf.Sin(Time.unscaledTime * speed);
             if (Mathf.Abs(p - pulse) > 0.04f) { pulse = p; SetVerticesDirty(); }
         }
 
@@ -71,7 +92,10 @@ namespace MarsTrainer.UI
             {
                 float x = r.xMin + k * (width + Gap);
                 bool on = k < lit;
-                Leaning(mesh, x, width, r.yMin, r.yMax, lean, on ? color : Empty);
+                Color tint = on ? color : Empty;
+                if (!on && k >= flashFrom && k < flashTo && Flashing)
+                    tint = Color.Lerp(Color.white, Empty, (Time.unscaledTime - flashStart) / FlashSeconds);
+                Leaning(mesh, x, width, r.yMin, r.yMax, lean, tint);
                 if (!on && hazard) Leaning(mesh, x + width * 0.3f, width * 0.4f, r.yMin, r.yMax, lean, stripe);
             }
         }

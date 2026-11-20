@@ -22,7 +22,10 @@ namespace MarsSurvival.Base
     ///                           Airlock - landing - ramp
     ///
     /// Each room stands for one or more survival systems in AGENT_IMPLEMENTATION_GUIDE.md.
-    /// The shells are white with dark red accents: the hub is a twelve-sided dome, the
+    /// When the Blender-made modules are present (<see cref="OutpostModules"/>) they are the
+    /// walls, roofs and tunnels, inside and out, and this builder adds only the floors'
+    /// colliders, furniture, tools, sliding doors and lamps. Without them it falls back to its
+    /// own shells, which are white with dark red accents: the hub is a twelve-sided dome, the
     /// other modules are capsules with vaulted roofs (two with rounded ends), and the
     /// tunnels are tubes. Furniture keeps the eight palette colours of the tool kit.
     /// Walls, floors and furniture get box colliders, which is what the astronaut's
@@ -123,8 +126,16 @@ namespace MarsSurvival.Base
             materials = CreateMaterials();
         }
 
+        /// <summary>
+        /// True when the Blender-made modules (<see cref="OutpostModules"/>) are present. They are
+        /// the walls, roofs and tunnels, inside and out; the builder then adds only what lives in
+        /// the rooms (furniture, tools, sliding doors, lamps) and the floor colliders.
+        /// </summary>
+        private bool moduled;
+
         public void Build()
         {
+            moduled = OutpostModules.Available;
             BuildHub();
             BuildMedical();
             BuildQuarters();
@@ -136,6 +147,8 @@ namespace MarsSurvival.Base
             BuildAirlock();
             BuildTunnels();
             BuildExterior();
+            // The printed modules (Blender models) are the walls, roofs and tunnels around the rooms built above.
+            if (moduled) OutpostModules.Attach(root, owned);
         }
 
         // ------------------------------------------------------------------ materials
@@ -302,6 +315,12 @@ namespace MarsSurvival.Base
 
         private void Wall(int side, FloorRect r, float height, int material, params Opening[] openings)
         {
+            if (moduled)
+            {
+                // The module's printed end wall is the wall; it has the doorway built in.
+                foreach (Opening o in openings) if (o.kind == 1) SlidingDoor(side, r, o);
+                return;
+            }
             bool alongZ = side == West || side == East;
             float start = alongZ ? r.z0 : r.x0 - T, end = alongZ ? r.z1 : r.x1 + T;
             Array.Sort(openings, (a, b) => a.centre.CompareTo(b.centre));
@@ -346,6 +365,8 @@ namespace MarsSurvival.Base
         }
 
         private readonly List<MarsOutpostDoor> doors = new List<MarsOutpostDoor>();
+        /// <summary>How far a door moves out from the old 25 cm wall's middle into a printed wall.</summary>
+        private const float ModuleDoorShift = 0.07f, HubDoorShift = 0.475f;
 
         private MarsOutpostDoor SlidingDoor(int side, FloorRect r, Opening o)
         {
@@ -355,8 +376,11 @@ namespace MarsSurvival.Base
                 doorLeafX = DoorLeafMesh(false, o.width * 0.5f, o.top);
                 doorLeafZ = DoorLeafMesh(true, o.width * 0.5f, o.top);
             }
-            float mid = side == West ? r.x0 - T * 0.5f : side == East ? r.x1 + T * 0.5f
-                : side == Back ? r.z0 - T * 0.5f : r.z1 + T * 0.5f;
+            // In a printed module the wall is thicker, so the door moves out to its middle and
+            // the leaves slide into the wall (in the hub, into the double shell).
+            float shift = !moduled ? 0f : framed ? HubDoorShift : ModuleDoorShift;
+            float mid = side == West ? r.x0 - T * 0.5f - shift : side == East ? r.x1 + T * 0.5f + shift
+                : side == Back ? r.z0 - T * 0.5f - shift : r.z1 + T * 0.5f + shift;
             GameObject door = new GameObject("Door");
             door.transform.SetParent(current.transform, false);
             Vector3 local = alongZ ? new Vector3(mid, 0f, o.centre) : new Vector3(o.centre, 0f, mid);
@@ -398,15 +422,19 @@ namespace MarsSurvival.Base
         {
             OutpostGeometry leaf = new OutpostGeometry();
             float h = width * 0.5f, t = 0.05f;
+            // In the printed modules the leaves are gunmetal with an amber guide strip (the
+            // interiors' colour for the way through); the fallback shells keep dark red.
+            int body = moduled ? Charcoal : DarkRed, band = moduled ? GlowOrange : Charcoal;
+            float b0 = moduled ? 1.05f : 1.25f, b1 = moduled ? 1.12f : 1.7f;
             if (alongZ)
             {
-                leaf.Box(DarkRed, -t, 0f, -h, t, height, h);
-                leaf.Box(Charcoal, -t - 0.01f, 1.25f, -h + 0.12f, t + 0.01f, 1.7f, h - 0.12f);
+                leaf.Box(body, -t, 0f, -h, t, height, h);
+                leaf.Box(band, -t - 0.01f, b0, -h + 0.12f, t + 0.01f, b1, h - 0.12f);
             }
             else
             {
-                leaf.Box(DarkRed, -h, 0f, -t, h, height, t);
-                leaf.Box(Charcoal, -h + 0.12f, 1.25f, -t - 0.01f, h - 0.12f, 1.7f, t + 0.01f);
+                leaf.Box(body, -h, 0f, -t, h, height, t);
+                leaf.Box(band, -h + 0.12f, b0, -t - 0.01f, h - 0.12f, b1, t + 0.01f);
             }
             Mesh mesh = leaf.ToMesh("Door Leaf", materials, out doorLeafMaterials);
             owned.Add(mesh);
@@ -424,9 +452,19 @@ namespace MarsSurvival.Base
         {
             FloorRect outer = r.Grow(T);
             FloorRect plinth = outer.Grow(0.15f);
+            AddCollider(plinth.x0, -depth, plinth.z0, plinth.x1, 0f, plinth.z1);
+            if (moduled)
+            {
+                // The printed module is the floor deck, walls and vault; only the doors and the lamp are added.
+                Wall(West, r, height, wallMaterial, west ?? new Opening[0]);
+                Wall(East, r, height, wallMaterial, east ?? new Opening[0]);
+                if (!sharedBackWall) Wall(Back, r, height, wallMaterial, back ?? new Opening[0]);
+                Wall(Front, r, height, wallMaterial, front ?? new Opening[0]);
+                Lamp(r.CentreX, height - 0.35f, r.CentreZ, Mathf.Max(r.Width, r.Depth) * 0.75f + 4f);
+                return;
+            }
             g.Box(Charcoal, plinth, -depth, -0.1f);
             g.Box(ClaySand, outer, -0.1f, 0f);
-            AddCollider(plinth.x0, -depth, plinth.z0, plinth.x1, 0f, plinth.z1);
 
             Wall(West, r, height, wallMaterial, west ?? new Opening[0]);
             Wall(East, r, height, wallMaterial, east ?? new Opening[0]);
@@ -611,8 +649,11 @@ namespace MarsSurvival.Base
             room.radius = HubApothem;
             const float h = 2.9f, a = HubApothem;
 
-            g.Prism(Charcoal, 0f, 0f, Corner(a + T + 0.15f), -depth, -0.1f, 12);
-            g.Prism(ClaySand, 0f, 0f, Corner(a + T), -0.1f, 0f, 12);
+            if (!moduled)
+            {
+                g.Prism(Charcoal, 0f, 0f, Corner(a + T + 0.15f), -depth, -0.1f, 12);
+                g.Prism(ClaySand, 0f, 0f, Corner(a + T), -0.1f, 0f, 12);
+            }
             AddCollider(-a - T, -depth, -a - T, a + T, 0f, a + T);
 
             // Twelve wall facets. The four on the axes hold the doorways to the tunnels.
@@ -629,19 +670,20 @@ namespace MarsSurvival.Base
             ClearFrame();
 
             // Flat ceiling inside, a stepped dome outside with a dark red cap and four bands.
+            // The printed hub module replaces all of it with its tall double shell.
             float top = h + 0.12f;
-            g.Prism(White, 0f, 0f, Corner(a + T), h, top, 12);
             float[] ringRadius = { a + T + 0.12f, 4.85f, 3.9f, 2.6f, 1.1f };
             float[] ringHeight = { top, top + 0.95f, top + 1.7f, top + 2.25f, top + 2.5f };
             float domeTop = top + 2.75f;
-            AlsoSolid(() =>
+            if (!moduled) g.Prism(White, 0f, 0f, Corner(a + T), h, top, 12);
+            if (!moduled) AlsoSolid(() =>
             {
                 for (int i = 0; i + 1 < ringRadius.Length; i++)
                     g.Prism(White, 0f, 0f, Corner(ringRadius[i]), ringHeight[i], ringHeight[i + 1], 12, Corner(ringRadius[i + 1]));
                 g.Prism(DarkRed, 0f, 0f, Corner(1.1f), top + 2.5f, domeTop, 12, Corner(0.7f));
             });
-            g.Prism(DarkRed, 0f, 0f, Corner(a + T + 0.16f), h - 0.25f, top + 0.02f, 12);
-            for (int band = 0; band < 4; band++)
+            if (!moduled) g.Prism(DarkRed, 0f, 0f, Corner(a + T + 0.16f), h - 0.25f, top + 0.02f, 12);
+            for (int band = 0; band < (moduled ? 0 : 4); band++)
             {
                 SetFrame(Vector3.zero, band * 90f);
                 Vector3 lift = new Vector3(0f, 0.06f, 0.06f);
@@ -653,10 +695,17 @@ namespace MarsSurvival.Base
                 }
                 ClearFrame();
             }
-            AddCollider(-a - T, h, -a - T, a + T, top, a + T);
-
-            g.Prism(GlowWarm, 0f, 0f, 1.2f, h - 0.05f, h, 12);
-            Lamp(0f, h - 0.45f, 0f, 12f);
+            if (!moduled)
+            {
+                AddCollider(-a - T, h, -a - T, a + T, top, a + T);
+                g.Prism(GlowWarm, 0f, 0f, 1.2f, h - 0.05f, h, 12);
+                Lamp(0f, h - 0.45f, 0f, 12f);
+            }
+            else
+            {
+                // Under the hanging light ring of the tall printed dome.
+                Lamp(0f, 4.6f, 0f, 14f, 1.6f);
+            }
 
             // Command table in the middle; the way between any two doors goes round it.
             g.Prism(Charcoal, 0f, 0f, 0.85f, 0f, 0.8f);
@@ -703,10 +752,13 @@ namespace MarsSurvival.Base
                 g.Box(crate[3 - i], 2.08f + o, y, 1.96f, 2.68f + o, y + 0.55f, 2f);
             }
 
-            // Comms mast on the dome.
-            g.Prism(Charcoal, 0f, 0f, 0.08f, domeTop, domeTop + 3.2f);
-            g.Box(Charcoal, -0.6f, domeTop + 2.3f, -0.04f, 0.6f, domeTop + 2.38f, 0.04f);
-            g.Prism(DarkRed, 0f, 0f, 0.13f, domeTop + 3.2f, domeTop + 3.4f);
+            // Comms mast on the dome (the printed module has its own mast).
+            if (!moduled)
+            {
+                g.Prism(Charcoal, 0f, 0f, 0.08f, domeTop, domeTop + 3.2f);
+                g.Box(Charcoal, -0.6f, domeTop + 2.3f, -0.04f, 0.6f, domeTop + 2.38f, 0.04f);
+                g.Prism(DarkRed, 0f, 0f, 0.13f, domeTop + 3.2f, domeTop + 3.4f);
+            }
             End();
         }
 
@@ -816,7 +868,13 @@ namespace MarsSurvival.Base
             Tool("work_lamp", r.x0 + 0.5f, 1.1f, 0f);
             Tool("comm_radio", r.x0 + 0.5f, 1.1f, 0.55f, 90f);
 
-            // Regolith piled over the roof and against the three outside walls. The tunnel side is left clear.
+            // Regolith piled over the roof and against the three outside walls. The tunnel side is left
+            // clear. The printed module has its own berms instead.
+            if (moduled)
+            {
+                End();
+                return;
+            }
             FloorRect o = r.Grow(T);
             float top = h + 0.3f;
             AlsoSolid(() => {
@@ -1057,9 +1115,16 @@ namespace MarsSurvival.Base
             Begin("Tunnel");
             SetFrame(alongX ? new Vector3(from, 0f, 0f) : new Vector3(0f, 0f, from), alongX ? 90f : 0f);
             float w = TunnelHalf, t = 0.2f, h = TunnelHeight, length = to - from;
+            AddCollider(-w - t - 0.1f, -depth, 0f, w + t + 0.1f, 0f, length);
+            if (moduled)
+            {
+                // The printed tunnel module is the tube, deck and lights; only the floor collider stays.
+                ClearFrame();
+                End();
+                return;
+            }
             g.Box(Charcoal, -w - t - 0.1f, -depth, 0f, w + t + 0.1f, -0.1f, length);
             g.Box(ClaySand, -w - t, -0.1f, 0f, w + t, 0f, length);
-            AddCollider(-w - t - 0.1f, -depth, 0f, w + t + 0.1f, 0f, length);
             g.Box(White, -w - t, 0f, 0f, -w, h, length);
             g.Box(White, w, 0f, 0f, w + t, h, length);
             AddCollider(-w - t - 0.3f, 0f, 0f, -w, h, length);

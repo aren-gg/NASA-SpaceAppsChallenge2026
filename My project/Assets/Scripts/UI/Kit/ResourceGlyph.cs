@@ -73,6 +73,13 @@ namespace MarsTrainer.UI
                 case ResourceSymbol.Food: Polygon(Leaf, face); break;
                 case ResourceSymbol.Rest: Crescent(face); break;
                 case ResourceSymbol.Power: Polygon(Bolt, face); break;
+                case ResourceSymbol.Radiation:
+                    for (int i = 0; i < 3; i++)
+                    {
+                        float a = Mathf.PI / 2 + i * Mathf.PI * 2 / 3; var d = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+                        Line(d * .32f, d * .92f, .62f, face);
+                    }
+                    Circle(Vector2.zero, .2f, face); break;
                 default: Polygon(Cross, face); break;
             }
         }
@@ -135,7 +142,7 @@ namespace MarsTrainer.UI
                 case ResourceSymbol.Food:return GameConstants.UiFood;
                 case ResourceSymbol.Rest:return GameConstants.UiRest;
                 case ResourceSymbol.Power:return GameConstants.UiPower;
-                case ResourceSymbol.Air:return GameConstants.UiSafe;
+                case ResourceSymbol.Air:return GameConstants.UiOxygen;
                 case ResourceSymbol.Radiation:return GameConstants.UiRadiation;
                 default:return GameConstants.UiCopper;
             }

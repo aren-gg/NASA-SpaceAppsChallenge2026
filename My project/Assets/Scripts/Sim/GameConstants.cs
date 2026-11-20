@@ -74,10 +74,13 @@ namespace MarsTrainer.Sim
         public const float UiHudVitalHeight = 56;
         public const float UiHudVitalGap = 8;
         public const uint UiIconInk = 0x15181C;
-        public const uint UiHealth = 0xFF7F72;
-        public const uint UiFood = 0x9ED36A;
-        public const uint UiWater = 0x5EC0F2;
-        public const uint UiRest = 0xB7A1FF;
+        // Vital colours from the Okabe-Ito colour-blind-safe palette, brightened for the HUD:
+        // no red/green pair, and each vital also has its own pictogram and label.
+        public const uint UiOxygen = 0xE6F2F5;   // near-white, like a helmet O2 readout
+        public const uint UiHealth = 0xFF6B3D;   // vermilion
+        public const uint UiFood = 0x2CC79A;     // bluish green
+        public const uint UiWater = 0x56B4E9;    // sky blue
+        public const uint UiRest = 0xE08AC0;     // reddish purple
         public const uint UiPower = 0xF5C451;
         public const uint UiRadiation = 0xC9A2FF;
         /// <summary>Historical name: now the amber CRT accent (see MarsTrainer.UI.UiTheme).</summary>

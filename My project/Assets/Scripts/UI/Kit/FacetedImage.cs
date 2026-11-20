@@ -10,6 +10,9 @@ namespace MarsTrainer.UI
     /// </summary>
     public sealed class FacetedImage : Image
     {
+        /// <summary>Use the colour's alpha as given (HUD plates share one opacity whatever their size).</summary>
+        public bool KeepAlpha;
+
         protected override void OnPopulateMesh(VertexHelper mesh)
         {
             mesh.Clear();
@@ -20,7 +23,7 @@ namespace MarsTrainer.UI
             bool screen = rect.width > 1100f && rect.height > 600f;
 
             Color fill = color;
-            if (large) fill.a *= screen ? UiTheme.ScreenAlpha : UiTheme.PanelAlpha;
+            if (large && !KeepAlpha) fill.a *= screen ? UiTheme.ScreenAlpha : UiTheme.PanelAlpha;
             Vector2[] outer = Shape(rect, cut);
             if (small < 14f) { Fan(mesh, outer, fill); return; }
 

@@ -45,7 +45,11 @@ namespace MarsTrainer.UI
             ControlGuide.Create(content, "Menu Controls", ControlGuide.Menus, 2);
             MissionSettings.Create(content);
             CameraSettings.Create(content);
-            StatBar.Button(content, "Wardrobe [C]", () => { if (OpenWardrobe != null) OpenWardrobe(); });
+            // One row: Wardrobe, then the HUD size control.
+            var hudRow = HudSettings.Create(content);
+            var wardrobe = StatBar.Button(hudRow, "Wardrobe [C]", () => { if (OpenWardrobe != null) OpenWardrobe(); });
+            wardrobe.GetComponent<LayoutElement>().flexibleWidth = 1;
+            wardrobe.transform.SetAsFirstSibling();
             view.resume = StatBar.Button(content, "Back to Mars [Escape]", null);
             panel.gameObject.SetActive(false); return view;
         }

@@ -11,6 +11,23 @@ namespace MarsTrainer.UI
     /// </summary>
     public static class UiStyle
     {
+        // The HUD type scale (reference pixels at 1920x1080). Use these instead of loose numbers.
+        public const float Caption = 11f;   // gauge scales, fine print
+        public const float Label = 13f;     // tracked-capital labels
+        public const float Body = 16f;      // HUD body text
+        public const float Lead = 18f;      // messages, current task
+        public const float Heading = 22f;   // console card headings
+        public const float Title = 28f;     // window titles
+        public const float Display = 44f;   // the hero readout
+
+        /// <summary>A title: SemiBold in normal case (capitals are kept for short labels only).</summary>
+        public static void Titled(TMP_Text text)
+        {
+            text.font = UiTypeface.Strong;
+            text.fontStyle &= ~(FontStyles.UpperCase | FontStyles.Italic);
+            text.characterSpacing = 0.5f;
+        }
+
         /// <summary>A number readout: SemiBold, italic, amber unless the caller recolours it.</summary>
         public static void Readout(TMP_Text text)
         {

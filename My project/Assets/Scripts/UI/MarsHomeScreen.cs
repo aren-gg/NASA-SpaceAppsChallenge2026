@@ -10,8 +10,11 @@ using UnityEngine.UI;
 namespace MarsSurvival.UI
 {
     /// <summary>
-    /// Title screen shown when the Mars scene starts. The camera slowly circles the
-    /// outpost while the menu (Start mission, How to play, Quit) sits on the left.
+    /// Title screen shown when the Mars scene starts. The camera slowly circles close over the
+    /// outpost (framed so no empty terrain or sky fills the view) with a depth-of-field blur
+    /// on everything behind it, while the title and three buttons (Start mission, How to play,
+    /// Credits) sit centred on screen. Drifting dust, a title that settles from wide tracking
+    /// and a hazard stripe that wipes in give it motion.
     /// Start mission fades out, puts the camera back where the scene had it, and hands
     /// control to the astronaut (which waits while <see cref="IsOpen"/> is true).
     ///
@@ -26,24 +29,25 @@ namespace MarsSurvival.UI
         public static bool IsOpen { get; private set; }
 
         [Header("Text")]
-        public string eyebrow = "GALE CRATER  ·  4.6° S  137.4° E";
         [Tooltip("Marsivity: Mars + immersivity. The first part is drawn in white, the second in orange.")]
         public string titleWhite = "MARS";
         public string titleOrange = "IVITY";
-        [TextArea] public string tagline = "The connection between nature, technology, and humanity";
-        public string credit = "Terrain from NASA / USGS elevation data of Gale Crater  ·  NASA Space Apps Challenge 2026";
 
         [Header("Background camera (real metres)")]
         public bool showOnStart = true;
         [Tooltip("What the camera circles. Empty: the object named \"Mars Outpost\" if there is one, " +
                  "otherwise a point 25 m ahead of the scene's starting view.")]
         public Transform orbitTarget;
-        public float orbitRadiusMeters = 34f;
-        public float orbitHeightMeters = 9f;
+        // Close and high enough that the view looks down onto the base: the horizon (and the
+        // empty terrain and sky beyond it) stays just above the top of the screen.
+        public float orbitRadiusMeters = 24f;
+        public float orbitHeightMeters = 11f;
         public float orbitDegreesPerSecond = 2.5f;
-        [Tooltip("Turns the view so the outpost sits to the right of the menu.")]
-        public float framingYawDegrees = 15f;
-        [Range(20f, 90f)] public float fieldOfView = 45f;
+        [Tooltip("Slow push in and out, in metres, so the shot breathes.")]
+        public float breatheMeters = 1.5f;
+        [Tooltip("0 keeps the outpost centred behind the title.")]
+        public float framingYawDegrees = 0f;
+        [Range(20f, 90f)] public float fieldOfView = 38f;
 
         private enum State { Open, Closing, Closed }
 
@@ -66,12 +70,26 @@ namespace MarsSurvival.UI
         private Sprite roundFill, roundRing;
         private GameObject menuCanvas;
         private Image fade;
-        private CanvasGroup helpGroup;
-        private RectTransform helpCard;
-        private bool helpOpen;
-        private float helpBlend;
-        private TMP_Text hint;
+        /// <summary>A modal card (How to play, Credits) with its backdrop and fade.</summary>
+        private sealed class Overlay
+        {
+            public CanvasGroup group;
+            public RectTransform card;
+            public bool open;
+            public float blend;
+        }
+        private Overlay help, credits;
+        private CanvasGroup menuGroup;
+        private TMP_Text title;
+        private RectTransform stripes;
+        private readonly List<RectTransform> dust = new List<RectTransform>();
+        private readonly List<Vector3> dustMotion = new List<Vector3>();   // x, y speed and phase
         private float openedAt;
+
+        // Depth-of-field blur and a soft vignette while the title screen owns the camera.
+        private GameObject blurVolume;
+        private Component cameraData;
+        private bool cameraPostWasOn;
 
         private struct Reveal
         {
@@ -169,6 +187,7 @@ namespace MarsSurvival.UI
             EnsureEventSystem();
             BuildFade();
             BuildMenu();
+            EnableBlur(true);
             openedAt = Time.unscaledTime;
             fade.color = WithAlpha(MarsTrainer.UI.UiTheme.Ink, 1f);
         }
@@ -193,7 +212,8 @@ namespace MarsSurvival.UI
             orbitAngle += orbitDegreesPerSecond * Time.unscaledDeltaTime;
             Vector3 target = OrbitTarget();
             float a = orbitAngle * Mathf.Deg2Rad;
-            Vector3 position = target + new Vector3(Mathf.Sin(a), 0f, Mathf.Cos(a)) * Units(orbitRadiusMeters)
+            float radius = orbitRadiusMeters + breatheMeters * Mathf.Sin(Time.unscaledTime * 0.21f);
+            Vector3 position = target + new Vector3(Mathf.Sin(a), 0f, Mathf.Cos(a)) * Units(radius)
                                       + Vector3.up * Units(orbitHeightMeters);
             if (terrain != null && terrain.IsReady)
             {
@@ -227,35 +247,60 @@ namespace MarsSurvival.UI
                 {
                     float t = Smooth(Mathf.Clamp01((now - reveals[i].delay) / 0.7f));
                     reveals[i].group.alpha = t;
-                    reveals[i].rect.anchoredPosition = reveals[i].home + new Vector2(-40f * (1f - t), 0f);
+                    reveals[i].rect.anchoredPosition = reveals[i].home + new Vector2(0f, -28f * (1f - t));
                 }
-                if (hint != null)
-                {
-                    float pulse = 0.5f + 0.5f * Mathf.Sin(now * 2.4f);
-                    hint.color = WithAlpha(MarsTrainer.UI.UiTheme.Text, Mathf.Lerp(0.35f, 0.75f, pulse) * Smooth((now - 1.4f) / 0.8f));
-                }
+                // The title settles from wide tracking; the hazard stripe wipes in under it.
+                if (title != null) title.characterSpacing = Mathf.Lerp(46f, 6f, Smooth((now - 0.3f) / 1.6f));
+                if (stripes != null) stripes.localScale = new Vector3(Smooth((now - 0.9f) / 0.7f), 1f, 1f);
+                AnimateDust(now);
 
 #if ENABLE_LEGACY_INPUT_MANAGER
-                if (helpOpen)
+                if (Input.GetKeyDown(KeyCode.Escape))
                 {
-                    if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Return)) SetHelp(false);
-                }
-                else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-                {
-                    StartMission();
+                    if (help.open) help.open = false;
+                    if (credits.open) credits.open = false;
                 }
 #endif
             }
 
-            if (helpGroup != null)
+            Blend(help, dt);
+            Blend(credits, dt);
+            // The menu steps back while a card is open, so nothing shows through it.
+            if (menuGroup != null && help.group != null && credits.group != null) menuGroup.alpha = 1f - Smooth(Mathf.Max(help.blend, credits.blend));
+        }
+
+        private static void Blend(Overlay o, float dt)
+        {
+            if (o == null || o.group == null) return;   // the menu is destroyed once the mission starts
+            o.blend = Mathf.MoveTowards(o.blend, o.open ? 1f : 0f, dt * 5f);
+            float t = Smooth(o.blend);
+            o.group.alpha = t;
+            o.group.blocksRaycasts = o.open;
+            o.group.interactable = o.open;
+            o.card.localScale = Vector3.one * Mathf.Lerp(0.96f, 1f, t);
+            o.group.gameObject.SetActive(o.blend > 0f);
+        }
+
+        private void Show(Overlay o)
+        {
+            o.open = true;
+            o.group.gameObject.SetActive(true);
+        }
+
+        /// <summary>Dust motes drifting slowly up and across the screen, twinkling softly.</summary>
+        private void AnimateDust(float now)
+        {
+            for (int i = 0; i < dust.Count; i++)
             {
-                helpBlend = Mathf.MoveTowards(helpBlend, helpOpen ? 1f : 0f, dt * 5f);
-                float t = Smooth(helpBlend);
-                helpGroup.alpha = t;
-                helpGroup.blocksRaycasts = helpOpen;
-                helpGroup.interactable = helpOpen;
-                helpCard.localScale = Vector3.one * Mathf.Lerp(0.96f, 1f, t);
-                helpGroup.gameObject.SetActive(helpBlend > 0f);
+                Vector3 m = dustMotion[i];
+                Vector2 p = dust[i].anchoredPosition + new Vector2(m.x, m.y) * Time.unscaledDeltaTime;
+                if (p.x > 1000f) p.x -= 2000f;
+                if (p.y > 580f) p.y -= 1160f;
+                dust[i].anchoredPosition = p;
+                Image dot = dust[i].GetComponent<Image>();
+                Color c = dot.color;
+                c.a = (0.10f + 0.12f * (0.5f + 0.5f * Mathf.Sin(now * 0.9f + m.z))) * Smooth((now - 0.6f) / 1.5f);
+                dot.color = c;
             }
         }
 
@@ -279,6 +324,7 @@ namespace MarsSurvival.UI
 
             // Give the scene back exactly as it started; the astronaut takes over from here.
             state = State.Closed;
+            EnableBlur(false);
             cam.transform.SetParent(camParent, true);
             cam.transform.SetPositionAndRotation(camPosition, camRotation);
             cam.fieldOfView = camFov;
@@ -299,19 +345,44 @@ namespace MarsSurvival.UI
             Destroy(gameObject);
         }
 
-        private void Quit()
+        /// <summary>
+        /// A global URP volume while the title screen is up: Gaussian depth of field that keeps
+        /// the outpost sharp and softens the terrain behind it, plus a light bloom.
+        /// Removed (and the camera's post-processing flag restored) when the mission starts.
+        /// </summary>
+        private void EnableBlur(bool on)
         {
-#if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
-#else
-            Application.Quit();
-#endif
-        }
+            var data = cam.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+            if (on)
+            {
+                if (data == null) data = cam.gameObject.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+                cameraData = data;
+                cameraPostWasOn = data.renderPostProcessing;
+                data.renderPostProcessing = true;
 
-        private void SetHelp(bool open)
-        {
-            helpOpen = open;
-            if (open) helpGroup.gameObject.SetActive(true);
+                var profile = ScriptableObject.CreateInstance<UnityEngine.Rendering.VolumeProfile>();
+                var dof = profile.Add<UnityEngine.Rendering.Universal.DepthOfField>(true);
+                dof.mode.Override(UnityEngine.Rendering.Universal.DepthOfFieldMode.Gaussian);
+                dof.gaussianStart.Override(Units(orbitRadiusMeters + 10f));
+                dof.gaussianEnd.Override(Units(orbitRadiusMeters + 70f));
+                dof.gaussianMaxRadius.Override(1.5f);
+                dof.highQualitySampling.Override(true);
+                var bloom = profile.Add<UnityEngine.Rendering.Universal.Bloom>(true);
+                bloom.intensity.Override(0.35f);
+                bloom.threshold.Override(1.0f);
+
+                blurVolume = new GameObject("Home Screen Blur");
+                blurVolume.transform.SetParent(transform, false);
+                var volume = blurVolume.AddComponent<UnityEngine.Rendering.Volume>();
+                volume.isGlobal = true;
+                volume.priority = 100f;
+                volume.sharedProfile = profile;
+            }
+            else
+            {
+                if (blurVolume != null) Destroy(blurVolume);
+                if (data != null && ReferenceEquals(data, cameraData)) data.renderPostProcessing = cameraPostWasOn;
+            }
         }
 
         // ------------------------------------------------------------------ UI construction
@@ -350,103 +421,112 @@ namespace MarsSurvival.UI
         {
             menuCanvas = NewCanvas("Home Screen UI", 100);
             Transform root = menuCanvas.transform;
-            Color pink = MarsTrainer.UI.UiTheme.Text;
             Color orange = MarsTrainer.UI.UiTheme.Accent;
-            Color purple = MarsTrainer.UI.UiTheme.Ink;
 
-            // Soft deep-purple shade behind the menu so the text reads over any terrain.
+            // A soft dark vignette, heaviest at the edges and lightly behind the centred menu.
             RawImage shade = NewRect("Shade", root).gameObject.AddComponent<RawImage>();
             shade.texture = ShadeTexture();
             shade.raycastTarget = false;
-            RectTransform shadeRect = shade.rectTransform;
-            shadeRect.anchorMin = new Vector2(0f, 0f);
-            shadeRect.anchorMax = new Vector2(0f, 1f);
-            shadeRect.pivot = new Vector2(0f, 0.5f);
-            shadeRect.sizeDelta = new Vector2(1300f, 0f);
-            shadeRect.anchoredPosition = Vector2.zero;
+            Stretch(shade.rectTransform);
 
-            // Left column, laid out top-down and centred vertically.
+            // Dust motes drifting across the view.
+            RectTransform dustLayer = NewRect("Dust", root);
+            dustLayer.anchorMin = dustLayer.anchorMax = dustLayer.pivot = new Vector2(0.5f, 0.5f);
+            var random = new System.Random(7);
+            for (int i = 0; i < 36; i++)
+            {
+                RectTransform mote = NewRect("Mote", dustLayer);
+                float size = 2f + (float)random.NextDouble() * 3f;
+                mote.sizeDelta = new Vector2(size, size);
+                mote.anchoredPosition = new Vector2((float)random.NextDouble() * 2000f - 1000f, (float)random.NextDouble() * 1160f - 580f);
+                Image dot = mote.gameObject.AddComponent<Image>();
+                dot.color = WithAlpha(Color.Lerp(MarsTrainer.UI.UiTheme.Text, orange, (float)random.NextDouble() * 0.5f), 0f);
+                dot.raycastTarget = false;
+                dust.Add(mote);
+                dustMotion.Add(new Vector3(6f + (float)random.NextDouble() * 14f, 2f + (float)random.NextDouble() * 8f, (float)random.NextDouble() * 6.28f));
+            }
+
+            // Centred column: title, hazard stripe, three buttons.
             RectTransform column = NewRect("Menu", root);
-            column.anchorMin = column.anchorMax = new Vector2(0f, 0.5f);
-            column.pivot = new Vector2(0f, 1f);
-            column.sizeDelta = new Vector2(900f, 820f);
-            column.anchoredPosition = new Vector2(150f, 410f);
+            column.anchorMin = column.anchorMax = column.pivot = new Vector2(0.5f, 0.5f);
+            column.sizeDelta = new Vector2(1200f, 560f);
+            column.anchoredPosition = new Vector2(0f, 10f);
+            menuGroup = column.gameObject.AddComponent<CanvasGroup>();
 
             float y = 0f;
             int index = 0;
 
-            TMP_Text eyebrowText = NewText(column, eyebrow, 24, orange, FontStyle.Bold, TextAnchor.UpperLeft);
-            MarsTrainer.UI.UiStyle.Caps(eyebrowText, 5f);
-            Place(eyebrowText.rectTransform, ref y, 900f, 34f, 22f, index++);
-
             // One word on one line: MARS in white, IVITY in orange.
-            TMP_Text title = NewText(column, titleWhite + "<color=#" + ColorUtility.ToHtmlStringRGB(orange) + ">" + titleOrange + "</color>",
-                                 150, Color.white, FontStyle.Bold, TextAnchor.UpperLeft);
+            title = NewText(column, titleWhite + "<color=#" + ColorUtility.ToHtmlStringRGB(orange) + ">" + titleOrange + "</color>",
+                            150, Color.white, FontStyle.Bold, TextAnchor.UpperCenter);
             title.enableWordWrapping = false;
-            Place(title.rectTransform, ref y, 1100f, 170f, 26f, index++);
+            title.outlineWidth = 0.08f;
+            title.outlineColor = new Color32(21, 24, 28, 140);
+            Place(title.rectTransform, ref y, 1200f, 170f, 22f, index++);
 
-            // NASA-punk stencil: a strip of amber hazard stripes under the title.
+            // NASA-punk stencil: a strip of amber hazard stripes under the title, wiping in from the centre.
             var rule = NewRect("Hazard stripes", column).gameObject.AddComponent<MarsTrainer.UI.HazardTab>();
             rule.Stripe = 7f; rule.Period = 14f;
             rule.color = orange;
             rule.raycastTarget = false;
-            Place(rule.rectTransform, ref y, 150f, 12f, 30f, index++);
-
-            TMP_Text taglineText = NewText(column, tagline, 32, WithAlpha(pink, 0.92f), FontStyle.Normal, TextAnchor.UpperLeft);
-            taglineText.enableWordWrapping = true;
-            taglineText.lineSpacing = 10f;
-            Place(taglineText.rectTransform, ref y, 1100f, 50f, 56f, index++);
+            Place(rule.rectTransform, ref y, 210f, 12f, 64f, index++);
+            stripes = rule.rectTransform;
+            stripes.localScale = new Vector3(0f, 1f, 1f);
 
             RectTransform start = MakeButton(column, "Start mission", ButtonStyle.Primary, StartMission);
-            Place(start, ref y, 460f, 92f, 18f, index++);
-            RectTransform how = MakeButton(column, "How to play", ButtonStyle.Secondary, () => SetHelp(true));
-            Place(how, ref y, 460f, 76f, 10f, index++);
-            RectTransform quit = MakeButton(column, "Quit", ButtonStyle.Ghost, Quit);
-            Place(quit, ref y, 460f, 60f, 0f, index++);
-
-            // Footer: data credit bottom-left, start hint bottom-right.
-            TMP_Text creditText = NewText(root, credit, 20, WithAlpha(pink, 0.6f), FontStyle.Normal, TextAnchor.LowerLeft);
-            RectTransform creditRect = creditText.rectTransform;
-            creditRect.anchorMin = creditRect.anchorMax = creditRect.pivot = Vector2.zero;
-            creditRect.sizeDelta = new Vector2(1400f, 30f);
-            AddReveal(creditRect, new Vector2(150f, 52f), 1.1f);
-
-            hint = NewText(root, "Press Enter to start", 22, WithAlpha(pink, 0f), FontStyle.Bold, TextAnchor.LowerRight);
-            RectTransform hintRect = hint.rectTransform;
-            hintRect.anchorMin = hintRect.anchorMax = hintRect.pivot = new Vector2(1f, 0f);
-            hintRect.sizeDelta = new Vector2(500f, 30f);
-            hintRect.anchoredPosition = new Vector2(-80f, 52f);
+            Place(start, ref y, 420f, 84f, 16f, index++);
+            RectTransform how = MakeButton(column, "How to play", ButtonStyle.Secondary, () => Show(help));
+            Place(how, ref y, 420f, 68f, 12f, index++);
+            RectTransform credit = MakeButton(column, "Credits", ButtonStyle.Secondary, () => Show(credits));
+            Place(credit, ref y, 420f, 68f, 0f, index++);
 
             BuildHelp(root);
+            BuildCredits(root);
+        }
+
+        /// <summary>A modal card centred on screen with a dimmed backdrop that closes it.</summary>
+        private Overlay MakeOverlay(Transform root, string name, string heading, Vector2 size)
+        {
+            Color purple = MarsTrainer.UI.UiTheme.Ink;
+            var o = new Overlay();
+            RectTransform overlay = NewRect(name, root);
+            Stretch(overlay);
+            o.group = overlay.gameObject.AddComponent<CanvasGroup>();
+            // The backdrop is a sibling of the card, so clicks on the card do not close it.
+            RectTransform dimRect = NewRect("Backdrop", overlay);
+            Stretch(dimRect);
+            Image dim = dimRect.gameObject.AddComponent<Image>();
+            dim.color = WithAlpha(purple, 0.72f);
+            Button dimButton = dimRect.gameObject.AddComponent<Button>();
+            dimButton.transition = Selectable.Transition.None;
+            dimButton.navigation = new Navigation { mode = Navigation.Mode.None };
+            dimButton.onClick.AddListener(() => o.open = false);
+
+            o.card = NewRect("Card", overlay);
+            o.card.sizeDelta = size;
+            Image card = o.card.gameObject.AddComponent<Image>();
+            card.sprite = roundFill;
+            card.type = Image.Type.Sliced;
+            card.color = WithAlpha(Color.Lerp(purple, MarsTrainer.UI.UiTheme.Hover, 0.12f), 1f);
+
+            TMP_Text headingText = NewText(o.card, heading, 40, MarsTrainer.UI.UiTheme.Accent, FontStyle.Bold, TextAnchor.UpperLeft);
+            TopLeft(headingText.rectTransform, new Vector2(64f, -56f), new Vector2(700f, 50f));
+
+            RectTransform close = MakeButton(o.card, "Got it", ButtonStyle.Primary, () => o.open = false);
+            close.anchorMin = close.anchorMax = close.pivot = new Vector2(1f, 0f);
+            close.sizeDelta = new Vector2(240f, 72f);
+            close.anchoredPosition = new Vector2(-56f, 48f);
+
+            o.group.alpha = 0f;
+            overlay.gameObject.SetActive(false);
+            return o;
         }
 
         private void BuildHelp(Transform root)
         {
             Color pink = MarsTrainer.UI.UiTheme.Text;
-            Color purple = MarsTrainer.UI.UiTheme.Ink;
-
-            RectTransform overlay = NewRect("How To Play", root);
-            Stretch(overlay);
-            helpGroup = overlay.gameObject.AddComponent<CanvasGroup>();
-            // The backdrop is a sibling of the card, so clicks on the card do not close it.
-            RectTransform dimRect = NewRect("Backdrop", overlay);
-            Stretch(dimRect);
-            Image dim = dimRect.gameObject.AddComponent<Image>();
-            dim.color = WithAlpha(purple, 0.55f);
-            Button dimButton = dimRect.gameObject.AddComponent<Button>();
-            dimButton.transition = Selectable.Transition.None;
-            dimButton.navigation = new Navigation { mode = Navigation.Mode.None };
-            dimButton.onClick.AddListener(() => SetHelp(false));
-
-            helpCard = NewRect("Card", overlay);
-            helpCard.sizeDelta = new Vector2(860f, 960f);
-            Image card = helpCard.gameObject.AddComponent<Image>();
-            card.sprite = roundFill;
-            card.type = Image.Type.Sliced;
-            card.color = WithAlpha(Color.Lerp(purple, MarsTrainer.UI.UiTheme.Hover, 0.12f), 0.97f);
-
-            TMP_Text heading = NewText(helpCard, "How to play", 40, MarsTrainer.UI.UiTheme.Accent, FontStyle.Bold, TextAnchor.UpperLeft);
-            TopLeft(heading.rectTransform, new Vector2(64f, -56f), new Vector2(700f, 50f));
+            help = MakeOverlay(root, "How To Play", "How to play", new Vector2(860f, 960f));
+            RectTransform helpCard = help.card;
 
             string[,] rows =
             {
@@ -483,13 +563,98 @@ namespace MarsSurvival.UI
                 TopLeft(action.rectTransform, new Vector2(262f, rowY), new Vector2(540f, 38f));
             }
 
-            RectTransform close = MakeButton(helpCard, "Got it", ButtonStyle.Primary, () => SetHelp(false));
-            close.anchorMin = close.anchorMax = close.pivot = new Vector2(1f, 0f);
-            close.sizeDelta = new Vector2(240f, 72f);
-            close.anchoredPosition = new Vector2(-56f, 48f);
+        }
 
-            helpGroup.alpha = 0f;
-            overlay.gameObject.SetActive(false);
+        /// <summary>
+        /// Credits: a scrolling list built from <see cref="GameCredits"/>, grouped into Mars data,
+        /// standards and research, and software and fonts. Each entry names the work, who made and
+        /// publishes it, and what the game uses it for; clicking an entry opens its source page.
+        /// The NASA non-endorsement note sits at the end.
+        /// </summary>
+        private void BuildCredits(Transform root)
+        {
+            Color pink = MarsTrainer.UI.UiTheme.Text;
+            Color orange = MarsTrainer.UI.UiTheme.Accent;
+            credits = MakeOverlay(root, "Credits", "Credits", new Vector2(1120f, 920f));
+
+            // Scrolling viewport between the heading and the Got it button.
+            RectTransform viewport = NewRect("Viewport", credits.card);
+            viewport.anchorMin = new Vector2(0f, 0f); viewport.anchorMax = new Vector2(1f, 1f);
+            viewport.offsetMin = new Vector2(56f, 140f); viewport.offsetMax = new Vector2(-40f, -122f);
+            viewport.gameObject.AddComponent<RectMask2D>();
+            Image hit = viewport.gameObject.AddComponent<Image>();
+            hit.color = new Color(0f, 0f, 0f, 0f);                   // catches the scroll wheel between rows
+
+            RectTransform content = NewRect("Content", viewport);
+            content.anchorMin = new Vector2(0f, 1f); content.anchorMax = new Vector2(1f, 1f);
+            content.pivot = new Vector2(0.5f, 1f);
+            content.offsetMin = content.offsetMax = Vector2.zero;
+            VerticalLayoutGroup list = content.gameObject.AddComponent<VerticalLayoutGroup>();
+            list.spacing = 6f; list.padding = new RectOffset(8, 24, 0, 8);
+            list.childControlWidth = list.childControlHeight = true;
+            list.childForceExpandWidth = true; list.childForceExpandHeight = false;
+            content.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            ScrollRect scroll = viewport.gameObject.AddComponent<ScrollRect>();
+            scroll.content = content; scroll.viewport = viewport;
+            scroll.horizontal = false; scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = 32f;
+
+            foreach (GameCredits.Section section in GameCredits.Sections)
+            {
+                TMP_Text head = FlowText(content, section.Name, 22, orange, true);
+                head.fontStyle = FontStyles.UpperCase;
+                head.characterSpacing = 4f;
+                head.margin = new Vector4(0f, 18f, 0f, 4f);
+                foreach (GameCredits.Entry entry in section.Entries) CreditRow(content, entry);
+            }
+            TMP_Text madeFor = FlowText(content, GameCredits.MadeFor, 21, pink, true);
+            madeFor.margin = new Vector4(0f, 24f, 0f, 0f);
+            FlowText(content, GameCredits.Disclaimer, 18, WithAlpha(pink, 0.7f), false);
+        }
+
+        /// <summary>One credit: title, maker and publisher, what the game uses it for. Click opens the source.</summary>
+        private void CreditRow(Transform parent, GameCredits.Entry entry)
+        {
+            Color pink = MarsTrainer.UI.UiTheme.Text;
+            RectTransform row = NewRect(entry.Title, parent);
+            Image back = row.gameObject.AddComponent<Image>();
+            back.sprite = roundFill; back.type = Image.Type.Sliced;
+            VerticalLayoutGroup stack = row.gameObject.AddComponent<VerticalLayoutGroup>();
+            stack.padding = new RectOffset(16, 16, 10, 12); stack.spacing = 2f;
+            stack.childControlWidth = stack.childControlHeight = true;
+            stack.childForceExpandWidth = true; stack.childForceExpandHeight = false;
+
+            TMP_Text title = FlowText(row, entry.Title, 24, pink, true);
+            FlowText(row, entry.Credit, 19, WithAlpha(pink, 0.78f), false);
+            FlowText(row, "Used for: " + entry.UsedFor, 19, WithAlpha(MarsTrainer.UI.UiTheme.Accent, 0.9f), false);
+
+            Button button = row.gameObject.AddComponent<Button>();
+            button.transition = Selectable.Transition.ColorTint;
+            button.targetGraphic = back;
+            ColorBlock colors = ColorBlock.defaultColorBlock;
+            colors.normalColor = WithAlpha(pink, 0.04f);
+            colors.highlightedColor = colors.selectedColor = WithAlpha(pink, 0.12f);
+            colors.pressedColor = WithAlpha(MarsTrainer.UI.UiTheme.Accent, 0.25f);
+            colors.colorMultiplier = 1f; colors.fadeDuration = 0.08f;
+            button.colors = colors;
+            back.color = Color.white;
+            string url = entry.Url;
+            if (!string.IsNullOrEmpty(url))
+            {
+                button.onClick.AddListener(() => Application.OpenURL(url));
+                title.text = entry.Title + "  <size=70%><alpha=#99>open source page</size>";
+            }
+        }
+
+        /// <summary>Wrapping text sized by its layout group (for scrolling lists).</summary>
+        private TMP_Text FlowText(Transform parent, string content, int size, Color color, bool strong)
+        {
+            TMP_Text text = NewText(parent, content, size, color, strong ? FontStyle.Bold : FontStyle.Normal, TextAnchor.UpperLeft);
+            text.enableWordWrapping = true;
+            text.lineSpacing = 4f;
+            return text;
         }
 
         private enum ButtonStyle { Primary, Secondary, Ghost }
@@ -551,8 +716,8 @@ namespace MarsSurvival.UI
 
         private void Place(RectTransform rect, ref float y, float width, float height, float gapAfter, int index)
         {
-            rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
-            rect.pivot = new Vector2(0f, 1f);
+            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
+            rect.pivot = new Vector2(0.5f, 1f);
             rect.sizeDelta = new Vector2(width, height);
             AddReveal(rect, new Vector2(0f, -y), 0.35f + index * 0.08f);
             y += height + gapAfter;
@@ -582,6 +747,7 @@ namespace MarsSurvival.UI
             text.fontStyle = FontStyles.Normal;
             text.color = color;
             text.alignment = anchor == TextAnchor.UpperLeft ? TextAlignmentOptions.TopLeft
+                : anchor == TextAnchor.UpperCenter ? TextAlignmentOptions.Top
                 : anchor == TextAnchor.MiddleCenter ? TextAlignmentOptions.Center
                 : anchor == TextAnchor.MiddleLeft ? TextAlignmentOptions.MidlineLeft
                 : anchor == TextAnchor.LowerLeft ? TextAlignmentOptions.BottomLeft
@@ -648,21 +814,28 @@ namespace MarsSurvival.UI
                                  SpriteMeshType.FullRect, new Vector4(border, border, border, border));
         }
 
-        /// <summary>Horizontal deep-purple gradient, solid on the left and clear on the right.</summary>
+        /// <summary>
+        /// Radial deep-purple vignette: clear in the middle band, darker at the edges and corners,
+        /// with a faint pool behind the centred menu so white text reads over a bright roof.
+        /// </summary>
         private static Texture2D ShadeTexture()
         {
-            const int Width = 256;
-            Texture2D texture = new Texture2D(Width, 1, TextureFormat.RGBA32, false);
+            const int W = 192, H = 108;
+            Texture2D texture = new Texture2D(W, H, TextureFormat.RGBA32, false);
             texture.wrapMode = TextureWrapMode.Clamp;
             texture.filterMode = FilterMode.Bilinear;
             texture.hideFlags = HideFlags.DontSave;
             Color32 purple = MarsTrainer.UI.UiTheme.Ink;
-            for (int x = 0; x < Width; x++)
+            for (int y = 0; y < H; y++)
             {
-                float t = x / (Width - 1f);
-                float alpha = 0.82f * Mathf.Pow(1f - Mathf.SmoothStep(0f, 1f, t), 1.4f);
-                purple.a = (byte)Mathf.RoundToInt(alpha * 255f);
-                texture.SetPixel(x, 0, purple);
+                for (int x = 0; x < W; x++)
+                {
+                    float u = (x + 0.5f) / W * 2f - 1f, v = (y + 0.5f) / H * 2f - 1f;
+                    float edge = Mathf.SmoothStep(0.75f, 1.6f, Mathf.Sqrt(u * u * 0.7f + v * v));
+                    float centre = 0.22f * Mathf.Exp(-(u * u * 3.2f + v * v * 2.2f));
+                    purple.a = (byte)Mathf.RoundToInt(Mathf.Clamp01(edge * 0.5f + centre) * 255f);
+                    texture.SetPixel(x, y, purple);
+                }
             }
             texture.Apply(false, true);
             return texture;

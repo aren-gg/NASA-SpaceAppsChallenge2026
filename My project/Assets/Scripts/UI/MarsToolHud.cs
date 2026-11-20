@@ -529,7 +529,7 @@ namespace MarsSurvival.UI
             text.text = content;
             text.fontSize = size;
             text.fontStyle = FontStyles.Normal;
-            if (style == FontStyle.Bold) MarsTrainer.UI.UiStyle.Caps(text, 2f);
+            if (style == FontStyle.Bold) MarsTrainer.UI.UiStyle.Titled(text);
             else if (readout) MarsTrainer.UI.UiStyle.Readout(text);
             text.color = color;
             text.alignment = anchor == TextAnchor.UpperLeft ? TextAlignmentOptions.TopLeft

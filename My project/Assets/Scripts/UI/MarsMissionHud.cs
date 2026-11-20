@@ -57,7 +57,7 @@ namespace MarsSurvival.UI
         private TMP_Text consoleTitle;
         private Button backButton;
         private string detailId;
-        private TMP_Text solText, navigation, notice, guide, batteryText, radiationText, alertText;
+        private TMP_Text solText, navigation, navDistance, navWeather, notice, guide, batteryText, radiationText, alertText;
         private SegmentGauge batteryFill, radiationFill;
         private Image noticePlate;
         private TMP_Text[] vitalLabels;
@@ -65,6 +65,13 @@ namespace MarsSurvival.UI
         private ResourceGlyph[] vitalIcons;
         private Color[] vitalColors;
         private TMP_Text diagnosticState, oxygenState;
+        private CanvasGroup vitalsFade, alertGroup;
+        private ResourceGlyph alertIcon;
+        private readonly int[] lastVitals = { -1, -1, -1, -1, -1 };
+        private float vitalsAwakeUntil, alertShownAt = -10f;
+        private bool vitalsLow;
+        /// <summary>Opacity of the vitals while everything is nominal and steady.</summary>
+        private const float CalmVitalsAlpha = 0.4f;
         private CanvasGroup[] vitalGroups;
         private TMP_Text[] vitalValues;
         private PauseMenu pause;
@@ -141,6 +148,60 @@ namespace MarsSurvival.UI
                 }
             }
             FadeNotice();
+            AnimateHud();
+        }
+
+        /// <summary>
+        /// Per-frame HUD motion: calm vitals fade back to <see cref="CalmVitalsAlpha"/> and
+        /// brighten while a value is changing or low; a new warning slides down into place.
+        /// Reduced motion snaps both to their final state.
+        /// </summary>
+        private void AnimateHud()
+        {
+            // HUD size: scale the walking HUD from the bottom-left corner while it still covers the screen.
+            // The HUD rect spans 1/scale of the screen (pure anchor ratios, no measured sizes) and
+            // is scaled by the same amount from the bottom-left, so it always covers the screen.
+            float hud = MarsTrainer.UI.HudPrefs.Scale;
+            gameplay.pivot = Vector2.zero;
+            gameplay.anchorMin = Vector2.zero;
+            gameplay.anchorMax = new Vector2(1f / hud, 1f / hud);
+            gameplay.offsetMin = gameplay.offsetMax = Vector2.zero;
+            gameplay.localScale = new Vector3(hud, hud, 1f);
+
+            bool reduced = mission.ReducedMotion;
+            SegmentGauge.ReducedMotion = reduced;
+            if (vitalsFade != null)
+            {
+                float target = vitalsLow || Time.unscaledTime < vitalsAwakeUntil ? 1f : CalmVitalsAlpha;
+                vitalsFade.alpha = reduced ? target : Mathf.MoveTowards(vitalsFade.alpha, target, Time.unscaledDeltaTime * (target > vitalsFade.alpha ? 4f : 0.8f));
+            }
+            if (alertGroup != null && alertPlate.gameObject.activeSelf)
+            {
+                float t = reduced ? 1f : Mathf.Clamp01((Time.unscaledTime - alertShownAt) / 0.28f);
+                float ease = 1f - (1f - t) * (1f - t) * (1f - t);
+                alertGroup.alpha = ease;
+                float lift = (1f - ease) * 28f;
+                alertPlate.offsetMin = new Vector2(0f, lift); alertPlate.offsetMax = new Vector2(0f, lift);
+            }
+        }
+
+        /// <summary>Shows (or hides with null) the top warning, with the matching pictogram; slides in when it first appears.</summary>
+        private void ShowAlert(string text)
+        {
+            bool show = !string.IsNullOrEmpty(text);
+            if (show && !alertPlate.gameObject.activeSelf) alertShownAt = Time.unscaledTime;
+            alertPlate.gameObject.SetActive(show);
+            if (!show) return;
+            string t = text.ToLowerInvariant();
+            ResourceSymbol symbol = t.Contains("water") || t.Contains("drink") || t.Contains("dehydrat") ? ResourceSymbol.Water
+                : t.Contains("food") || t.Contains("eat") || t.Contains("hungr") || t.Contains("starv") ? ResourceSymbol.Food
+                : t.Contains("oxygen") || t.Contains("o2") || t.Contains("air") ? ResourceSymbol.Air
+                : t.Contains("sleep") || t.Contains("rest") || t.Contains("tired") || t.Contains("fatigue") ? ResourceSymbol.Rest
+                : t.Contains("battery") || t.Contains("power") || t.Contains("energy") ? ResourceSymbol.Power
+                : t.Contains("radiation") || t.Contains("flare") || t.Contains("dose") ? ResourceSymbol.Radiation
+                : ResourceSymbol.Health;
+            alertIcon.Symbol = symbol;
+            alertIcon.Tint = StatBar.ColorOf(ResourceGlyph.ColorFor(symbol));
         }
 
         private void HandleKeys()
@@ -182,7 +243,7 @@ namespace MarsSurvival.UI
         // ------------------------------------------------------------------ shell
 
         // Minimal HUD: only what matters now, small and quiet until it needs attention.
-        private const float Small = 18f, Tiny = 16f;
+        private const float Small = UiStyle.Lead, Tiny = UiStyle.Body;
         // HUD plates (sol block, vitals) and the small key buttons share one backing so they read as one set.
         private const float ChipAlpha = 0.6f;
 
@@ -218,9 +279,14 @@ namespace MarsSurvival.UI
 
             // Top centre: where you are, as quiet text.
             RectTransform where = Plate(gameplay, "Location", .36f, .958f, .64f, .99f);
-            where.GetComponent<Image>().color = WithAlpha(ink, 0.45f);
-            navigation = Text(where, "", Tiny, Color.Lerp(paper, ink, 0.12f), .02f, 0, .98f, 1);
-            navigation.alignment = TextAlignmentOptions.Center;
+            // Three fields instead of one dotted string: place, distance from base, weather.
+            navigation = Text(where, "", Tiny, paper, .04f, 0, .44f, 1);
+            navigation.font = UiTypeface.Strong;
+            navDistance = Text(where, "", Tiny, accent, .44f, 0, .70f, 1);
+            navDistance.alignment = TextAlignmentOptions.Center;
+            UiStyle.Readout(navDistance);
+            navWeather = Text(where, "", Tiny, Color.Lerp(paper, ink, 0.2f), .70f, 0, .96f, 1);
+            navWeather.alignment = TextAlignmentOptions.MidlineRight;
 
             // Top right: key hints that also work as small buttons.
             RectTransform keys = StatBar.Frame(gameplay, "Screen keys", .80f, .955f, .99f, .99f);
@@ -235,14 +301,26 @@ namespace MarsSurvival.UI
             // One slim warning at a time, only when there is one.
             alertPlate = Plate(gameplay, "Warning", .32f, .885f, .68f, .945f);
             alertPlate.GetComponent<Image>().color = WithAlpha(Color.Lerp(ink, StatBar.ColorOf(Ui.UiDanger), 0.25f), 0.85f);
+            alertGroup = alertPlate.gameObject.AddComponent<CanvasGroup>();
+            // Hazard tab and the pictogram of the vital or system the warning is about.
+            RectTransform alertTab = NewRect("Hazard tab", alertPlate);
+            alertTab.anchorMin = alertTab.anchorMax = alertTab.pivot = new Vector2(0f, 0.5f);
+            alertTab.anchoredPosition = new Vector2(14f, 0f); alertTab.sizeDelta = new Vector2(22f, 22f);
+            MarsTrainer.UI.HazardTab alertStripes = alertTab.gameObject.AddComponent<MarsTrainer.UI.HazardTab>();
+            alertStripes.color = StatBar.ColorOf(Ui.UiDanger); alertStripes.raycastTarget = false;
+            alertIcon = ResourceGlyph.Create(alertPlate, ResourceSymbol.Water, 22f);
+            alertIcon.Plain = true;
+            alertIcon.rectTransform.anchoredPosition = new Vector2(46f, 0f);
             alertText = Text(alertPlate, "", Small, paper, .02f, 0, .86f, 1);
+            alertText.rectTransform.offsetMin = new Vector2(78f, 0f);
             Button ok = HintButton(alertPlate, "OK", DismissWarning);
             Place((RectTransform)ok.transform, .88f, .15f, .98f, .85f);
 
             // Bottom left: suit diagnostics, NASA-punk. Oxygen is the hero (big italic readout and a
             // wide slanted gauge); health, water, food and rest sit under it in a 2x2 grid. No plate.
-            RectTransform vitalsArea = StatBar.Frame(gameplay, "Suit vitals", .012f, .018f, .235f, .30f);
-            diagnosticState = UiStyle.Header(vitalsArea, "Suit diagnostic", "// EVA-07 · nominal", 15f, .90f, 1f);
+            RectTransform vitalsArea = StatBar.Frame(gameplay, "Suit vitals", .010f, .016f, .172f, .215f);
+            vitalsFade = vitalsArea.gameObject.AddComponent<CanvasGroup>();
+            diagnosticState = UiStyle.Header(vitalsArea, "Suit diagnostic", "Nominal", UiStyle.Label, .90f, 1f);
             string[] labels = { "Oxygen", "Health", "Water", "Food", "Rest" };
             ResourceSymbol[] symbols = { ResourceSymbol.Air, ResourceSymbol.Health, ResourceSymbol.Water, ResourceSymbol.Food, ResourceSymbol.Rest };
             vitalLabels = new TMP_Text[5]; vitalValues = new TMP_Text[5]; vitalFills = new SegmentGauge[5];
@@ -259,16 +337,17 @@ namespace MarsSurvival.UI
 
                 // Label row: plain pictogram and tracked capitals.
                 RectTransform tag = hero ? StatBar.Frame(cell, "Tag", .37f, .62f, .70f, .98f) : StatBar.Frame(cell, "Tag", 0f, .40f, .62f, 1f);
-                vitalIcons[i] = ResourceGlyph.Create(tag, symbols[i], hero ? 17f : 15f);
+                vitalIcons[i] = ResourceGlyph.Create(tag, symbols[i], (hero ? 14f : 12f));
                 vitalIcons[i].Plain = true;
                 vitalIcons[i].rectTransform.anchoredPosition = Vector2.zero;
-                vitalLabels[i] = Text(tag, labels[i], 15f, paper, 0f, 0f, 1f, 1f);
-                vitalLabels[i].rectTransform.offsetMin = new Vector2(hero ? 24f : 21f, 0f);
-                UiStyle.Caps(vitalLabels[i], 3.5f);
+                vitalLabels[i] = Text(tag, labels[i], UiStyle.Label, paper, 0f, 0f, 1f, 1f);
+                vitalLabels[i].rectTransform.offsetMin = new Vector2(hero ? 19f : 17f, 0f);
+                UiStyle.Caps(vitalLabels[i], 2.5f);
+                vitalLabels[i].richText = true;
                 Readable(vitalLabels[i]);
 
                 // The readout: SemiBold italic amber, with a smaller dim "/100".
-                vitalValues[i] = hero ? Text(cell, "100", 62f, accent, 0f, 0f, .35f, 1.02f) : Text(cell, "100", 27f, accent, .45f, .30f, 1f, 1.12f);
+                vitalValues[i] = hero ? Text(cell, "100", UiStyle.Display, accent, 0f, 0f, .35f, 1.02f) : Text(cell, "100", UiStyle.Lead, accent, .45f, .30f, 1f, 1.12f);
                 UiStyle.Readout(vitalValues[i]);
                 vitalValues[i].richText = true;
                 vitalValues[i].alignment = hero ? TextAlignmentOptions.BottomLeft : TextAlignmentOptions.BottomRight;
@@ -279,14 +358,14 @@ namespace MarsSurvival.UI
                                      : SegmentGauge.Create(cell, .01f, 0f, 1f, .26f, vitalColors[i], 12);
                 if (hero)
                 {
-                    oxygenState = Text(cell, "nominal", 13f, muted, .70f, .62f, 1f, .98f);
+                    oxygenState = Text(cell, "nominal", UiStyle.Caption, muted, .70f, .62f, 1f, .98f);
                     oxygenState.alignment = TextAlignmentOptions.MidlineRight;
                     UiStyle.Caps(oxygenState, 2.5f);
                     oxygenState.font = font;
                     Readable(oxygenState);
                     // Scale under the hero gauge: 0, three ticks, 100.
-                    TMP_Text zero = Text(cell, "0", 12f, muted, .375f, 0f, .5f, .26f);
-                    TMP_Text full = Text(cell, "100", 12f, muted, .85f, 0f, 1f, .26f);
+                    TMP_Text zero = Text(cell, "0", UiStyle.Caption, muted, .375f, 0f, .5f, .26f);
+                    TMP_Text full = Text(cell, "100", UiStyle.Caption, muted, .85f, 0f, 1f, .26f);
                     full.alignment = TextAlignmentOptions.MidlineRight;
                     UiStyle.Readout(zero); UiStyle.Readout(full); Readable(zero); Readable(full);
                     for (int t = 1; t <= 3; t++)
@@ -314,9 +393,7 @@ namespace MarsSurvival.UI
             planPlate.anchorMin = planPlate.anchorMax = planPlate.pivot = new Vector2(1f, 1f);
             planPlate.anchoredPosition = new Vector2(-16f, -58f - MarsMiniMap.MiniHeight - 8f);
             planPlate.sizeDelta = new Vector2(400f, 100f);
-            Image planBack = planPlate.gameObject.AddComponent<Image>();
-            planBack.color = WithAlpha(ink, ChipAlpha);
-            planBack.raycastTarget = false;
+            HudPlate(planPlate.gameObject);
             VerticalLayoutGroup planLayout = planPlate.gameObject.AddComponent<VerticalLayoutGroup>();
             planLayout.padding = new RectOffset(16, 16, 10, 12);
             planLayout.spacing = 2;
@@ -474,8 +551,9 @@ namespace MarsSurvival.UI
                 Math.Floor(1 + s.elapsedSeconds / MissionSettings.SolSeconds), duration / MissionSettings.SolSeconds, hh, mm,
                 mission.Paused ? "  paused" : asleep && mission.AdvanceRemaining > 0 ? "  sleeping" : mission.AdvanceRemaining > 0 ? "  waiting" : "");
             string nearby = string.IsNullOrEmpty(mission.Context.station) ? mission.Context.zone.ToString() : Sentence(mission.Context.station.Replace('_', ' '));
-            navigation.text = string.Format(CultureInfo.InvariantCulture, "{0}  ·  base {1:0} m  ·  {2}",
-                nearby, mission.Context.distanceFromBase, (mission.Environment.label ?? "").ToLowerInvariant());
+            navigation.text = nearby;
+            navDistance.text = string.Format(CultureInfo.InvariantCulture, "{0:0} m from base", mission.Context.distanceFromBase);
+            navWeather.text = Sentence(mission.Environment.label ?? "clear");
 
             // Battery and radiation, right under the sol counter.
             double charge = s.resources.batteryKwh / Math.Max(1, simulation.BatteryCapacity);
@@ -499,6 +577,9 @@ namespace MarsSurvival.UI
                 double v = Math.Max(0, Math.Min(100, values[i]));
                 bool low = v < 40, critical = v < 20;
                 worst = Math.Max(worst, critical ? 2 : low ? 1 : 0);
+                int rounded = (int)Math.Round(v);
+                if (lastVitals[i] >= 0 && rounded != lastVitals[i]) vitalsAwakeUntil = Time.unscaledTime + 4f;
+                lastVitals[i] = rounded;
                 Color state = critical ? StatBar.ColorOf(Ui.UiDanger) : low ? StatBar.ColorOf(Ui.UiWarn) : accent;
                 string unit = i == 0 ? "<size=40%><alpha=#8C> /100</size>" : "<size=55%><alpha=#8C> /100</size>";
                 vitalValues[i].text = UiTypeface.Digits(v.ToString("0", CultureInfo.InvariantCulture)) + unit;
@@ -507,7 +588,7 @@ namespace MarsSurvival.UI
                 vitalFills[i].Hazard = critical;
                 vitalFills[i].color = critical ? StatBar.ColorOf(Ui.UiDanger) : low ? StatBar.ColorOf(Ui.UiWarn) : vitalColors[i];
                 vitalIcons[i].Tint = critical ? StatBar.ColorOf(Ui.UiDanger) : (Color?)null;
-                vitalLabels[i].text = labels[i] + (low ? " · low" : "");
+                vitalLabels[i].text = labels[i] + (low ? "  <size=90%>low</size>" : "");
                 vitalLabels[i].color = low ? state : paper;
                 vitalGroups[i].alpha = 1f;
                 if (i == 0)
@@ -516,7 +597,8 @@ namespace MarsSurvival.UI
                     oxygenState.color = low ? state : WithAlpha(paper, 0.8f);
                 }
             }
-            diagnosticState.text = "// EVA-07 · " + (worst == 2 ? "warning" : worst == 1 ? "caution" : "nominal");
+            vitalsLow = worst > 0;
+            diagnosticState.text = worst == 2 ? "Warning" : worst == 1 ? "Caution" : "Nominal";
             diagnosticState.color = worst == 2 ? StatBar.ColorOf(Ui.UiDanger) : worst == 1 ? StatBar.ColorOf(Ui.UiWarn) : UiTheme.Dim;
             RefreshPlan(s);
 
@@ -525,7 +607,7 @@ namespace MarsSurvival.UI
             warningQueue.Clear();
             if (flare) warningQueue.Add("Solar flare now: go to the storm shelter.");
             foreach (string warning in simulation.Warnings) if (!dismissed.Contains(warning)) warningQueue.Add(warning);
-            alertPlate.gameObject.SetActive(warningQueue.Count > 0);
+            ShowAlert(warningQueue.Count > 0 ? warningQueue[0] : null);
             if (warningQueue.Count > 0) alertText.text = warningQueue[0] + (warningQueue.Count > 1 ? "   (+" + (warningQueue.Count - 1) + ")" : "");
 
             string message = mission.Notice ?? "";
@@ -539,7 +621,7 @@ namespace MarsSurvival.UI
             if (warningQueue.Count == 0) return;
             if (!warningQueue[0].StartsWith("Solar flare")) dismissed.Add(warningQueue[0]);
             warningQueue.RemoveAt(0);
-            alertPlate.gameObject.SetActive(warningQueue.Count > 0);
+            ShowAlert(warningQueue.Count > 0 ? warningQueue[0] : null);
             if (warningQueue.Count > 0) alertText.text = warningQueue[0];
         }
 
@@ -648,9 +730,9 @@ namespace MarsSurvival.UI
         {
             Heading("HOW LONG WILL YOU STAY?");
             Paragraph("One astronaut. Three power controls. A real patch of Gale Crater. Keep every essential system supplied, and leave enough energy for exploration and tomorrow.");
-            MissionChoice(MissionLength.Month, "ONE MARTIAN MONTH", "About 56 sols · A compact campaign with every survival system and all four research paths.");
-            MissionChoice(MissionLength.HalfYear, "HALF A MARTIAN YEAR", "About 334 sols · Prepare for changing conditions and longer resource demands.");
-            MissionChoice(MissionLength.Year, "ONE MARTIAN YEAR", "About 669 sols · The full endurance mission, with safe time advancement and local saves.");
+            MissionChoice(MissionLength.Month, "One Martian month", "About 56 sols. A compact campaign with every survival system and all four research paths.");
+            MissionChoice(MissionLength.HalfYear, "Half a Martian year", "About 334 sols. Prepare for changing conditions and longer resource demands.");
+            MissionChoice(MissionLength.Year, "One Martian year", "About 669 sols. The full endurance mission, with safe time advancement and local saves.");
             Paragraph("A Martian month means one-twelfth of a Martian year in this game. All presets use the same physical units. You can pause, save, and continue later.", 20);
             Button(content, "Continue saved mission", () => mission.LoadMission());
         }
@@ -705,7 +787,7 @@ namespace MarsSurvival.UI
         {
             RectTransform t = Tile(cell, "Power", () => Open(PowerView));
             LiveLabel(t, () => "Battery " + Percent(BatteryFraction()), 30, () => BatteryFraction() < 0.15 ? Danger : paper);
-            LiveLabel(t, () => string.Format(CultureInfo.InvariantCulture, "{0:+0.0;-0.0;0.0} kW   ·   {1}", mission.Simulation.Power.netKw, Endurance()), 16, null, muted);
+            LiveLabel(t, () => string.Format(CultureInfo.InvariantCulture, "{0:+0.0;-0.0;0.0} kW     {1}", mission.Simulation.Power.netKw, Endurance()), 16, null, muted);
             string[] names = { "Life", "Heat", "Shield" };
             for (int i = 0; i < 3; i++)
             {
@@ -736,7 +818,7 @@ namespace MarsSurvival.UI
                 CropState c = crop;
                 FlowMeter(t, () => "Bed " + (c.bed + 1) + "  " + CropWord(c), () => c.planted ? c.growth : 0, () => CropColor(c), true, 16);
             }
-            LiveLabel(t, () => string.Format(CultureInfo.InvariantCulture, "Seeds {0:0}   ·   Food {1:0} portions", State.resources.seeds, State.resources.food), 16, null, muted);
+            LiveLabel(t, () => string.Format(CultureInfo.InvariantCulture, "Seeds {0:0}     Food {1:0} portions", State.resources.seeds, State.resources.food), 16, null, muted);
         }
 
         private void EquipmentTile(RectTransform cell)
@@ -761,7 +843,7 @@ namespace MarsSurvival.UI
                     if (CanResearch(node)) ready++;
                     if (State.researched.Contains(node.id) && !State.installed.Contains(node.id)) waiting++;
                 }
-                return ready + " ready to research   ·   " + waiting + " to install";
+                return ready + " ready to research     " + waiting + " to install";
             }, 16, null, muted);
         }
 
@@ -774,7 +856,7 @@ namespace MarsSurvival.UI
                 SiteState selected = State.sites.Find(s => s.id == mission.SelectedSiteId);
                 return selected == null ? "No site selected" : "Target: " + selected.name;
             }, 17);
-            LiveLabel(t, () => string.Format(CultureInfo.InvariantCulture, "Suit {0:0.0} h   ·   field battery {1:0.00} kWh",
+            LiveLabel(t, () => string.Format(CultureInfo.InvariantCulture, "Suit {0:0.0} h     field battery {1:0.00} kWh",
                 mission.Simulation.SuitHoursRemaining, State.resources.fieldKwh), 16, null, muted);
         }
 
@@ -784,7 +866,7 @@ namespace MarsSurvival.UI
             LiveLabel(t, () => Sentence(State.radioMode.ToString()), 30);
             FlowMeter(t, () => "Signal  " + Percent(mission.Environment.signal), () => mission.Environment.signal,
                 () => mission.Environment.signal > 0.1 ? Safe : Warn, true, 16);
-            LiveLabel(t, () => State.reports.FindAll(r => !r.acknowledged).Count + " queued   ·   " +
+            LiveLabel(t, () => State.reports.FindAll(r => !r.acknowledged).Count + " queued     " +
                 State.reports.FindAll(r => r.acknowledged).Count + " acknowledged", 16, null, muted);
         }
 
@@ -802,7 +884,7 @@ namespace MarsSurvival.UI
             RectTransform card = Card();
             LabelInFlow(card, "Time", 22, accent);
             LiveLabel(card, () => mission.AdvanceRemaining > 0
-                ? "Waiting   ·   " + Duration(mission.AdvanceRemaining) + " to go. It stops by itself when something needs you."
+                ? "Waiting:  " + Duration(mission.AdvanceRemaining) + " to go. It stops by itself when something needs you."
                 : "A sol lasts about 15 minutes. Sleep in a bunk to skip the night; wait here only for a storm or a radio window. Nothing eats or drinks for you.", 17, null, muted);
             RectTransform row = Row(card, 46);
             SmallButton(row, "Wait 1 hour", () => mission.Advance(MissionSettings.HourSeconds));
@@ -816,6 +898,7 @@ namespace MarsSurvival.UI
             TMP_Text text = Label(planPlate, "", size, color, true);
             text.enableWordWrapping = false;
             text.richText = true;
+            Readable(text);
             text.gameObject.AddComponent<LayoutElement>().minHeight = size + 6;
             return text;
         }
@@ -834,9 +917,12 @@ namespace MarsSurvival.UI
                 planRows[i].gameObject.SetActive(shown);
                 if (!shown) continue;
                 PlanStep step = steps[i];
+                // Finished jobs stay readable over a bright sky: struck through and a little dimmer,
+                // with a green "done" tag, rather than grey-on-pink.
                 string mark = step.done ? "<color=" + safe + ">done</color>" : step.skipped ? "<color=" + dim + ">skipped</color>" : i == current ? ">" : "";
-                planRows[i].text = (i + 1) + "  " + step.title + (mark.Length > 0 ? "   " + mark : "");
-                planRows[i].color = i == current ? accent : step.done || step.skipped ? muted : paper;
+                string title = step.done || step.skipped ? "<s>" + step.title + "</s>" : step.title;
+                planRows[i].text = (i + 1) + "  " + title + (mark.Length > 0 ? "   " + mark : "");
+                planRows[i].color = i == current ? accent : step.done || step.skipped ? WithAlpha(paper, 0.78f) : paper;
                 planRows[i].fontSize = i == current ? Small + 1 : Tiny + 1;
                 // The current job's explanation sits right under it.
                 if (i == current) planDetail.transform.SetSiblingIndex(planRows[i].transform.GetSiblingIndex() + 1);
@@ -872,14 +958,14 @@ namespace MarsSurvival.UI
         private void BuildPowerWindow()
         {
             RectTransform battery = Card();
-            LiveLabel(battery, () => string.Format(CultureInfo.InvariantCulture, "Battery {0}   ·   {1:0.0} of {2:0.0} kWh   ·   {3}",
+            LiveLabel(battery, () => string.Format(CultureInfo.InvariantCulture, "Battery {0}     {1:0.0} of {2:0.0} kWh     {3}",
                 Percent(BatteryFraction()), State.resources.batteryKwh, mission.Simulation.BatteryCapacity, Endurance()), 24);
             FlowMeter(battery, () => "", BatteryFraction, () => BatteryFraction() < 0.15 ? Danger : StatBar.ColorOf(Ui.UiPower), false, 4);
             LiveLabel(battery, () =>
             {
                 PowerSnapshot p = mission.Simulation.Power;
                 return string.Format(CultureInfo.InvariantCulture,
-                    "Solar in {0:0.00} kW   ·   Load {1:0.00} kW   ·   Greenhouse {2:0.00}   ·   Task {3:0.00}   ·   Charging {4:0.00}   ·   Radio {5:0.00}   ·   Wasted by overdraw {6:0.00}",
+                    "Solar in {0:0.00} kW     Load {1:0.00} kW     Greenhouse {2:0.00}     Task {3:0.00}     Charging {4:0.00}     Radio {5:0.00}     Wasted by overdraw {6:0.00}",
                     p.generatedKw, p.loadKw, p.greenhouseKw, p.taskKw, p.chargingKw, p.radioKw, p.overdrawLossKw);
             }, 17, null, muted);
             LiveLabel(battery, NeedleText, 17, null, muted);
@@ -908,7 +994,7 @@ namespace MarsSurvival.UI
                 FlowMeter(card, () =>
                 {
                     PowerSnapshot p = mission.Simulation.Power;
-                    return string.Format(CultureInfo.InvariantCulture, "Knob {0:0}%   ·   delivered {1:0.00} of {2:0.00} kW needed   ·   {3}",
+                    return string.Format(CultureInfo.InvariantCulture, "Knob {0:0}%     delivered {1:0.00} of {2:0.00} kW needed     {3}",
                         State.knobs[channel] * 100, p.deliveredKw[channel], p.neededKw[channel], ChannelWord(channel));
                 }, () => ChannelRatio(channel), () => ChannelColor(channel), false, 18);
             }
@@ -916,7 +1002,7 @@ namespace MarsSurvival.UI
             RectTransform conditions = Card();
             LabelInFlow(conditions, "Conditions", 22, accent);
             LiveLabel(conditions, () => string.Format(CultureInfo.InvariantCulture,
-                "Outside {0:0.0} °C   ·   Habitat {1:0.0} °C   ·   Dose rate {2:0.0} µGy/h   ·   Total {3:0.0} µGy\n{4}",
+                "Outside {0:0.0} °C     Habitat {1:0.0} °C     Dose rate {2:0.0} µGy/h     Total {3:0.0} µGy\n{4}",
                 mission.Environment.temperatureC, State.equipment.habitatTemperatureC, mission.Environment.radiationMicrograyPerHour,
                 State.astronaut.doseMicrogray, mission.Simulation.Warnings.Count == 0 ? "No warnings." : string.Join("\n", mission.Simulation.Warnings.ToArray())), 18);
         }
@@ -926,7 +1012,7 @@ namespace MarsSurvival.UI
         {
             ArduinoLink link = mission.Arduino == null ? null : mission.Arduino.Link;
             if (link == null || !link.Connected) return "Dashboard needle: no Arduino connected.";
-            return string.Format(CultureInfo.InvariantCulture, "Dashboard needle: S{0} of {1} steps ({2:0}% battery, {3:0.0} deg)   ·   {4} needle commands sent   ·   moves in 1% steps",
+            return string.Format(CultureInfo.InvariantCulture, "Dashboard needle: S{0} of {1} steps ({2:0}% battery, {3:0.0} deg)     {4} needle commands sent     moves in 1% steps",
                 link.GaugeSentSteps, link.gaugeFullSteps, 100.0 * Math.Abs(link.GaugeSentSteps) / Math.Max(1, link.gaugeFullSteps),
                 180.0 * Math.Abs(link.GaugeSentSteps) / Math.Max(1, link.gaugeFullSteps), link.GaugeCommandsSent);
         }
@@ -948,7 +1034,7 @@ namespace MarsSurvival.UI
             List<RectTransform> cells = Grid(6, 3, 132);
             InfoTile(cells[0], "Eat", "Galley in the command hub: press E at the food locker. " + State.resources.food.ToString("0", CultureInfo.InvariantCulture) + " portions in store.");
             InfoTile(cells[1], "Drink", "Galley in the command hub: press E at the water dispenser. " + State.resources.cleanWaterLiters.ToString("0", CultureInfo.InvariantCulture) + " L clean water.");
-            ActionTile(cells[2], "Refill suit", () => string.Format(CultureInfo.InvariantCulture, "Suit {0:0} g oxygen   ·   habitat {1:0} g", State.resources.suitOxygenGrams, State.resources.oxygenGrams), () => mission.Execute("refill"));
+            ActionTile(cells[2], "Refill suit", () => string.Format(CultureInfo.InvariantCulture, "Suit {0:0} g oxygen     habitat {1:0} g", State.resources.suitOxygenGrams, State.resources.oxygenGrams), () => mission.Execute("refill"));
             InfoTile(cells[3], "Sleep", "Bunk in the crew quarters (E), after 17:00. You wake at 07:00.");
             InfoTile(cells[4], "Exercise", "Exercise bike in the crew quarters (E). Keeps fitness up.");
             InfoTile(cells[5], "Medical treatment", "Treatment bed in the medical bay (E). " + State.resources.medicine.ToString("0", CultureInfo.InvariantCulture) + " supplies left.");
@@ -962,7 +1048,7 @@ namespace MarsSurvival.UI
             {
                 CropState c = State.crops[i];
                 RectTransform t = Tile(beds[i], "Bed " + (c.bed + 1), null);
-                LiveLabel(t, () => Sentence(c.crop) + " crop   ·   " + CropWord(c), 26, () => c.ready ? Safe : paper);
+                LiveLabel(t, () => Sentence(c.crop) + " crop     " + CropWord(c), 26, () => c.ready ? Safe : paper);
                 FlowMeter(t, () => "Growth  " + Percent(c.planted ? c.growth : 0), () => c.planted ? c.growth : 0, () => CropColor(c), true, 17);
                 FlowMeter(t, () => "Soil moisture  " + Percent(Math.Min(1, c.moisture)), () => c.moisture, () => c.moisture <= 0.15 ? Danger : c.moisture > 1.15 ? Warn : StatBar.ColorOf(Ui.UiWater), true, 17);
                 FlowMeter(t, () => "Stress  " + Percent(c.stress), () => c.stress, () => c.stress > 0.4 ? Danger : Warn, true, 17);
@@ -971,9 +1057,9 @@ namespace MarsSurvival.UI
             }
             List<RectTransform> cells = Grid(2, 2, 120);
             RectTransform power = Tile(cells[0], "Greenhouse power", () => mission.Execute("greenhouse"));
-            LiveLabel(power, () => State.greenhouseEnabled ? "On   ·   click to switch off" : "OFF   ·   click to switch on", 22, () => State.greenhouseEnabled ? Safe : Warn);
+            LiveLabel(power, () => State.greenhouseEnabled ? "On  (click to switch off)" : "Off  (click to switch on)", 22, () => State.greenhouseEnabled ? Safe : Warn);
             RectTransform supplies = Tile(cells[1], "Supplies", null);
-            LiveLabel(supplies, () => string.Format(CultureInfo.InvariantCulture, "Seeds {0:0.0}   ·   Nutrients {1:0.0}\nClean water {2:0.0} L   ·   Food {3:0.0} portions",
+            LiveLabel(supplies, () => string.Format(CultureInfo.InvariantCulture, "Seeds {0:0.0}     Nutrients {1:0.0}\nClean water {2:0.0} L     Food {3:0.0} portions",
                 State.resources.seeds, State.resources.nutrients, State.resources.cleanWaterLiters, State.resources.food), 18);
         }
 
@@ -984,14 +1070,14 @@ namespace MarsSurvival.UI
             FlowMeter(card, () => "Rover condition  " + Percent(State.equipment.roverCondition), () => State.equipment.roverCondition, () => ConditionColor(State.equipment.roverCondition), true, 19);
             FlowMeter(card, () => "Panel condition  " + Percent(State.equipment.panelCondition), () => State.equipment.panelCondition, () => ConditionColor(State.equipment.panelCondition), true, 19);
             FlowMeter(card, () => "Panel dust  " + Percent(State.equipment.panelDust), () => State.equipment.panelDust, () => State.equipment.panelDust > 0.15 ? Warn : muted, true, 19);
-            LiveLabel(card, () => string.Format(CultureInfo.InvariantCulture, "Spare parts {0:0.0}   ·   Field battery {1:0.00} kWh   ·   Rover battery {2:0.0} kWh",
+            LiveLabel(card, () => string.Format(CultureInfo.InvariantCulture, "Spare parts {0:0.0}     Field battery {1:0.00} kWh     Rover battery {2:0.0} kWh",
                 State.resources.parts, State.resources.fieldKwh, State.resources.roverKwh), 17, null, muted);
 
             List<RectTransform> switches = Grid(2, 2, 110);
             RectTransform rover = Tile(switches[0], "Rover charging", () => mission.Execute("charge_rover"));
-            LiveLabel(rover, () => State.chargeRover ? "On   ·   click to stop" : "Off   ·   click to charge", 21, () => State.chargeRover ? Safe : paper);
+            LiveLabel(rover, () => State.chargeRover ? "On  (click to stop)" : "Off  (click to charge)", 21, () => State.chargeRover ? Safe : paper);
             RectTransform field = Tile(switches[1], "Field battery charging", () => mission.Execute("charge_field"));
-            LiveLabel(field, () => State.chargeField ? "On   ·   click to stop" : "Off   ·   click to charge", 21, () => State.chargeField ? Safe : paper);
+            LiveLabel(field, () => State.chargeField ? "On  (click to stop)" : "Off  (click to charge)", 21, () => State.chargeField ? Safe : paper);
 
             Paragraph("Repairs are done with tools, where the equipment is:", 19);
             List<RectTransform> jobs = Grid(3, 3, 120);
@@ -1002,7 +1088,7 @@ namespace MarsSurvival.UI
 
         private void BuildResearchWindow()
         {
-            LiveParagraph(() => State.resources.researchPoints + " research points   ·   " +
+            LiveParagraph(() => State.resources.researchPoints + " research points     " +
                 State.resources.parts.ToString("0.0", CultureInfo.InvariantCulture) + " parts. Analyse samples to earn points; click a design to see it.", 20);
             string branch = null;
             List<ResearchNode> group = new List<ResearchNode>();
@@ -1022,7 +1108,7 @@ namespace MarsSurvival.UI
 
         private void ResearchGroup(string branch, List<ResearchNode> nodes)
         {
-            Heading(branch.ToUpperInvariant());
+            Heading(branch);
             List<RectTransform> cells = Grid(nodes.Count, 4, 104);
             for (int i = 0; i < nodes.Count; i++)
             {
@@ -1042,7 +1128,7 @@ namespace MarsSurvival.UI
             LiveLabel(card, () => Sentence(ResearchStatus(node)), 22, () => ResearchColor(node));
             LabelInFlow(card, node.description, 20, paper);
             LabelInFlow(card, string.Format(CultureInfo.InvariantCulture,
-                "Unlock: {0} points   ·   Install: {1:0} parts, {2} and power   ·   Needs first: {3}",
+                "Unlock: {0} points     Install: {1:0} parts, {2} and power     Needs first: {3}",
                 node.points, node.parts, Duration(node.installationSeconds), node.prerequisites.Length == 0 ? "nothing" : string.Join(", ", node.prerequisites)), 18, muted);
             RectTransform row = Row(card, 50);
             Button act = SmallButton(row, "", () =>
@@ -1062,7 +1148,7 @@ namespace MarsSurvival.UI
         private void BuildFieldWindow()
         {
             LiveParagraph(() => string.Format(CultureInfo.InvariantCulture,
-                "{0:0} m from base   ·   suit {1:0.0} h left   ·   field battery {2:0.00} kWh   ·   rover {3:0.0} kWh. Click a numbered site to target it.",
+                "{0:0} m from base     suit {1:0.0} h left     field battery {2:0.00} kWh     rover {3:0.0} kWh. Click a numbered site to target it.",
                 mission.Context.distanceFromBase, mission.Simulation.SuitHoursRemaining, State.resources.fieldKwh, State.resources.roverKwh), 19);
             BuildMap();
             SiteState site = State.sites.Find(s => s.id == mission.SelectedSiteId);
@@ -1071,7 +1157,7 @@ namespace MarsSurvival.UI
             LabelInFlow(card, site.name, 24, accent);
             double walkingMinutes = site.distanceMeters * 2 / (3.4 / 3.6) / 60;
             LabelInFlow(card, string.Format(CultureInfo.InvariantCulture,
-                "{0:0.0000}°, {1:0.0000}°   ·   {2:0} m from base   ·   round trip at least {3:0} min on foot   ·   {4} research points",
+                "{0:0.0000}°, {1:0.0000}°     {2:0} m from base     round trip at least {3:0} min on foot     {4} research points",
                 site.latitude, site.longitude, site.distanceMeters, walkingMinutes, site.reward), 17, muted);
             List<RectTransform> steps = Grid(6, 3, 98);
             StepTile(steps[0], "Survey", "Rock Hammer (1)", () => site.surveyed, null);
@@ -1117,7 +1203,7 @@ namespace MarsSurvival.UI
         {
             drawnReports = State.reports.Count;
             RectTransform card = Card();
-            FlowMeter(card, () => "Signal  " + Percent(mission.Environment.signal) + "   ·   " +
+            FlowMeter(card, () => "Signal  " + Percent(mission.Environment.signal) + "     " +
                 (mission.Environment.signal > 0.1 ? "link available now" : "next window in " + Duration(mission.Environment.nextWindowSeconds)),
                 () => mission.Environment.signal, () => mission.Environment.signal > 0.1 ? Safe : Warn, false, 20);
             LabelInFlow(card, "Houston is simulated mission control; nothing is really sent. Weak signal makes a transmission take longer and use more power.", 17, muted);
@@ -1139,7 +1225,7 @@ namespace MarsSurvival.UI
             {
                 ReportState r = report;
                 RectTransform item = Card();
-                LiveLabel(item, () => (r.acknowledged ? "Acknowledged" : "Queued") + "   ·   sent for " + Duration(r.progressSeconds), 19, () => r.acknowledged ? Safe : accent);
+                LiveLabel(item, () => (r.acknowledged ? "Acknowledged" : "Queued") + "     sent for " + Duration(r.progressSeconds), 19, () => r.acknowledged ? Safe : accent);
                 LabelInFlow(item, report.summary, 17, paper);
             }
         }
@@ -1186,7 +1272,7 @@ namespace MarsSurvival.UI
             LiveParagraph(() => "Temperature: " + (mission.Environment.temperatureSource ?? "loading") +
                 "\nRadiation: " + (mission.Environment.radiationSource ?? "loading") +
                 "\nEvents: " + (mission.Environment.eventSource ?? "loading") +
-                "\nSchedule: " + MissionDataSources.ScheduleSourceLabel + "   ·   Crops: " + MissionDataSources.CropSourceLabel +
+                "\nSchedule: " + MissionDataSources.ScheduleSourceLabel + "     Crops: " + MissionDataSources.CropSourceLabel +
                 string.Format(CultureInfo.InvariantCulture, "\nDose budget used: {0:0.0}% of {1:0} mSv ({2:0.0} mSv so far)",
                     SurvivalNeeds.DoseBudgetFraction(State.astronaut) * 100, Ui.H_limit, SurvivalNeeds.MilliSievert(State.astronaut.doseMicrogray)), 17);
             cells = Grid(Sources.Length, 4, 96);
@@ -1225,8 +1311,8 @@ namespace MarsSurvival.UI
             SmallButton(row, "Restart this mission", () => mission.Restart());
 
             List<RectTransform> cells = Grid(2, 2, 104);
-            RectTransform motion = Tile(cells[0], "Reduced weather motion", () => mission.ReducedMotion = !mission.ReducedMotion);
-            LiveLabel(motion, () => mission.ReducedMotion ? "On   ·   click to turn off" : "Off   ·   click to turn on", 20, () => mission.ReducedMotion ? Safe : paper);
+            RectTransform motion = Tile(cells[0], "Reduced motion (weather and HUD)", () => mission.ReducedMotion = !mission.ReducedMotion);
+            LiveLabel(motion, () => mission.ReducedMotion ? "On  (click to turn off)" : "Off  (click to turn on)", 20, () => mission.ReducedMotion ? Safe : paper);
             RectTransform scaleTile = Tile(cells[1], "Interface scale", null);
             Slider(scaleTile, (uiScale - 0.8f) / 0.4f, value =>
             {
@@ -1234,16 +1320,21 @@ namespace MarsSurvival.UI
                 scaler.referenceResolution = new Vector2(Ui.UiWidth / uiScale, Ui.UiHeight / uiScale);
             });
 
+            RectTransform hudTile = Tile(cells[2], "HUD size (walking screen)", null);
+            LiveLabel(hudTile, () => MarsTrainer.UI.HudPrefs.Text + "  (drag to change)", 20, () => paper);
+            Slider(hudTile, Mathf.InverseLerp(MarsTrainer.UI.HudPrefs.Min, MarsTrainer.UI.HudPrefs.Max, MarsTrainer.UI.HudPrefs.Scale),
+                value => MarsTrainer.UI.HudPrefs.Scale = Mathf.Lerp(MarsTrainer.UI.HudPrefs.Min, MarsTrainer.UI.HudPrefs.Max, value));
+
             List<RectTransform> cameraCells = Grid(2, 2, 132);
             RectTransform sensitivityTile = Tile(cameraCells[0], "Camera sensitivity", null);
-            LiveLabel(sensitivityTile, () => MarsTrainer.UI.CameraPrefs.SensitivityText + "x   ·   drag to change", 20, () => paper);
+            LiveLabel(sensitivityTile, () => MarsTrainer.UI.CameraPrefs.SensitivityText + "x  (drag to change)", 20, () => paper);
             const float minSens = MarsTrainer.UI.CameraPrefs.MinSensitivity, maxSens = MarsTrainer.UI.CameraPrefs.MaxSensitivity;
             Slider(sensitivityTile, Mathf.InverseLerp(minSens, maxSens, MarsTrainer.UI.CameraPrefs.Sensitivity),
                 value => MarsTrainer.UI.CameraPrefs.Sensitivity = Mathf.Lerp(minSens, maxSens, value));
             RectTransform shiftLockTile = Tile(cameraCells[1], "Shift Lock Switch (Ctrl toggles)",
                 () => MarsTrainer.UI.CameraPrefs.ShiftLockSwitch = !MarsTrainer.UI.CameraPrefs.ShiftLockSwitch);
-            LiveLabel(shiftLockTile, () => !MarsTrainer.UI.CameraPrefs.ShiftLockSwitch ? "Off   ·   click to allow shift lock"
-                : (MarsTrainer.UI.CameraPrefs.ShiftLockOn ? "On, locked   ·   Ctrl frees the mouse" : "On, mouse free   ·   Ctrl locks it"),
+            LiveLabel(shiftLockTile, () => !MarsTrainer.UI.CameraPrefs.ShiftLockSwitch ? "Off  (click to allow shift lock)"
+                : (MarsTrainer.UI.CameraPrefs.ShiftLockOn ? "On, locked.  Ctrl frees the mouse" : "On, mouse free.  Ctrl locks it"),
                 20, () => MarsTrainer.UI.CameraPrefs.ShiftLockSwitch ? Safe : paper);
 
             RectTransform sound = Card();
@@ -1252,7 +1343,7 @@ namespace MarsSurvival.UI
 
             RectTransform keys = Card();
             LabelInFlow(keys, "Controls", 22, accent);
-            LabelInFlow(keys, "W A S D: move · Mouse: look · C: wardrobe · Scroll: zoom · Ctrl: shift lock · Right mouse: turn camera · Shift: sprint · Space: jump / rover brake · E: pick up, board or leave rover\n1-9, 0: tools · Click / R: use tool · X: stop task · F / G: eat / drink\nTab: console · Esc: back / menu · H: help · P: pause · F5 / F9: save / load · F3: terrain sources", 18, paper);
+            LabelInFlow(keys, "W A S D: move    Mouse: look    C: wardrobe    Scroll: zoom    Ctrl: shift lock    Right mouse: turn camera    Shift: sprint    Space: jump / rover brake    E: pick up, board or leave rover\n1-9, 0: tools    Click / R: use tool    X: stop task    F / G: eat / drink\nTab: console    Esc: back / menu    H: help    P: pause    F5 / F9: save / load    F3: terrain sources", 18, paper);
 
             RectTransform hardware = Card();
             LabelInFlow(hardware, "Three-knob dashboard (Arduino)", 22, accent);
@@ -1419,7 +1510,7 @@ namespace MarsSurvival.UI
         private void StepTile(RectTransform cell, string title, string how, Func<bool> done, UnityAction action)
         {
             RectTransform t = Tile(cell, title, action);
-            LiveLabel(t, () => done() ? "Done" : "To do   ·   " + how, 17, () => done() ? Safe : paper);
+            LiveLabel(t, () => done() ? "Done" : "To do     " + how, 17, () => done() ? Safe : paper);
         }
 
         /// <summary>A toggle that shows its state; lit while on.</summary>
@@ -1468,7 +1559,7 @@ namespace MarsSurvival.UI
             Paragraph(won ? "Your outpost supported the astronaut through the selected mission." : "Review what happened, then load a save or try another approach.");
             Paragraph(State.endingReason ?? "");
             Paragraph(string.Format(CultureInfo.InvariantCulture,
-                "Survived {0:0.00} sols of {1:0.00}\nSolar energy generated: {2:0.0} kWh · Energy consumed: {3:0.0} kWh\nResearch installed: {4}/16 · Analyzed sites: {5} · Marker photos: {6}\nRepairs completed: {7} · Panel cleanings: {8} · Houston acknowledgments: {9}",
+                "Survived {0:0.00} sols of {1:0.00}\nSolar energy generated: {2:0.0} kWh    Energy consumed: {3:0.0} kWh\nResearch installed: {4}/16    Analyzed sites: {5}    Marker photos: {6}\nRepairs completed: {7}    Panel cleanings: {8}    Houston acknowledgments: {9}",
                 State.elapsedSeconds / MissionSettings.SolSeconds, MissionSettings.Duration(State.length) / MissionSettings.SolSeconds,
                 State.totalGeneratedKwh, State.totalConsumedKwh, State.installed.Count, State.sites.FindAll(s => s.analyzed).Count,
                 State.sites.FindAll(s => s.photographed).Count, State.repairsCompleted, State.panelsCleaned, State.reports.FindAll(r => r.acknowledged).Count));
@@ -1641,7 +1732,7 @@ namespace MarsSurvival.UI
         {
             RectTransform card = Card();
             LabelInFlow(card, title, 25, accent);
-            LabelInFlow(card, "Where: " + where + "   ·   Tools: " + tools, 19, muted);
+            LabelInFlow(card, "Where: " + where + "     Tools: " + tools, 19, muted);
             LabelInFlow(card, how, 20, paper);
         }
 
@@ -1716,9 +1807,9 @@ namespace MarsSurvival.UI
             TextMeshProUGUI label = NewRect("Text", parent).gameObject.AddComponent<TextMeshProUGUI>();
             bool readout = size < 28f && UiTypeface.LooksNumeric(value);
             label.font = font;
-            if (size >= 28f) UiStyle.Caps(label, 3f);          // titles: tracked capitals
+            if (size >= 28f) UiStyle.Titled(label);            // titles: SemiBold, normal case
             else if (readout) UiStyle.Readout(label);            // numbers: SemiBold italic
-            if (color == accent && !readout)
+            if (color == accent && !readout && size < 28f)
             {
                 // Accent text is a section label: small tracked capitals in the semibold face.
                 UiStyle.Caps(label, 6f);
@@ -1776,8 +1867,7 @@ namespace MarsSurvival.UI
         private Button HintButton(Transform parent, string text, UnityAction action)
         {
             RectTransform rect = NewRect(text, parent);
-            Image image = rect.gameObject.AddComponent<Image>();
-            image.color = WithAlpha(ink, ChipAlpha);
+            Image image = HudPlate(rect.gameObject);
             Button button = rect.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
             button.colors = StatBar.UiStates;
@@ -1796,10 +1886,21 @@ namespace MarsSurvival.UI
         private RectTransform Plate(Transform parent, string name, float x0, float y0, float x1, float y1)
         {
             RectTransform rect = StatBar.Frame(parent, name, x0, y0, x1, y1);
-            Image image = rect.gameObject.AddComponent<Image>();
-            image.color = WithAlpha(ink, ChipAlpha);
-            image.raycastTarget = false;
+            HudPlate(rect.gameObject);
             return rect;
+        }
+
+        /// <summary>
+        /// The one HUD plate style (sol block, location, warning, plan, message, key buttons,
+        /// minimap): the kit's cut-corner plate at one shared opacity, with a hairline edge.
+        /// </summary>
+        public static FacetedImage HudPlate(GameObject owner, float alpha = ChipAlpha)
+        {
+            FacetedImage image = owner.AddComponent<FacetedImage>();
+            image.KeepAlpha = true;
+            image.color = WithAlpha(StatBar.ColorOf(Ui.UiSurface), alpha);
+            image.raycastTarget = false;
+            return image;
         }
 
         private TMP_Text Text(Transform parent, string value, float size, Color color, float x0, float y0, float x1, float y1)

@@ -79,7 +79,7 @@ namespace MarsTrainer.UI
             var text = rect.gameObject.AddComponent<TextMeshProUGUI>();
             bool readout = size < GameConstants.UiHeading && UiTypeface.LooksNumeric(content);
             text.font = UiTypeface.Font;
-            if (size >= GameConstants.UiHeading) UiStyle.Caps(text, 3f);
+            if (size >= GameConstants.UiHeading) UiStyle.Titled(text);
             else if (readout) UiStyle.Readout(text);
             text.text = content; text.fontSize = size; text.color = ColorOf(GameConstants.UiText);
             text.lineSpacing = GameConstants.UiTextLineSpacing; text.wordSpacing = GameConstants.UiTextWordSpacing;

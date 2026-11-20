@@ -175,12 +175,12 @@ namespace MarsSurvival.UI
 
             RectTransform root = canvasObject.GetComponent<RectTransform>();
             RectTransform title = StatBar.Frame(root, "Title", 0.03f, 0.885f, 0.27f, 0.965f, GameConstants.UiSurface);
-            TMP_Text heading = StatBar.Text(title, "WARDROBE", GameConstants.UiTitle * 0.8f, GameConstants.UiLine * 1.4f);
+            TMP_Text heading = StatBar.Text(title, "Wardrobe", GameConstants.UiTitle * 0.8f, GameConstants.UiLine * 1.4f);
             heading.characterSpacing = 8f;
             heading.rectTransform.anchorMin = Vector2.zero; heading.rectTransform.anchorMax = Vector2.one;
             heading.margin = new Vector4(GameConstants.UiGap * 2f, 0f, GameConstants.UiGap, 0f);
             RectTransform hint = StatBar.Frame(root, "Hint", 0.03f, 0.035f, 0.40f, 0.085f, GameConstants.UiSurface);
-            TMP_Text hintText = StatBar.Text(hint, "Drag to turn the astronaut  ·  C or Esc to close", GameConstants.UiBody * 0.7f);
+            TMP_Text hintText = StatBar.Text(hint, "Drag to turn the astronaut    C or Esc to close", GameConstants.UiBody * 0.7f);
             hintText.rectTransform.anchorMin = Vector2.zero; hintText.rectTransform.anchorMax = Vector2.one;
             hintText.margin = new Vector4(GameConstants.UiGap * 1.5f, 0f, GameConstants.UiGap, 0f);
             hintText.color = MarsTrainer.UI.UiTheme.Dim;

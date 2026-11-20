@@ -36,10 +36,10 @@ namespace MarsSurvival.UI
             MarsTime.State now = cycle.Now;
             builder.Length = 0;
             builder.Append("Sol ").Append(now.localSol.ToString("N0"))
-                .Append("  ·  Mars Year ").Append(now.marsYear).Append('\n');
-            builder.Append(MarsTime.FormatClock(now.localMeanSolarTimeHours)).Append(" LMST  ·  ")
+                .Append("    Mars Year ").Append(now.marsYear).Append('\n');
+            builder.Append(MarsTime.FormatClock(now.localMeanSolarTimeHours)).Append(" LMST    ")
                 .Append(PartOfDay(now)).Append('\n');
-            builder.Append("Ls ").Append(now.solarLongitude.ToString("F0")).Append("°  ·  ")
+            builder.Append("Ls ").Append(now.solarLongitude.ToString("F0")).Append("°    ")
                 .Append(cycle.LatLon.x < 0 ? "southern " : "northern ")
                 .Append(MarsTime.Season(now.solarLongitude, cycle.LatLon.x)).Append('\n');
             builder.Append("Earth ").Append(cycle.UtcNow.ToString("yyyy-MM-dd HH:mm")).Append(" UTC");

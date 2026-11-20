@@ -60,8 +60,7 @@ namespace MarsSurvival.UI
             plate.anchorMin = plate.anchorMax = plate.pivot = new Vector2(1f, 1f);
             plate.anchoredPosition = new Vector2(-16f, -58f);
             plate.sizeDelta = new Vector2(MiniWidth, MiniHeight);
-            Image back = plate.gameObject.AddComponent<Image>();
-            back.color = WithAlpha(ink, alpha);
+            Image back = MarsMissionHud.HudPlate(plate.gameObject, alpha);   // the shared HUD plate
             Button open = plate.gameObject.AddComponent<Button>();
             open.targetGraphic = back;
             open.navigation = new Navigation { mode = Navigation.Mode.None };
@@ -133,7 +132,7 @@ namespace MarsSurvival.UI
             if (Expanded)
             {
                 UpdateLayer(big);
-                bigTitle.text = Mathf.RoundToInt(bigMeters) + " m around you   ·   scroll to zoom (up to " + Mathf.RoundToInt(renderMeters) + " m)   ·   M to close";
+                bigTitle.text = Mathf.RoundToInt(bigMeters) + " m around you     scroll to zoom (up to " + Mathf.RoundToInt(renderMeters) + " m)     M to close";
             }
         }
 
