@@ -51,8 +51,10 @@ namespace MarsSurvival.Simulation
                 case "eat":
                 {
                     if (State.astronaut.food > 95) return Fail("You are not hungry.", out reason);
-                    int best = -1;
-                    for (int i = 0; i < SeedKind.All.Length; i++) if (State.basket[i] > 0 && (best < 0 || SeedKind.All[i].sellPrice < SeedKind.All[best].sellPrice)) best = i;
+                    // A named crop (the one in hand), else the cheapest one in the basket.
+                    int best = kind >= 0 && State.basket[kind] > 0 ? kind : -1;
+                    if (kind < 0)
+                        for (int i = 0; i < SeedKind.All.Length; i++) if (State.basket[i] > 0 && (best < 0 || SeedKind.All[i].sellPrice < SeedKind.All[best].sellPrice)) best = i;
                     if (best < 0) return Fail("Nothing to eat. Harvest a crop first.", out reason);
                     State.basket[best]--;
                     State.astronaut.food = Math.Min(100, State.astronaut.food + SeedKind.All[best].food);

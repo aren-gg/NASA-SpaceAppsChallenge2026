@@ -277,7 +277,10 @@ namespace MarsSurvival.Gameplay
                 if (id == "hydro_sprayer") { Shot("held_" + id); yield return ScreenShot("screen_held_" + id); }
             }
             if (hotbar != null) hotbar.Select(0);
-            Check(hotbar != null && hotbar.Current.Id == "regolith_shovel" && hotbar.CurrentCarried, "Hotbar slot 1 selects the Shovel",
+            if (hotbar != null)
+                Check(hotbar.SlotOf(ids[0]) >= 0 && hotbar.SlotOf(ids[0]) < hotbar.SlotOf(ids[1]) && hotbar.SlotOf(ids[1]) < hotbar.SlotOf(ids[2]),
+                    "The hotbar fills in pickup order", string.Join(",", hotbar.Hotbar.ConvertAll(i => hotbar.Tools[i].Id).ToArray()));
+            Check(hotbar != null && hotbar.Current.Id == "regolith_shovel" && hotbar.CurrentCarried, "Selecting the Shovel puts it in hand",
                 hotbar == null ? "no hotbar" : hotbar.Current.Id);
             if (hotbar == null) yield break;
             hotbar.Select(0);
@@ -423,6 +426,9 @@ namespace MarsSurvival.Gameplay
             Check(s.plots[0].Ripe && !s.plots[3].Ripe && Math.Abs(s.plots[3].growth - 0.5) < 0.02, "One watering: lettuce ripe in 30 s, tomato half grown",
                 s.plots[0].growth.ToString("0.00") + " / " + s.plots[3].growth.ToString("0.00"));
             yield return Frames(2);
+            Transform lettuceRipe = Plot(0).transform.Find("Lettuce/Ripe"), tomatoUnripe = Plot(3).transform.Find("Tomato/Unripe");
+            Check(lettuceRipe != null && lettuceRipe.gameObject.activeInHierarchy && tomatoUnripe != null && tomatoUnripe.gameObject.activeInHierarchy &&
+                  !Plot(3).transform.Find("Tomato/Bud").gameObject.activeInHierarchy, "Crops show their stage: ripe lettuce, unripe (green) tomato");
             Place(Floor(0.3f, -13.5f), Floor(-1.6f, -9f)); yield return Frames(3);   // look back at the first plots by the door
             Shot("garden_ripe");
             Place(Plot(0).transform.position + new Vector3(1.9f, 0, 0), Plot(0).transform.position + Vector3.up * 0.2f); yield return Frames(3);   // from the aisle
@@ -439,6 +445,18 @@ namespace MarsSurvival.Gameplay
             Check(locker != null && locker.kind == MarsTaskTarget.Kind.Food, "Storage: E on the food locker offers to eat", lockerLabel ?? "nothing");
             mission.Execute("eat");
             Check(s.astronaut.food > 60 && s.basket[0] == basket + 2, "Eating a crop from the food locker refills food", mission.Notice);
+            // Hold a picked lettuce from the hotbar and eat it.
+            int lettuceSlot = Array.FindIndex(hotbar.Tools, t => t.Id == "crop_lettuce");
+            if (!(hotbar.Selected == lettuceSlot && hotbar.Equipped)) hotbar.Select(lettuceSlot);
+            s.astronaut.food = 40;
+            MarsSurvival.Tools.ToolAction eatPlan = hotbar.Current.Plan(new MarsSurvival.Tools.ToolTarget());
+            Check(hotbar.CurrentCarried && eatPlan != null && !eatPlan.Blocked, "A picked lettuce goes in the hotbar and can be eaten from the hand", eatPlan == null ? "no plan" : eatPlan.Label);
+            int lettuces = s.basket[0];
+            if (eatPlan != null && !eatPlan.Blocked) eatPlan.Complete();
+            Check(s.astronaut.food > 60 && s.basket[0] == lettuces - 1, "Eating the lettuce in hand refills food", mission.Notice);
+            yield return Frames(2);
+            Shot("held_lettuce");
+            basket = s.basket[0] - 2;   // the sell check below expects basket + 2
             s.astronaut.water = 40; mission.Execute("drink");
             Check(s.astronaut.water == 100, "Drinking at the water dispenser refills water", mission.Notice);
             credits = s.credits;

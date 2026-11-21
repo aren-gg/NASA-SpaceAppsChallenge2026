@@ -20,7 +20,7 @@ namespace MarsSurvival.Tools
             if (rack != null)
             {
                 title = rack.DisplayName;
-                body = "Press E to put it in hotbar slot " + MarsTool.KeyOf(rack.toolId) + ".\n" + MarsToolPickup.UseOf(rack.toolId);
+                body = "Press E to add it to your hotbar.\n" + MarsToolPickup.UseOf(rack.toolId);
                 return true;
             }
 

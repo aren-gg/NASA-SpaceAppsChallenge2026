@@ -57,8 +57,9 @@ namespace MarsSurvival.Gameplay
         {
             public int index;
             public Transform soil;
-            /// <summary>One model per crop kind (SeedKind.All order), and its "Fruit" part, shown when ripe.</summary>
-            public Transform[] crop, fruit;
+            /// <summary>One model per crop kind (SeedKind.All order), and its Bud, Unripe and Ripe stages.</summary>
+            public Transform[] crop;
+            public Transform[][] stages;
             public TextMeshPro timer;
         }
 
@@ -142,13 +143,13 @@ namespace MarsSurvival.Gameplay
             var view = new PlantView { index = index };
             view.soil = Cube("Soil", spot.transform, new Vector3(0f, 0.01f, 0f), new Vector3(0.8f, 0.02f, 1.2f), MarsPalette.DeepPurple, false).transform;
             view.crop = new Transform[SeedKind.All.Length];
-            view.fruit = new Transform[SeedKind.All.Length];
+            view.stages = new Transform[SeedKind.All.Length][];
             for (int k = 0; k < SeedKind.All.Length; k++)
             {
                 Transform crop = Model(SeedKind.All[k].name, spot.transform);
                 crop.localRotation = Quaternion.Euler(0f, slot * 47f, 0f) * crop.localRotation;   // not all facing the same way
                 view.crop[k] = crop;
-                view.fruit[k] = crop.Find("Fruit");
+                view.stages[k] = new[] { crop.Find("Bud"), crop.Find("Unripe"), crop.Find("Ripe") };
                 crop.gameObject.SetActive(false);
             }
             GameObject label = new GameObject("Timer");
@@ -166,13 +167,19 @@ namespace MarsSurvival.Gameplay
         /// A Garden model (kiosk or crop) under <paramref name="parent"/>, its materials rebuilt from their
         /// names ("Mat #RRGGBB", "Metal #RRGGBB", "Glow #RRGGBB"). Empty if the model is missing.
         /// </summary>
-        private Transform Model(string name, Transform parent)
+        public Transform Model(string name, Transform parent)
         {
             GameObject prefab = Resources.Load<GameObject>(GardenFolder + "/" + name);
             if (prefab == null) { Transform none = new GameObject(name).transform; none.SetParent(parent, false); return none; }
             Transform model = Instantiate(prefab, parent, false).transform;
             model.name = name;
             model.localRotation = OutpostModules.ImportFix;   // same Blender to Unity turn as the outpost modules
+            // Blender makes names unique across its scene ("Bud.001"); drop the suffix so parts are found by name.
+            foreach (Transform part in model.GetComponentsInChildren<Transform>(true))
+            {
+                int dot = part.name.LastIndexOf('.');
+                if (dot > 0 && int.TryParse(part.name.Substring(dot + 1), out _)) part.name = part.name.Substring(0, dot);
+            }
             foreach (Renderer r in model.GetComponentsInChildren<Renderer>(true))
             {
                 Material[] slots = r.sharedMaterials;
@@ -245,6 +252,12 @@ namespace MarsSurvival.Gameplay
 
         // ------------------------------------------------------------------ per frame
 
+        /// <summary>
+        /// Growth at which each crop leaves the bud stage (SeedKind.All order): lettuce buds for the first
+        /// 35%, tomato 25% (a long green-fruit phase), watermelon 40% (melons set late). Ripe at 100%.
+        /// </summary>
+        private static readonly float[] BudEnds = { 0.35f, 0.25f, 0.4f };
+
         private static readonly Color TimerGrow = new Color(0.25f, 0.88f, 1f), TimerDry = new Color(0.7f, 0.8f, 0.9f), TimerReady = new Color(1f, 0.71f, 0.28f);
 
         private void UpdatePlants(MissionSimulation sim)
@@ -268,15 +281,19 @@ namespace MarsSurvival.Gameplay
                 }
                 view.timer.gameObject.SetActive(show);
                 if (!show) continue;
-                float growth = (float)plot.growth;
-                view.crop[kind].localScale = Vector3.one * (0.2f + 0.8f * growth);
-                if (view.fruit[kind] != null) view.fruit[kind].gameObject.SetActive(plot.Ripe);
+                // Three stages: bud, unripe, ripe; each grows a little within its stage.
+                float growth = (float)plot.growth, budEnd = BudEnds[kind];
+                int stage = plot.Ripe ? 2 : growth < budEnd ? 0 : 1;
+                float within = stage == 0 ? growth / budEnd : stage == 1 ? (growth - budEnd) / (1f - budEnd) : 1f;
+                view.crop[kind].localScale = Vector3.one * (stage == 0 ? 0.6f + 0.4f * within : stage == 1 ? 0.75f + 0.25f * within : 1f);
+                for (int st = 0; st < 3; st++)
+                    if (view.stages[kind][st] != null && view.stages[kind][st].gameObject.activeSelf != (st == stage)) view.stages[kind][st].gameObject.SetActive(st == stage);
 
                 // Timer: time left while moist, a prompt while dry, READY when ripe.
                 double left = plot.SecondsLeft;
                 view.timer.text = plot.Ripe ? "READY" : wet ? ((int)left / 60) + ":" + ((int)left % 60).ToString("00", CultureInfo.InvariantCulture) : "WATER";
                 view.timer.color = plot.Ripe ? TimerReady : wet ? TimerGrow : TimerDry;
-                view.timer.transform.localPosition = new Vector3(0f, 0.35f + 0.65f * Mathf.Max(0.3f, growth) * (kind == 1 ? 1.4f : 0.6f), 0f);
+                view.timer.transform.localPosition = new Vector3(0f, stage == 0 ? 0.4f : kind == 1 ? 1.15f : 0.6f, 0f);
                 if (cam != null) view.timer.transform.rotation = Quaternion.LookRotation(view.timer.transform.position - cam.transform.position, Vector3.up);
             }
         }

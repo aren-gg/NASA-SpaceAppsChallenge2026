@@ -243,7 +243,8 @@ namespace MarsSurvival.Gameplay
             return "Put the " + MarsBaseTool.NameOf(id) + " back on the shed.";
         }
 
-        private List<string> CarriedIds()
+        /// <summary>Carried hand tool ids in pickup order.</summary>
+        public List<string> CarriedIds()
         {
             var ids = new List<string>();
             MissionState s = State;

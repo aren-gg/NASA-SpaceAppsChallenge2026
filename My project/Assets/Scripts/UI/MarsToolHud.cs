@@ -39,6 +39,7 @@ namespace MarsSurvival.UI
         private RectTransform[] slots;
         private Image[] slotBackgrounds, slotRings;
         private RawImage[] slotIcons;
+        private TMP_Text[] slotKeys;
         private RectTransform readoutCard;
         private TMP_Text readoutTitle, readoutBody;
         private readonly List<RectTransform> waypoints = new List<RectTransform>();
@@ -145,6 +146,7 @@ namespace MarsSurvival.UI
             slotBackgrounds = new Image[count];
             slotRings = new Image[count];
             slotIcons = new RawImage[count];
+            slotKeys = new TMP_Text[count];
             for (int i = 0; i < count; i++)
             {
                 RectTransform slot = NewRect("Slot " + MarsTool.KeyOf(belt.Tools[i].Id), bar, new Vector2(0f, 0.5f),
@@ -159,8 +161,9 @@ namespace MarsSurvival.UI
                 slotIcons[i] = icon;
                 slotRings[i] = Panel(slot, "Ring", ring, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(SlotSize + 8f, SlotSize + 8f), orange);
                 Image chip = Panel(slot, "Key", disc, new Vector2(0f, 1f), new Vector2(12f, -12f), new Vector2(28f, 28f), orange);
-                TMP_Text key = Label(chip.rectTransform, MarsTool.KeyOf(belt.Tools[i].Id), 18, purple, FontStyle.Bold, TextAnchor.MiddleCenter);
+                TMP_Text key = Label(chip.rectTransform, "", 18, purple, FontStyle.Bold, TextAnchor.MiddleCenter);
                 Stretch(key.rectTransform);
+                slotKeys[i] = key;
                 slots[i] = slot;
             }
 
@@ -272,24 +275,19 @@ namespace MarsSurvival.UI
                 lookCard.sizeDelta = new Vector2(420f, 56f + lookBody.preferredHeight);
             }
 
-            // Hotbar: only the tools you carry, side by side and centred; empty hands, empty bar.
-            float slotEase = 1f - Mathf.Exp(-18f * dt);
-            int shown = 0, order = 0;
-            for (int i = 0; i < slots.Length; i++) if (belt.Carried(i)) shown++;
+            // Hotbar: what you carry, in the order you picked it up (keys 1, 2, ...), centred; empty
+            // hands, empty bar. The tool in hand keeps its size and gets the accent outline.
+            int shown = belt.Hotbar.Count;
             float barWidth = slots.Length * SlotSize + (slots.Length - 1) * SlotGap;
             for (int i = 0; i < slots.Length; i++)
             {
-                bool carried = belt.Carried(i);
+                int order = belt.Hotbar.IndexOf(i);
+                bool carried = order >= 0;
                 if (slots[i].gameObject.activeSelf != carried) slots[i].gameObject.SetActive(carried);
                 if (!carried) continue;
-                float x = barWidth * 0.5f + (order++ - (shown - 1) * 0.5f) * (SlotSize + SlotGap);
                 bool selected = i == belt.Selected && belt.Equipped;
-                float scale = Mathf.Lerp(slots[i].localScale.x, selected ? 1.15f : 1f, slotEase);
-                slots[i].localScale = new Vector3(scale, scale, 1f);
-                Vector2 p = slots[i].anchoredPosition;
-                p.y = Mathf.Lerp(p.y, selected ? 10f : 0f, slotEase);
-                p.x = x;
-                slots[i].anchoredPosition = p;
+                slots[i].anchoredPosition = new Vector2(barWidth * 0.5f + (order - (shown - 1) * 0.5f) * (SlotSize + SlotGap), 0f);
+                slotKeys[i].text = (order + 1).ToString();
                 slotBackgrounds[i].color = selected ? MarsTrainer.UI.UiTheme.Hover : WithAlpha(MarsTrainer.UI.UiTheme.Panel, 0.85f);
                 slotIcons[i].color = Color.white;
                 // Every slot has a hairline edge; the selected one turns Mars orange.

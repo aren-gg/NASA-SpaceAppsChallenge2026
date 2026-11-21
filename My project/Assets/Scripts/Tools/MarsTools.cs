@@ -68,7 +68,7 @@ namespace MarsSurvival.Tools
     /// </summary>
     public abstract class MarsTool
     {
-        /// <summary>Tool ids in hotbar order; keys 1, 2, 3.</summary>
+        /// <summary>The hand tools (the shed's three); the hotbar fills in the order you pick things up.</summary>
         public static readonly string[] Order = { "regolith_shovel", "hydro_sprayer", "work_lamp" };
 
         public readonly string Id;
@@ -117,14 +117,18 @@ namespace MarsSurvival.Tools
 
         public static MarsTool[] CreateAll()
         {
-            return new MarsTool[] { new RegolithShovel(), new HydroSprayer(), new WorkLamp() };
+            // The hand tools, then one hotbar item per crop (in your hand while you have one harvested).
+            var all = new System.Collections.Generic.List<MarsTool> { new RegolithShovel(), new HydroSprayer(), new WorkLamp() };
+            for (int i = 0; i < SeedKind.All.Length; i++) all.Add(new CropItem(i));
+            return all.ToArray();
         }
 
-        /// <summary>Key that selects a tool: "1".."3".</summary>
+        /// <summary>Key that selects a tool or crop now: its place in the hotbar ("1", "2", ...), or "?".</summary>
         public static string KeyOf(string id)
         {
-            int index = Array.IndexOf(Order, id);
-            return index < 0 ? "?" : (index + 1).ToString();
+            MarsToolBelt belt = MarsExpedition.Instance == null ? null : MarsExpedition.Instance.Belt;
+            int slot = belt == null ? -1 : belt.SlotOf(id);
+            return slot < 0 ? "?" : (slot + 1).ToString();
         }
 
         /// <summary>"the Field Wrench (8)": a tool name with its key, for hints.</summary>
@@ -205,7 +209,7 @@ namespace MarsSurvival.Tools
             if (!Sim.Unlocked(spot.index)) return ToolAction.No("Locked plot. Buy more plots at the seed shop");
             PlotState plot = Sim.Plot(spot.index);
             if (plot.Ripe) return ToolAction.No("Ripe! Pick it with E");
-            if (plot.seed != "") return ToolAction.No("Growing. Water it with the Sprayer (2)");
+            if (plot.seed != "") return ToolAction.No("Growing. Water it with the Sprayer");
             // Out of the chosen seed: fall back to the next kind you have.
             for (int i = 0; i < SeedKind.All.Length && S.seeds[seed] <= 0; i++) seed = (seed + 1) % SeedKind.All.Length;
             SeedKind kind = SeedKind.All[seed];
@@ -251,7 +255,7 @@ namespace MarsSurvival.Tools
             MarsTaskTarget spot = Aimed(target, MarsTaskTarget.Kind.Plant);
             if (spot == null) return ToolAction.No("Aim at a growing plot");
             PlotState plot = Sim.Plot(spot.index);
-            if (plot == null || plot.seed == "") return ToolAction.No("Sow it with the Shovel (1) first");
+            if (plot == null || plot.seed == "") return ToolAction.No("Sow it with the Shovel first");
             if (plot.Ripe) return ToolAction.No("Ripe! Pick it with E");
             if (plot.wetUntil - S.elapsedSeconds > MissionSettings.SolSeconds * 0.5) return ToolAction.No("Moist enough for now");
             return Command("water this plot", 0.8f, "water", spot.index.ToString(CultureInfo.InvariantCulture));
@@ -265,5 +269,32 @@ namespace MarsSurvival.Tools
             bool wet = plot.wetUntil > S.elapsedSeconds;
             return SeedKind.Find(plot.seed).name + " " + Mathf.RoundToInt((float)plot.growth * 100f) + "%" + (plot.Ripe ? ", ripe" : wet ? ", moist" : ", DRY");
         }
+    }
+
+    /// <summary>
+    /// A harvested crop in hand (the Garden "&lt;Crop&gt;Item" model): click to eat one. It sits in the
+    /// hotbar while the basket holds any of that crop.
+    /// </summary>
+    public sealed class CropItem : MarsTool
+    {
+        public readonly int Kind;
+
+        public CropItem(int kind) : base("crop_" + SeedKind.All[kind].id, SeedKind.All[kind].name,
+            "Click to eat one: +" + SeedKind.All[kind].food + " food. Sell the rest at the seed shop.",
+            ToolPose.Upright, Vector3.forward, Vector3.up, Vector3.zero)
+        {
+            Kind = kind;
+        }
+
+        public SeedKind Seed { get { return SeedKind.All[Kind]; } }
+
+        public override ToolAction Plan(ToolTarget target)
+        {
+            if (S == null || !M.IsRunning) return ToolAction.No("Start a mission first");
+            if (S.astronaut.food > 95) return ToolAction.No("You are not hungry");
+            return Command("eat the " + Seed.name.ToLowerInvariant(), 0.6f, "eat", Seed.id);
+        }
+
+        public override string Readout(ToolTarget target) { return S == null ? null : Seed.name + " x" + S.basket[Kind]; }
     }
 }

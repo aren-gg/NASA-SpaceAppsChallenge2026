@@ -1,9 +1,9 @@
 """
 Greenhouse art: the seed shop kiosk (for storage) and the three crops, plus their shop icons.
 
-Exports to Assets/Resources/Garden: SeedKiosk.fbx, ToolShed.fbx, Lettuce.fbx, Tomato.fbx, Watermelon.fbx and
-Icons/<id>.png. Crops stand on their origin (the soil surface), full grown; the game scales them
-with growth and shows the child named "Fruit" only when ripe. Every material is named
+Exports to Assets/Resources/Garden: SeedKiosk.fbx, ToolShed.fbx, Lettuce.fbx, Tomato.fbx, Watermelon.fbx,
+<Crop>Item.fbx (held in the hand) and Icons/<id>.png. Crops stand on their origin (the soil
+surface) with three stage children (Bud, Unripe, Ripe) the game switches between. Every material is named
 "<kind> #RRGGBB" (kind: Mat, Glow or Metal) and the game builds its own URP material from that.
 
 Run inside Blender: exec(open(".../garden_assets.py").read()); build_all()
@@ -88,56 +88,100 @@ def leaf(length, width, loc, yaw, tilt):
 
 
 # ------------------------------------------------------------------ crops
-def lettuce():
-    root = empty("Lettuce")
-    leaves = empty("Leaves", root)
-    LIGHT, MID = mat("Mat", "9BD068"), mat("Mat", "5FA341")
-    for ring, (n, ln, tilt, h) in enumerate(((9, 0.26, 0.35, 0.03), (7, 0.2, 0.75, 0.07), (5, 0.13, 1.1, 0.12))):
+# Each crop has three stage children, shown one at a time by the game: "Bud" (a sprout), "Unripe"
+# (the plant with green or small fruit) and "Ripe" (full grown, ready to pick). "<Crop>Item" is the
+# picked crop held in the hand.
+STEM = "6FA048"
+
+def sprout(parent, leaf_hex, n, size, height):
+    """Bud stage: a short stem with a few small leaves opening at its top."""
+    obj("Stem", cyl(0.008, height, (0, 0, height / 2)), mat("Mat", STEM), parent)
+    for i in range(n):
+        obj("Leaf", leaf(size, size * 0.7, (0, 0, height), 2 * math.pi * i / n + 0.3, 0.55), mat("Mat", leaf_hex), parent)
+
+
+def rosette(parent, rings, light, mid, heart):
+    for ring, (n, ln, tilt, h) in enumerate(rings):
         for i in range(n):
             a = 2 * math.pi * i / n + ring * 0.4
-            obj("Leaf", leaf(ln, ln * 0.75, (0, 0, h), a, tilt), MID if ring == 0 else LIGHT, leaves)
-    obj("Heart", ellipsoid((0.07, 0.07, 0.07), (0, 0, 0.14)), LIGHT, leaves)
-    empty("Fruit", root)   # the head itself is the crop
+            obj("Leaf", leaf(ln, ln * 0.75, (0, 0, h), a, tilt), mat("Mat", mid if ring == 0 else light), parent)
+    if heart: obj("Heart", ellipsoid((heart, heart, heart), (0, 0, 0.14)), mat("Mat", light), parent)
+
+
+def lettuce():
+    root = empty("Lettuce")
+    sprout(empty("Bud", root), "9BD068", 4, 0.09, 0.05)
+    rosette(empty("Unripe", root), ((7, 0.17, 0.45, 0.03), (5, 0.12, 0.85, 0.06)), "7DB552", "4F8E37", 0)
+    rosette(empty("Ripe", root), ((9, 0.26, 0.35, 0.03), (7, 0.2, 0.75, 0.07), (5, 0.13, 1.1, 0.12)), "9BD068", "5FA341", 0.07)
     return root
+
+
+def tomato_plant(parent, fruit_hex, r):
+    obj("Stake", cyl(0.012, 0.95, (0.12, 0, 0.475)), mat("Mat", "A8835A"), parent)
+    obj("Stem", cyl(0.016, 0.82, (0, 0, 0.41)), mat("Mat", "4E7A33"), parent)
+    for k in range(7):
+        z = 0.15 + k * 0.1; a = k * 2.3
+        obj("Leaf", leaf(0.2, 0.13, (0, 0, z), a, 0.25), mat("Mat", "3F8A3A"), parent)
+        obj("Leaf", leaf(0.17, 0.11, (0, 0, z + 0.04), a + math.pi, 0.35), mat("Mat", "3F8A3A"), parent)
+    for (x, y, z) in ((0.09, 0.05, 0.42), (-0.08, 0.07, 0.55), (0.07, -0.08, 0.66), (-0.06, -0.05, 0.32), (0.04, 0.09, 0.75)):
+        obj("Tomato", ellipsoid((r, r, r * 0.87), (x, y, z)), mat("Mat", fruit_hex), parent)
+        obj("Calyx", ellipsoid((0.025, 0.025, 0.008), (x, y, z + r * 0.85), seg=8), mat("Mat", "4E7A33"), parent)
 
 
 def tomato():
     root = empty("Tomato")
-    leaves = empty("Leaves", root)
-    STEM, LEAF, RED = mat("Mat", "4E7A33"), mat("Mat", "3F8A3A"), mat("Mat", "E0362A")
-    obj("Stake", cyl(0.012, 0.95, (0.12, 0, 0.475)), mat("Mat", "A8835A"), leaves)
-    obj("Stem", cyl(0.016, 0.82, (0, 0, 0.41)), STEM, leaves)
-    for k in range(7):
-        z = 0.15 + k * 0.1; a = k * 2.3
-        obj("Leaf", leaf(0.2, 0.13, (0, 0, z), a, 0.25), LEAF, leaves)
-        obj("Leaf", leaf(0.17, 0.11, (0, 0, z + 0.04), a + math.pi, 0.35), LEAF, leaves)
-    fruit = empty("Fruit", root)
-    for k, (x, y, z) in enumerate(((0.09, 0.05, 0.42), (-0.08, 0.07, 0.55), (0.07, -0.08, 0.66), (-0.06, -0.05, 0.32), (0.04, 0.09, 0.75))):
-        obj("Tomato", ellipsoid((0.055, 0.055, 0.048), (x, y, z)), RED, fruit)
-        obj("Calyx", ellipsoid((0.025, 0.025, 0.008), (x, y, z + 0.047), seg=8), STEM, fruit)
+    sprout(empty("Bud", root), "3F8A3A", 4, 0.08, 0.15)
+    tomato_plant(empty("Unripe", root), "7FB24A", 0.038)
+    tomato_plant(empty("Ripe", root), "E0362A", 0.055)
     return root
+
+
+def melon(parent, size, centre, striped):
+    bm = ellipsoid(size, centre, seg=32)
+    me = bpy.data.meshes.new("Melon"); bm.to_mesh(me); bm.free()
+    me.materials.append(mat("Mat", "2E6B2A" if striped else "A6CF7A")); me.materials.append(mat("Mat", "8CC266"))
+    for p in me.polygons:
+        ang = math.atan2(p.center.z - centre[2], p.center.y - centre[1])
+        p.material_index = 1 if striped and int((ang + math.pi) / (2 * math.pi) * 16) % 2 else 0
+        p.use_smooth = True
+    o = bpy.data.objects.new("Melon", me); bpy.context.scene.collection.objects.link(o); o.parent = parent
+    return o
+
+
+def melon_vine(parent, n, size):
+    for i in range(n):
+        a = 2 * math.pi * i / n
+        obj("Leaf", leaf(size, size * 0.83, (0.1 * math.cos(a), 0.1 * math.sin(a), 0.02), a, 0.15), mat("Mat", "3E8C3A"), parent)
+    obj("Vine", cyl(0.012, 0.5, (0, 0, 0.02), rot=Matrix.Rotation(math.pi / 2, 3, "Y")), mat("Mat", "4E7A33"), parent)
 
 
 def watermelon():
     root = empty("Watermelon")
-    leaves = empty("Leaves", root)
-    LEAF, VINE = mat("Mat", "3E8C3A"), mat("Mat", "4E7A33")
-    for i in range(8):
-        a = 2 * math.pi * i / 8
-        obj("Leaf", leaf(0.24, 0.2, (0.1 * math.cos(a), 0.1 * math.sin(a), 0.02), a, 0.15), LEAF, leaves)
-    obj("Vine", cyl(0.012, 0.5, (0, 0, 0.02), rot=Matrix.Rotation(math.pi / 2, 3, "Y")), VINE, leaves)
-    fruit = empty("Fruit", root)
-    # striped rind: faces alternate dark and light by angle around the melon's long axis
-    bm = ellipsoid((0.26, 0.17, 0.16), (0, -0.12, 0.15), seg=32)
-    me = bpy.data.meshes.new("Melon"); bm.to_mesh(me); bm.free()
-    me.materials.append(mat("Mat", "2E6B2A")); me.materials.append(mat("Mat", "8CC266"))
-    for p in me.polygons:
-        ang = math.atan2(p.center.z - 0.15, p.center.y + 0.12)
-        p.material_index = 1 if int((ang + math.pi) / (2 * math.pi) * 16) % 2 else 0
-        p.use_smooth = True
-    o = bpy.data.objects.new("Melon", me); bpy.context.scene.collection.objects.link(o); o.parent = fruit
-    obj("Stalk", cyl(0.01, 0.06, (0.27, -0.12, 0.17), rot=Matrix.Rotation(math.pi / 2, 3, "Y")), VINE, fruit)
+    sprout(empty("Bud", root), "3E8C3A", 3, 0.1, 0.04)
+    unripe = empty("Unripe", root)
+    melon_vine(unripe, 6, 0.2)
+    melon(unripe, (0.12, 0.08, 0.075), (0, -0.12, 0.08), False)
+    obj("Flower", ellipsoid((0.03, 0.03, 0.012), (0.14, 0.08, 0.06), seg=8), mat("Mat", "F2D14B"), unripe)
+    ripe = empty("Ripe", root)
+    melon_vine(ripe, 8, 0.24)
+    melon(ripe, (0.26, 0.17, 0.16), (0, -0.12, 0.15), True)
+    obj("Stalk", cyl(0.01, 0.06, (0.27, -0.12, 0.17), rot=Matrix.Rotation(math.pi / 2, 3, "Y")), mat("Mat", "4E7A33"), ripe)
     return root
+
+
+def crop_items():
+    """The picked crops, held in the hand (origin at their middle)."""
+    lettuce_item = empty("LettuceItem")
+    for i in range(7):
+        a = 2 * math.pi * i / 7
+        obj("Leaf", leaf(0.09, 0.08, (0, 0, -0.03), a, 0.9), mat("Mat", "7DB552"), lettuce_item)
+    obj("Heart", ellipsoid((0.065, 0.065, 0.06), (0, 0, 0.0)), mat("Mat", "9BD068"), lettuce_item)
+    tomato_item = empty("TomatoItem")
+    obj("Tomato", ellipsoid((0.045, 0.045, 0.04), (0, 0, 0)), mat("Mat", "E0362A"), tomato_item)
+    obj("Calyx", ellipsoid((0.022, 0.022, 0.007), (0, 0, 0.038), seg=8), mat("Mat", "4E7A33"), tomato_item)
+    melon_item = empty("WatermelonItem")
+    melon(melon_item, (0.15, 0.1, 0.095), (0, 0, 0), True)
+    return {"LettuceItem": lettuce_item, "TomatoItem": tomato_item, "WatermelonItem": melon_item}
 
 
 # ------------------------------------------------------------------ kiosk
@@ -281,11 +325,16 @@ def build_all():
         root.location.x = i * 1.2
     bpy.context.view_layer.update()
     for cid, root in crops.items():
-        icon(root, OUT + "/Icons/" + cid + ".png")
+        icon(next(c for c in root.children if c.name.startswith("Ripe")), OUT + "/Icons/" + cid + ".png")
     for cid, root in crops.items():
         x = root.location.x; root.location.x = 0; bpy.context.view_layer.update()
         export(root, cid.capitalize())
         root.location.x = x
+    for name, item in crop_items().items():
+        item.location.x = 6; bpy.context.view_layer.update()
+        item.location.x = 0; bpy.context.view_layer.update()
+        export(item, name)
+        item.location.x = 6 + len(name) * 0.1
     shed = toolshed(); bpy.context.view_layer.update()
     export(shed, "ToolShed")
     shed.location.x = 3.5

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using MarsSurvival.Base;
 using MarsSurvival.Gameplay;
 using MarsSurvival.Interaction;
@@ -44,11 +45,38 @@ namespace MarsSurvival.Tools
         public Camera ViewCamera { get; private set; }
         public bool Zoomed { get; set; }
 
-        /// <summary>True when slot <paramref name="index"/>'s tool has been picked up from its rack.</summary>
+        /// <summary>True when tool <paramref name="index"/> is in the hotbar: picked up from the shed, or a crop you have harvested.</summary>
         public bool Carried(int index)
         {
             var mission = MarsMissionController.Instance;
-            return mission != null && mission.Tools != null && index >= 0 && index < Tools.Length && mission.Tools.Has(Tools[index].Id);
+            if (mission == null || mission.Tools == null || index < 0 || index >= Tools.Length) return false;
+            CropItem crop = Tools[index] as CropItem;
+            if (crop != null) return mission.Simulation != null && mission.Simulation.State.basket[crop.Kind] > 0;
+            return mission.Tools.Has(Tools[index].Id);
+        }
+
+        /// <summary>The hotbar: indices into <see cref="Tools"/> in the order they were picked up; key 1 is the first.</summary>
+        public readonly List<int> Hotbar = new List<int>();
+
+        /// <summary>Hotbar place (0-based) of a tool or crop id, or -1 when it isn't in the hotbar.</summary>
+        public int SlotOf(string id)
+        {
+            for (int k = 0; k < Hotbar.Count; k++) if (Tools[Hotbar[k]].Id == id) return k;
+            return -1;
+        }
+
+        /// <summary>Drops what left the hotbar and appends what joined it, keeping pickup order.</summary>
+        private void UpdateHotbar()
+        {
+            Hotbar.RemoveAll(i => !Carried(i));
+            var mission = MarsMissionController.Instance;
+            if (mission != null && mission.Tools != null)
+                foreach (string id in mission.Tools.CarriedIds())
+                {
+                    int i = System.Array.FindIndex(Tools, t => t.Id == id);
+                    if (i >= 0 && !Hotbar.Contains(i)) Hotbar.Add(i);
+                }
+            for (int i = 0; i < Tools.Length; i++) if (Tools[i] is CropItem && Carried(i) && !Hotbar.Contains(i)) Hotbar.Add(i);
         }
 
         /// <summary>True while the selected tool is in hand; pressing its number again puts it away.</summary>
@@ -117,7 +145,9 @@ namespace MarsSurvival.Tools
             foreach (MarsTool tool in Tools)
             {
                 tool.Attach(this);
-                tool.Icon = Resources.Load<Texture2D>("MarsTools/Icons/" + tool.Id);
+                CropItem crop = tool as CropItem;
+                tool.Icon = crop != null ? Resources.Load<Texture2D>(MarsWorldTasks.GardenFolder + "/Icons/" + crop.Seed.id)
+                                         : Resources.Load<Texture2D>("MarsTools/Icons/" + tool.Id);
             }
             Selected = 0;
         }
@@ -167,6 +197,7 @@ namespace MarsSurvival.Tools
             if (walking != Active || cam != ViewCamera) SetActive(walking, cam);
             if (!Active) return;
 
+            UpdateHotbar();
             HandleInput();
             Target = FindTarget();
             if (CurrentCarried)
@@ -233,9 +264,9 @@ namespace MarsSurvival.Tools
         private void HandleInput()
         {
 #if ENABLE_LEGACY_INPUT_MANAGER
-            for (int i = 0; i < NumberKeys.Length && i < Tools.Length; i++)
+            for (int k = 0; k < NumberKeys.Length && k < Hotbar.Count; k++)
             {
-                if (Input.GetKeyDown(NumberKeys[i]) || Input.GetKeyDown(PadKeys[i])) Select(i);
+                if (Input.GetKeyDown(NumberKeys[k]) || Input.GetKeyDown(PadKeys[k])) Select(Hotbar[k]);
             }
             if (!MouseCaptured) return;
             // The scroll wheel zooms the camera (see MarsAstronautPlayer), so tools use the number keys.
@@ -452,7 +483,10 @@ namespace MarsSurvival.Tools
                 MarsTool tool = Tools[i];
                 Transform pivot = new GameObject(tool.Name).transform;
                 pivot.SetParent(viewRoot, false);
-                GameObject model = MarsLowPoly.LoadTool(tool.Id, pivot);
+                CropItem crop = tool as CropItem;
+                GameObject model = crop != null
+                    ? (MarsWorldTasks.Instance == null ? null : MarsWorldTasks.Instance.Model(crop.Seed.name + "Item", pivot).gameObject)
+                    : MarsLowPoly.LoadTool(tool.Id, pivot);
                 if (model == null)
                 {
                     LowPolyMesh fallback = new LowPolyMesh();
