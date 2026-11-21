@@ -192,8 +192,8 @@ def kiosk():
 
 # ------------------------------------------------------------------ tool shed
 def toolshed():
-    """Tool shed for the greenhouse's far end: three labelled bays (1 shovel standing in a floor
-    holder, 2 sprayer and 3 lamp on the shelf), 3 m wide, facing -Y, origin on the floor."""
+    """Tool shed for the greenhouse's far end: three labelled bays (shovel standing in a floor
+    holder, sprayer and lamp on the shelf), 3 m wide, facing -Y, origin on the floor."""
     root = empty("ToolShed")
     WHITE, GUN, PANEL = mat("Mat", "E4E1DA", 0.5), mat("Metal", "3A3D44", 0.35), mat("Mat", "2A2D34", 0.6)
     CYAN, AMBER = mat("Glow", "3FE0FF"), mat("Glow", "FFB547")
@@ -208,7 +208,7 @@ def toolshed():
     obj("Holder light", rbox((0.4, 0.015, 0.015), (-1.0, -0.205, 0.07), 0), AMBER, root)
     obj("Awning", rbox((3.2, 0.75, 0.06), (0, -0.07, 2.42), 0.02), WHITE, root)
     obj("Awning light", rbox((3.2, 0.02, 0.025), (0, -0.445, 2.4), 0), CYAN, root)
-    for x, label in ((-1.0, "1 SHOVEL"), (0.0, "2 SPRAYER"), (1.0, "3 LAMP")):
+    for x, label in ((-1.0, "SHOVEL"), (0.0, "SPRAYER"), (1.0, "LAMP")):
         obj("Bay plate", rbox((0.84, 0.03, 0.2), (x, 0.22, 2.08), 0.01), GUN, root)
         bpy.ops.object.text_add(location=(x, 0.2, 2.08)); t = bpy.context.object
         t.data.body = label; t.data.align_x = "CENTER"; t.data.align_y = "CENTER"; t.data.size = 0.11; t.data.extrude = 0.003
