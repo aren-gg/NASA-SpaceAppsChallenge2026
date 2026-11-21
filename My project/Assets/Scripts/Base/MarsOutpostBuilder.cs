@@ -720,14 +720,11 @@ namespace MarsSurvival.Base
         private void BuildStorage()
         {
             FloorRect r = Storage;
-            BeginRoom("Storage", r, "The seed shop kiosk, tools and food, and the bunk.", "Work Lamp");
+            BeginRoom("Storage", r, "The seed shop kiosk, food and the bunk.", "");
             Shell(r, 2.7f, White, DarkRed, 1.1f, null, new[] { Arch(0f) }, null, null);
             // shortcut: plain blocks stand in for furniture until it is modelled.
             Block(Olive, -15.6f, 2.9f, -13.6f, 3.6f, 1.75f);        // food locker
             Block(PalePink, -9.9f, -3.7f, -7.9f, -2.8f, 0.5f);       // bunk
-            Block(Purple, -15.9f, -1.2f, -15.5f, 1.2f, 1.8f);        // tool rack
-            g.Box(Purple, -15.5f, 1f, -0.4f, -15.4f, 1.06f, 0.4f);
-            Tool("work_lamp", -15.3f, 1.06f, 0f, 90f);
             End();
         }
 
@@ -749,7 +746,7 @@ namespace MarsSurvival.Base
             FloorRect r = Greenhouse;
             BeginRoom("Greenhouse", r,
                 "Greenhouse: buy seeds at the kiosk in storage, then sow, water and pick crops to eat or sell.",
-                "Regolith Shovel, Hydroponic Sprayer");
+                "Regolith Shovel, Hydroponic Sprayer, Work Lamp (tool shed)");
             const float h = 2.7f;
             Opening[] west = { Window(-9.5f, 1.6f), Window(-12.5f, 1.6f), Window(-15.5f, 1.6f) };
             Opening[] east = { Window(-9.5f, 1.6f), Window(-12.5f, 1.6f), Window(-15.5f, 1.6f) };
@@ -765,14 +762,13 @@ namespace MarsSurvival.Base
                 float x0 = side < 0 ? -3.26f : 1.34f;
                 AddCollider(x0, 0f, -16.26f, x0 + 1.92f, 0.83f, -8.34f);
             }
-            // Water tank, potting bench and tools at the far end.
-            Tank(Mauve, -2.6f, -17.25f, 0.5f, 1.5f, Purple);
-            Block(Purple, -1.4f, -17.95f, 1f, -17.2f, 0.82f);
-            g.Box(ClaySand, -1.45f, 0.82f, -17.95f, 1.05f, 0.88f, -17.15f);
-            g.Box(Terracotta, 0.35f, 0.88f, -17.8f, 0.85f, 1.02f, -17.4f);
-            Tool("hydro_sprayer", -0.8f, 0.88f, -17.55f, 200f);
-            g.Box(Purple, 3.42f, 1f, -17.9f, 3.5f, 1.06f, -17.1f);
-            Tool("regolith_shovel", 3.3f, 0f, -17.5f, 90f, false, 8f);
+            // The tool shed at the far end (model: MarsWorldTasks, ToolShed) holds the three garden
+            // tools in labelled bays: 1 shovel in the floor holder, 2 sprayer and 3 lamp on the shelf.
+            AddCollider(-1.55f, 0f, -18f, 1.55f, 2.45f, -17.95f);   // pegboard
+            AddCollider(-0.5f, 0f, -18f, 1.55f, 0.95f, -17.5f);     // cabinet under the shelf
+            Tool("regolith_shovel", -1f, 0.08f, -17.75f, 90f);
+            Tool("hydro_sprayer", 0f, 0.95f, -17.75f, 180f);
+            Tool("work_lamp", 1f, 0.95f, -17.75f, 180f);
             End();
         }
 

@@ -100,12 +100,12 @@ namespace MarsSurvival.Base
                 case "comm_radio": return "command hub, storm shelter or lab";
                 case "dosimeter": return "command hub, medical bay or storm shelter";
                 case "oxygen_canister": return "life support, medical bay or lab";
-                case "work_lamp": return "crew quarters or storm shelter";
+                case "work_lamp": return "tool shed in the greenhouse";
                 case "multimeter":
                 case "power_wrench":
                 case "panel_brush": return "energy room";
                 case "hydro_sprayer":
-                case "regolith_shovel": return "greenhouse";
+                case "regolith_shovel": return "tool shed in the greenhouse";
                 default: return "EVA prep and sample lab";
             }
         }

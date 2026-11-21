@@ -12,7 +12,7 @@ namespace MarsSurvival.Gameplay
     /// <summary>A thing in the outpost that a tool works on, or that E uses.</summary>
     public sealed class MarsTaskTarget : MonoBehaviour
     {
-        public enum Kind { Plant, Food, Water, Bunk, Shop }
+        public enum Kind { Plant, Food, Water, Bunk, Shop, Shed }
 
         public Kind kind;
         /// <summary>Plot index for plants (bed * 12 + spot).</summary>
@@ -43,6 +43,8 @@ namespace MarsSurvival.Gameplay
         public static readonly Vector3 ShopPoint = new Vector3(-10.6f, 0f, 3.2f);
         /// <summary>Crop and kiosk models (tools/blender/garden_assets.py), and their shop icons.</summary>
         public const string GardenFolder = "Garden";
+        /// <summary>Tool shed against the greenhouse's back wall.</summary>
+        public static readonly Vector3 ShedPoint = new Vector3(0f, 0f, -17.75f);
 
         private const float BedTop = 0.83f;
         private MarsOutpost outpost;
@@ -115,6 +117,13 @@ namespace MarsSurvival.Gameplay
             shopBox.center = new Vector3(0f, 1.1f, 0f);
             shopBox.size = new Vector3(1.9f, 2.2f, 0.9f);
             shop.AddComponent<MarsTaskTarget>().kind = MarsTaskTarget.Kind.Shop;
+
+            // The tool shed at the greenhouse's far end, facing the aisle; E on it returns your tools.
+            GameObject shed = new GameObject("Tool shed");
+            shed.transform.SetParent(root, false);
+            shed.transform.localPosition = ShedPoint;
+            Model("ToolShed", shed.transform).localRotation = Quaternion.identity;   // faces +z, toward the door
+            Usable("Tool shed", ShedPoint + new Vector3(0f, 1.6f, 0.05f), new Vector3(3f, 1.2f, 0.4f), MarsTaskTarget.Kind.Shed);
         }
 
         private PlantView BuildPlant(int index, Vector3 at)

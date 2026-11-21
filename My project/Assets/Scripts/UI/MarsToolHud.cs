@@ -272,25 +272,32 @@ namespace MarsSurvival.UI
                 lookCard.sizeDelta = new Vector2(420f, 56f + lookBody.preferredHeight);
             }
 
-            // Hotbar.
+            // Hotbar: only the tools you carry, side by side and centred; empty hands, empty bar.
             float slotEase = 1f - Mathf.Exp(-18f * dt);
+            int shown = 0, order = 0;
+            for (int i = 0; i < slots.Length; i++) if (belt.Carried(i)) shown++;
+            float barWidth = slots.Length * SlotSize + (slots.Length - 1) * SlotGap;
             for (int i = 0; i < slots.Length; i++)
             {
-                bool selected = i == belt.Selected;
+                bool carried = belt.Carried(i);
+                if (slots[i].gameObject.activeSelf != carried) slots[i].gameObject.SetActive(carried);
+                if (!carried) continue;
+                float x = barWidth * 0.5f + (order++ - (shown - 1) * 0.5f) * (SlotSize + SlotGap);
+                bool selected = i == belt.Selected && belt.Equipped;
                 float scale = Mathf.Lerp(slots[i].localScale.x, selected ? 1.15f : 1f, slotEase);
                 slots[i].localScale = new Vector3(scale, scale, 1f);
                 Vector2 p = slots[i].anchoredPosition;
                 p.y = Mathf.Lerp(p.y, selected ? 10f : 0f, slotEase);
+                p.x = x;
                 slots[i].anchoredPosition = p;
-                bool carried = belt.Carried(i);
-                slotBackgrounds[i].color = selected ? MarsTrainer.UI.UiTheme.Hover : WithAlpha(MarsTrainer.UI.UiTheme.Panel, carried ? 0.85f : 0.55f);
-                slotIcons[i].color = carried ? Color.white : new Color(1f, 1f, 1f, 0.22f);
+                slotBackgrounds[i].color = selected ? MarsTrainer.UI.UiTheme.Hover : WithAlpha(MarsTrainer.UI.UiTheme.Panel, 0.85f);
+                slotIcons[i].color = Color.white;
                 // Every slot has a hairline edge; the selected one turns Mars orange.
                 slotRings[i].enabled = true;
                 slotRings[i].color = selected ? MarsTrainer.UI.UiTheme.Accent : MarsTrainer.UI.UiTheme.Line;
             }
-            toolName.text = belt.CurrentCarried ? tool.Name : tool.Name + "  (empty slot)";
-            toolHint.text = tool.Hint;
+            toolName.text = belt.CurrentCarried ? tool.Name : "";
+            toolHint.text = belt.CurrentCarried ? tool.Hint : "";
             toolHint.color = WithAlpha(pink, 0.9f * Mathf.Clamp01(1f - (now - belt.SwitchedAt - 5f) / 1f));
 
             // Low-oxygen glow while outside on suit air.

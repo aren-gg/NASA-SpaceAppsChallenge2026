@@ -279,6 +279,25 @@ namespace MarsSurvival.Gameplay
             if (hotbar != null) hotbar.Select(0);
             Check(hotbar != null && hotbar.Current.Id == "regolith_shovel" && hotbar.CurrentCarried, "Hotbar slot 1 selects the Shovel",
                 hotbar == null ? "no hotbar" : hotbar.Current.Id);
+            if (hotbar == null) yield break;
+            hotbar.Select(0);
+            yield return Frames(2);
+            Check(!hotbar.CurrentCarried && hotbar.HeldView == null, "Pressing 1 again puts the Shovel away (empty hands)");
+            hotbar.Select(0);
+            Check(hotbar.CurrentCarried, "Pressing 1 once more takes it back in hand");
+
+            // The tool shed: E puts every carried tool back, and the hotbar empties.
+            Place(Floor(0f, -16.4f), MarsWorldTasks.World(MarsWorldTasks.ShedPoint + new Vector3(0f, 1.7f, 0f))); yield return Frames(3);
+            MarsTaskTarget shedUse = belt.FindUse(player.AimTransform, mission.Simulation.State, out string shedLabel);
+            Check(shedUse != null && shedUse.kind == MarsTaskTarget.Kind.Shed, "Looking at the tool shed offers E to put tools back", shedLabel ?? "nothing");
+            mission.Notice = belt.PutAllBack();
+            yield return Frames(2);
+            Check(mission.Simulation.State.carriedTools.Count == 0 && !hotbar.CurrentCarried && hotbar.HeldView == null,
+                "Tools go back on the shed; hands and hotbar empty", mission.Notice);
+            Shot("tool_shed");
+            foreach (MarsBaseTool t in MarsBaseTool.All)
+                if (t != null && !t.Carried && Array.IndexOf(MarsSurvival.Tools.MarsTool.Order, t.toolId) >= 0) belt.TryPickUp(t);
+            Check(mission.Simulation.State.carriedTools.Count == 3, "All three tools can be taken from the shed again", mission.Simulation.State.carriedTools.Count + " carried");
         }
 
         // ------------------------------------------------------------------ garden
@@ -290,7 +309,7 @@ namespace MarsSurvival.Gameplay
         {
             MarsSurvival.Tools.MarsToolBelt hotbar = MarsSurvival.Tools.MarsExpedition.Instance == null ? null : MarsSurvival.Tools.MarsExpedition.Instance.Belt;
             if (hotbar == null) { Check(false, what + ": hotbar exists"); return false; }
-            hotbar.Select(Array.IndexOf(MarsSurvival.Tools.MarsTool.Order, toolId));
+            mission.Tools.Hold(toolId);   // in hand (Select would put it away if it already were)
             var target = new MarsSurvival.Tools.ToolTarget();
             if (on != null) { target.Hit = true; target.Collider = on.GetComponent<Collider>(); target.Point = on.transform.position; }
             MarsSurvival.Tools.ToolAction plan = hotbar.Current.Plan(target);
@@ -381,7 +400,7 @@ namespace MarsSurvival.Gameplay
             for (int i = 0; i < 3; i++) UseToolOn("regolith_shovel", Plot(i), "Shovel (1) sows plot " + (i + 1));
             Check(s.plots[0].seed == "lettuce" && s.plots[2].seed == "lettuce" && s.seeds[0] == 0, "Shovel sows the three lettuce seeds", s.seeds[0] + " left");
             var hotbar = MarsSurvival.Tools.MarsExpedition.Instance.Belt;
-            hotbar.Select(0);
+            mission.Tools.Hold("regolith_shovel");
             hotbar.Current.Secondary(null); // R: next seed (tomato)
             UseToolOn("regolith_shovel", Plot(3), "Shovel sows tomato after R");
             Check(s.plots[3].seed == "tomato", "R switches the shovel to tomato seeds", s.plots[3].seed);

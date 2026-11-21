@@ -66,7 +66,7 @@ namespace MarsSurvival.Gameplay
             if (missing.Count == 0) return true;
             var parts = new List<string>();
             foreach (string id in missing) parts.Add(MarsBaseTool.NameOf(id) + " (" + MarsBaseTool.WhereIs(id) + ")");
-            reason = "You need: " + string.Join(", ", parts.ToArray()) + ". Look at it on its rack and press E to add it to your hotbar.";
+            reason = "You need: " + string.Join(", ", parts.ToArray()) + ". Look at it on the tool shed and press E to add it to your hotbar.";
             return false;
         }
 
@@ -88,7 +88,7 @@ namespace MarsSurvival.Gameplay
         {
             MarsToolBelt belt = MarsExpedition.Instance == null ? null : MarsExpedition.Instance.Belt;
             int index = Array.IndexOf(MarsTool.Order, toolId);
-            if (belt != null && index >= 0 && Has(toolId)) belt.Select(index);
+            if (belt != null && index >= 0 && Has(toolId) && !(belt.Selected == index && belt.Equipped)) belt.Select(index);
         }
 
         // ------------------------------------------------------------------ pickup
@@ -159,6 +159,7 @@ namespace MarsSurvival.Gameplay
                 case MarsTaskTarget.Kind.Water: return "drink water";
                 case MarsTaskTarget.Kind.Bunk: return "sleep until 07:00";
                 case MarsTaskTarget.Kind.Shop: return "open the seed shop";
+                case MarsTaskTarget.Kind.Shed: return state.carriedTools.Count > 0 ? "put your tools back on the shed" : null;
                 case MarsTaskTarget.Kind.Plant:
                     var sim = MarsMissionController.Instance.Simulation;
                     PlotState plot = sim.Plot(t.index);
@@ -175,6 +176,7 @@ namespace MarsSurvival.Gameplay
                 case MarsTaskTarget.Kind.Water: mission.Execute("drink"); break;
                 case MarsTaskTarget.Kind.Bunk: mission.Sleep(); break;
                 case MarsTaskTarget.Kind.Shop: mission.SetShopOpen(true); break;
+                case MarsTaskTarget.Kind.Shed: mission.Notice = MarsMissionController.Instance.Tools.PutAllBack(); MarsSfx.Play(MarsSfx.Sound.Select); break;
                 case MarsTaskTarget.Kind.Plant:
                     mission.Execute("pick", t.index.ToString(System.Globalization.CultureInfo.InvariantCulture));
                     if (MarsExpedition.Instance != null) MarsExpedition.Instance.Pop("+1 crop", t.transform.position + Vector3.up * 0.5f);
@@ -225,7 +227,7 @@ namespace MarsSurvival.Gameplay
             if (state == null) return "";
             state.carriedTools.Clear();
             Sync(state);
-            return "Returned all tools to their racks.";
+            return "Put your tools back on the shed.";
         }
 
         public string PutBackSelected()
@@ -233,11 +235,12 @@ namespace MarsSurvival.Gameplay
             MissionState state = State;
             MarsToolBelt belt = MarsExpedition.Instance == null ? null : MarsExpedition.Instance.Belt;
             if (state == null || belt == null) return "";
+            if (!belt.Equipped) return "Nothing in your hand.";
             string id = belt.Current.Id;
             int removed = state.carriedTools.RemoveAll(key => key.Contains("/" + id + "#"));
             if (removed == 0) return "That hotbar slot is empty.";
             Sync(state);
-            return "Put the " + MarsBaseTool.NameOf(id) + " back on its rack.";
+            return "Put the " + MarsBaseTool.NameOf(id) + " back on the shed.";
         }
 
         private List<string> CarriedIds()

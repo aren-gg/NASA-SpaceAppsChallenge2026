@@ -51,7 +51,11 @@ namespace MarsSurvival.Tools
             return mission != null && mission.Tools != null && index >= 0 && index < Tools.Length && mission.Tools.Has(Tools[index].Id);
         }
 
-        public bool CurrentCarried { get { return Carried(Selected); } }
+        /// <summary>True while the selected tool is in hand; pressing its number again puts it away.</summary>
+        public bool Equipped { get; private set; }
+
+        /// <summary>True while a carried tool is in hand (not just in the hotbar).</summary>
+        public bool CurrentCarried { get { return Equipped && Carried(Selected); } }
 
         /// <summary>The held tool in front of the camera, or null when the slot is empty or the tools are inactive.</summary>
         public Transform HeldView
@@ -118,13 +122,19 @@ namespace MarsSurvival.Tools
             Selected = 0;
         }
 
+        /// <summary>
+        /// Number key: takes that tool in hand, or puts it away if it is already in hand. Tools not in
+        /// the hotbar can't be selected.
+        /// </summary>
         public void Select(int index)
         {
             index = (index % Tools.Length + Tools.Length) % Tools.Length;
-            if (index == Selected) return;
-            Current.OnUnequip();
+            if (!Carried(index)) return;
+            if (Equipped) Current.OnUnequip();
+            bool putAway = index == Selected && Equipped;
             Selected = index;
-            Current.OnEquip();
+            Equipped = !putAway;
+            if (Equipped) Current.OnEquip();
             StopWork();
             SwitchedAt = Time.unscaledTime;
             ShowView();
@@ -167,7 +177,7 @@ namespace MarsSurvival.Tools
             }
             else
             {
-                Plan = ToolAction.No("Empty slot: pick up the " + Current.Name + " in the " + MarsBaseTool.WhereIs(Current.Id) + " (look at it, press E)");
+                Plan = null;   // empty hands: nothing to do with a click
                 SecondaryLabel = null;
                 Readout = null;
             }
@@ -507,7 +517,7 @@ namespace MarsSurvival.Tools
             if (pivots == null) return;
             for (int i = 0; i < pivots.Length; i++)
             {
-                bool show = i == Selected && Carried(i);
+                bool show = i == Selected && Equipped && Carried(i);
                 if (pivots[i].gameObject.activeSelf != show) pivots[i].gameObject.SetActive(show);
             }
         }

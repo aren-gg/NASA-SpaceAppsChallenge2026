@@ -1,7 +1,7 @@
 """
 Greenhouse art: the seed shop kiosk (for storage) and the three crops, plus their shop icons.
 
-Exports to Assets/Resources/Garden: SeedKiosk.fbx, Lettuce.fbx, Tomato.fbx, Watermelon.fbx and
+Exports to Assets/Resources/Garden: SeedKiosk.fbx, ToolShed.fbx, Lettuce.fbx, Tomato.fbx, Watermelon.fbx and
 Icons/<id>.png. Crops stand on their origin (the soil surface), full grown; the game scales them
 with growth and shows the child named "Fruit" only when ripe. Every material is named
 "<kind> #RRGGBB" (kind: Mat, Glow or Metal) and the game builds its own URP material from that.
@@ -190,6 +190,35 @@ def kiosk():
     return root
 
 
+# ------------------------------------------------------------------ tool shed
+def toolshed():
+    """Tool shed for the greenhouse's far end: three labelled bays (1 shovel standing in a floor
+    holder, 2 sprayer and 3 lamp on the shelf), 3 m wide, facing -Y, origin on the floor."""
+    root = empty("ToolShed")
+    WHITE, GUN, PANEL = mat("Mat", "E4E1DA", 0.5), mat("Metal", "3A3D44", 0.35), mat("Mat", "2A2D34", 0.6)
+    CYAN, AMBER = mat("Glow", "3FE0FF"), mat("Glow", "FFB547")
+    obj("Pegboard", rbox((3.0, 0.06, 2.0), (0, 0.27, 1.3), 0.02), PANEL, root)
+    obj("Frame", rbox((3.1, 0.12, 0.08), (0, 0.25, 2.32), 0.01), GUN, root)
+    for x in (-1.52, -0.5, 0.5, 1.52):        # bay dividers
+        obj("Divider", rbox((0.06, 0.5, 2.1), (x, 0.05, 1.25), 0.01), GUN, root)
+    obj("Cabinet", rbox((2.0, 0.5, 0.9), (0.5, 0.03, 0.45), 0.03), WHITE, root)
+    obj("Shelf", rbox((2.06, 0.56, 0.05), (0.5, 0.03, 0.925), 0.01), GUN, root)
+    obj("Shelf light", rbox((2.0, 0.015, 0.02), (0.5, -0.255, 0.88), 0), CYAN, root)
+    obj("Holder", rbox((0.5, 0.4, 0.08), (-1.0, 0.0, 0.04), 0.02), GUN, root)
+    obj("Holder light", rbox((0.4, 0.015, 0.015), (-1.0, -0.205, 0.07), 0), AMBER, root)
+    obj("Awning", rbox((3.2, 0.75, 0.06), (0, -0.07, 2.42), 0.02), WHITE, root)
+    obj("Awning light", rbox((3.2, 0.02, 0.025), (0, -0.445, 2.4), 0), CYAN, root)
+    for x, label in ((-1.0, "1 SHOVEL"), (0.0, "2 SPRAYER"), (1.0, "3 LAMP")):
+        obj("Bay plate", rbox((0.84, 0.03, 0.2), (x, 0.22, 2.08), 0.01), GUN, root)
+        bpy.ops.object.text_add(location=(x, 0.2, 2.08)); t = bpy.context.object
+        t.data.body = label; t.data.align_x = "CENTER"; t.data.align_y = "CENTER"; t.data.size = 0.11; t.data.extrude = 0.003
+        t.rotation_euler = (math.radians(90), 0, 0); t.data.materials.append(AMBER); t.parent = root
+        bpy.ops.object.select_all(action="DESELECT"); t.select_set(True); bpy.context.view_layer.objects.active = t
+        bpy.ops.object.convert(target="MESH")
+        obj("Bay outline", rbox((0.7, 0.01, 0.015), (x, 0.235, 0.12 if x < -0.5 else 1.0), 0), AMBER, root)
+    return root
+
+
 # ------------------------------------------------------------------ export and icons
 def export(root, name):
     os.makedirs(OUT, exist_ok=True)
@@ -249,6 +278,9 @@ def build_all():
         x = root.location.x; root.location.x = 0; bpy.context.view_layer.update()
         export(root, cid.capitalize())
         root.location.x = x
+    shed = toolshed(); bpy.context.view_layer.update()
+    export(shed, "ToolShed")
+    shed.location.x = 3.5
     k = kiosk(); k.location.x = -2.5
     bpy.context.view_layer.update()
     k.location.x = 0; bpy.context.view_layer.update()
