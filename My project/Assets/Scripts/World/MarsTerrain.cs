@@ -100,6 +100,7 @@ namespace MarsSurvival.World
         private static readonly System.Comparison<WorkItem> NearestFirst = (a, b) => a.distance.CompareTo(b.distance);
 
         private MarsHeightmap map;
+        private MarsTerrainInset inset;
         private int chunksX;
         private int chunksZ;
         private float chunkSizeX;
@@ -125,6 +126,8 @@ namespace MarsSurvival.World
         private readonly List<Vector3> rockClearings = new List<Vector3>(); // local x, local z, radius
 
         public MarsHeightmap Heightmap { get { return map; } }
+        /// <summary>The 1 m HiRISE patch around the outpost, or null if it is off or missing.</summary>
+        public MarsTerrainInset Inset { get { return inset; } }
         public TerrainStats Stats { get { return stats; } }
         public bool IsReady { get { return map != null; } }
 
@@ -160,6 +163,8 @@ namespace MarsSurvival.World
             }
 
             CentreOnLandingSite();
+            // Before any chunk is built: chunks sink their mesh under the patch.
+            inset = MarsTerrainInset.TryCreate(transform, map, config, gameObject.layer);
 
             chunkSizeX = chunkCells * map.CellX;
             chunkSizeZ = chunkCells * map.CellZ;
@@ -204,6 +209,11 @@ namespace MarsSurvival.World
             while (rockPool.Count > 0) DestroyRockTile(rockPool.Pop());
             for (int i = 0; i < ownedMaterials.Count; i++) SafeDestroy(ownedMaterials[i]);
             ownedMaterials.Clear();
+            if (inset != null)
+            {
+                inset.Dispose();
+                inset = null;
+            }
             if (map != null)
             {
                 map.Dispose();
@@ -522,6 +532,15 @@ namespace MarsSurvival.World
                 steepTan2 = steepTan * steepTan,
                 flatTan2 = flatTan * flatTan,
                 skirtDepth = config.skirtDepthMeters * map.YPerMeter,
+                sinkX0 = inset != null ? inset.GridX0 : 0,
+                sinkZ0 = inset != null ? inset.GridZ0 : 0,
+                sinkX1 = inset != null ? inset.GridX1 : 0,
+                sinkZ1 = inset != null ? inset.GridZ1 : 0,
+                // Only sink when the patch edges are vertices at this stride; otherwise
+                // sunk facets would dent the ground outside the patch.
+                sinkDepth = inset != null && inset.GridX0 % stride == 0 && inset.GridZ0 % stride == 0 &&
+                            inset.GridX1 % stride == 0 && inset.GridZ1 % stride == 0
+                    ? config.insetSinkMeters * map.YPerMeter : 0f,
                 mesh = chunk.meshData[0],
                 bandTriangles = chunk.bandTriangles,
                 yRange = chunk.yRange
@@ -608,8 +627,15 @@ namespace MarsSurvival.World
         public float GetGroundY(Vector3 worldPosition)
         {
             Vector3 local = transform.InverseTransformPoint(worldPosition);
-            float y = map.SampleFacetedY(local.x, local.z, config.StrideForLod(0));
+            float y = LocalGroundY(local.x, local.z);
             return transform.TransformPoint(new Vector3(local.x, y, local.z)).y;
+        }
+
+        /// <summary>Local Y of the visible ground: the 1 m patch where it exists, else the nearest-detail facets.</summary>
+        private float LocalGroundY(float localX, float localZ)
+        {
+            if (inset != null && inset.Contains(localX, localZ)) return inset.SampleY(localX, localZ);
+            return map.SampleFacetedY(localX, localZ, config.StrideForLod(0));
         }
 
         /// <summary>Snaps a world position onto the visible ground.</summary>
@@ -633,6 +659,7 @@ namespace MarsSurvival.World
         public float GetSlopeDegrees(Vector3 worldPosition)
         {
             Vector3 local = transform.InverseTransformPoint(worldPosition);
+            if (inset != null && inset.Contains(local.x, local.z)) return inset.SampleSlopeDegrees(local.x, local.z);
             return map.SampleSlopeDegrees(local.x, local.z, config.StrideForLod(0));
         }
 
@@ -647,7 +674,7 @@ namespace MarsSurvival.World
         public Vector3 LatLonToWorld(double latitudeDeg, double longitudeDeg)
         {
             Vector2 local = map.LatLonToLocal(latitudeDeg, longitudeDeg);
-            float y = map.SampleFacetedY(local.x, local.y, config.StrideForLod(0));
+            float y = LocalGroundY(local.x, local.y);
             return transform.TransformPoint(new Vector3(local.x, y, local.y));
         }
 
@@ -677,6 +704,54 @@ namespace MarsSurvival.World
             }
             rocksSettled = false;
             UpdateRocks(ViewerLocalPosition(), int.MaxValue);
+        }
+
+        /// <summary>
+        /// True if the ground inside a world-space XZ box can be reshaped with <see cref="Grade"/>:
+        /// only the 1 m HiRISE patch can be graded, and only clear of its blended border.
+        /// </summary>
+        public bool CanGrade(Vector3 worldMin, Vector3 worldMax)
+        {
+            if (inset == null) return false;
+            Vector3 a = transform.InverseTransformPoint(worldMin), b = transform.InverseTransformPoint(worldMax);
+            return inset.ContainsRect(Mathf.Min(a.x, b.x), Mathf.Min(a.z, b.z), Mathf.Max(a.x, b.x), Mathf.Max(a.z, b.z),
+                config.ToUnits(config.insetBlendMeters));
+        }
+
+        /// <summary>
+        /// Reshapes and repaints the 1 m patch inside a world-space XZ box (check <see cref="CanGrade"/> first).
+        /// <paramref name="height"/> maps a world position (Y = current ground) to the new world ground Y;
+        /// <paramref name="paint"/> maps a world position to (compacted, berm) paint weights 0..1.
+        /// Rock tiles over the box are rebuilt on the new ground.
+        /// </summary>
+        public bool Grade(Vector3 worldMin, Vector3 worldMax, System.Func<Vector3, float> height,
+            System.Func<Vector3, Vector2> paint)
+        {
+            if (!CanGrade(worldMin, worldMax)) return false;
+            Vector3 a = transform.InverseTransformPoint(worldMin), b = transform.InverseTransformPoint(worldMax);
+            float minX = Mathf.Min(a.x, b.x), maxX = Mathf.Max(a.x, b.x), minZ = Mathf.Min(a.z, b.z), maxZ = Mathf.Max(a.z, b.z);
+            inset.Grade(minX, minZ, maxX, maxZ,
+                // The terrain is never rotated, so local Y is world Y less the origin, over the scale.
+                (x, z, y) => (height(transform.TransformPoint(new Vector3(x, y, z))) - transform.position.y) / transform.lossyScale.y,
+                (x, z) => paint(transform.TransformPoint(new Vector3(x, 0f, z))));
+
+            // Rebuild rocks standing on the reshaped ground.
+            float tileSize = config.ToUnits(config.rockTileSizeMeters);
+            rockKeys.Clear();
+            foreach (KeyValuePair<long, RockTile> pair in rockTiles)
+            {
+                Vector2 c = pair.Value.centre;
+                if (c.x + tileSize * 0.5f >= minX && c.x - tileSize * 0.5f <= maxX &&
+                    c.y + tileSize * 0.5f >= minZ && c.y - tileSize * 0.5f <= maxZ) rockKeys.Add(pair.Key);
+            }
+            for (int i = 0; i < rockKeys.Count; i++)
+            {
+                RockTile tile = rockTiles[rockKeys[i]];
+                rockTiles.Remove(rockKeys[i]);
+                ReleaseRockTile(tile);
+            }
+            rocksSettled = false;
+            return true;
         }
 
         public bool IsInsideTile(Vector3 worldPosition)
@@ -736,6 +811,19 @@ namespace MarsSurvival.World
               .Append(stats.meshBytes.ToString("N0")).Append(" B (peak ").Append(stats.peakMeshBytes.ToString("N0")).Append(" B; ")
               .Append(stats.vertices.ToString("N0")).Append(" vertices, ")
               .Append(stats.triangles.ToString("N0")).Append(" triangles)\n");
+            if (inset != null)
+            {
+                MarsTerrainInsetMetadata im = inset.Meta;
+                sb.Append("1 m patch   ").Append(im.sourceProductId).Append(" (").Append(im.sourceInstruments).Append(")\n");
+                sb.Append("            ").Append((inset.SizeX * map.RealMetersPerUnit / 1000f).ToString("F1")).Append(" x ")
+                  .Append((inset.SizeZ * map.RealMetersPerUnit / 1000f).ToString("F1")).Append(" km around the outpost, ")
+                  .Append(im.width).Append(" x ").Append(im.height).Append(" samples; ")
+                  .Append(im.minElevationM.ToString("F0")).Append(" to ").Append(im.maxElevationM.ToString("F0"))
+                  .Append(" m; edges blended onto the 200 m data over ").Append(config.insetBlendMeters.ToString("F0")).Append(" m\n");
+                sb.Append("            ").Append(im.heightmapBytes.ToString("N0")).Append(" bytes bundled; ")
+                  .Append(inset.MemoryBytes.ToString("N0")).Append(" B in memory; built in ")
+                  .Append(inset.BuildMilliseconds.ToString("F0")).Append(" ms\n");
+            }
             sb.Append("Procedural  ").Append(stats.rocks).Append(" rocks in ").Append(stats.rockTiles)
               .Append(" tiles within ").Append(config.rockDrawDistanceMeters.ToString("F0"))
               .Append(" m (decoration, not data), ").Append(stats.rockMeshBytes.ToString("N0")).Append(" B");
@@ -754,7 +842,7 @@ namespace MarsSurvival.World
             bandMaterials[MarsChunkMeshJob.BandBase] = baseMaterial;
             bandMaterials[MarsChunkMeshJob.BandSteep] = steepMaterial;
             bandMaterials[MarsChunkMeshJob.BandFlat] = flatMaterial;
-            rockMaterial = config.rockMaterial != null ? config.rockMaterial : CreateSolidMaterial("Rock Olive", MarsPalette.MutedOlive);
+            rockMaterial = config.rockMaterial != null ? config.rockMaterial : CreateSolidMaterial("Rock Basalt", MarsPalette.RockBasalt);
         }
 
         private Material CreateSolidMaterial(string materialName, Color color)
@@ -853,7 +941,7 @@ namespace MarsSurvival.World
             Vector2 corner = new Vector2(tx * tileSize, tz * tileSize);
             tile.gameObject.transform.localPosition = new Vector3(corner.x, 0f, corner.y);
             int seed = unchecked(tx * 73856093 ^ tz * 19349663);
-            tile.mesh = MarsRockBuilder.Build(map, config, corner, tileSize, tileSize, seed, out tile.rockCount, rockClearings);
+            tile.mesh = MarsRockBuilder.Build(map, config, corner, tileSize, tileSize, seed, out tile.rockCount, rockClearings, inset);
             tile.mesh.hideFlags = HideFlags.DontSave;
             tile.gameObject.GetComponent<MeshFilter>().sharedMesh = tile.mesh;
 

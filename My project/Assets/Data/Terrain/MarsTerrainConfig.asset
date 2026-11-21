@@ -37,11 +37,42 @@ MonoBehaviour:
   flatSlopeDegrees: 0.8
   flatMaterial: {fileID: 2100000, guid: 3b3f8901d63902d44a2a85d8bbf91d0b, type: 2}
   bandSmoothingSamples: 4
+  insetEnabled: 1
+  insetHeightData: {fileID: 4900000, guid: 7e2b1d3c4a5f46e1b0c9d8e7f6a5b401, type: 3}
+  insetMetadata: {fileID: 4900000, guid: 7e2b1d3c4a5f46e1b0c9d8e7f6a5b402, type: 3}
+  insetBlendMeters: 300
+  insetSinkMeters: 150
+  insetPixelError: 4
+  insetBasemapDistanceMeters: 300
+  insetSplatResolution: 2048
+  insetMaterial: {fileID: 2100000, guid: 7e2b1d3c4a5f46e1b0c9d8e7f6a5b410, type: 2}
+  insetHeightTransition: 0.35
+  insetLayers:
+  - name: Dust
+    albedo: {fileID: 2800000, guid: 6d1a0c2e7f3b4a5d9e8c1b2a3f4e5d01, type: 3}
+    normal: {fileID: 2800000, guid: 6d1a0c2e7f3b4a5d9e8c1b2a3f4e5d02, type: 3}
+    mask: {fileID: 2800000, guid: 6d1a0c2e7f3b4a5d9e8c1b2a3f4e5d03, type: 3}
+    tileMeters: 6
+  - name: Sand
+    albedo: {fileID: 2800000, guid: 6d1a0c2e7f3b4a5d9e8c1b2a3f4e5d11, type: 3}
+    normal: {fileID: 2800000, guid: 6d1a0c2e7f3b4a5d9e8c1b2a3f4e5d12, type: 3}
+    mask: {fileID: 2800000, guid: 6d1a0c2e7f3b4a5d9e8c1b2a3f4e5d13, type: 3}
+    tileMeters: 4
+  - name: Bedrock
+    albedo: {fileID: 2800000, guid: 6d1a0c2e7f3b4a5d9e8c1b2a3f4e5d21, type: 3}
+    normal: {fileID: 2800000, guid: 6d1a0c2e7f3b4a5d9e8c1b2a3f4e5d22, type: 3}
+    mask: {fileID: 2800000, guid: 6d1a0c2e7f3b4a5d9e8c1b2a3f4e5d23, type: 3}
+    tileMeters: 8
+  - name: Gravel
+    albedo: {fileID: 2800000, guid: 6d1a0c2e7f3b4a5d9e8c1b2a3f4e5d31, type: 3}
+    normal: {fileID: 2800000, guid: 6d1a0c2e7f3b4a5d9e8c1b2a3f4e5d32, type: 3}
+    mask: {fileID: 2800000, guid: 6d1a0c2e7f3b4a5d9e8c1b2a3f4e5d33, type: 3}
+    tileMeters: 3
   rocksEnabled: 1
   rockSeed: 2026
   rockTileSizeMeters: 64
-  rocksPerTile: 24
-  rockRadiusRangeMeters: {x: 0.15, y: 1.2}
+  rocksPerTile: 40
+  rockRadiusRangeMeters: {x: 0.08, y: 1.3}
   rockMaxSlopeDegrees: 15
   rockDrawDistanceMeters: 250
   maxRockTilesPerFrame: 8

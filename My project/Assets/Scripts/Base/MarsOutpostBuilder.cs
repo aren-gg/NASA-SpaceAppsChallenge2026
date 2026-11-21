@@ -108,6 +108,7 @@ namespace MarsSurvival.Base
         private readonly Func<float, float, float> groundAt;
         private readonly Material[] materials;
         private readonly float lightIntensity;
+        private readonly bool graded;
 
         private OutpostGeometry g;
         private GameObject current;
@@ -116,9 +117,12 @@ namespace MarsSurvival.Base
 
         /// <param name="padDepth">How far the pad reaches below the floor to meet the lowest ground, metres.</param>
         /// <param name="groundAt">Terrain height at an outpost-local x, z, as a local y (0 = floor).</param>
+        /// <param name="graded">The terrain itself was graded into the pad (MarsOutpost.TryGradePad), so no
+        /// pad block is drawn: only its collider, sintered paving, the path and tyre tracks.</param>
         public MarsOutpostBuilder(Transform root, float padDepth, Func<float, float, float> groundAt,
-            float interiorLightIntensity)
+            float interiorLightIntensity, bool graded = false)
         {
+            this.graded = graded;
             this.root = root;
             this.padDepth = Mathf.Max(0.6f, padDepth);
             this.groundAt = groundAt;
@@ -1158,25 +1162,14 @@ namespace MarsSurvival.Base
 
         private void BuildExterior()
         {
-            // The levelled pad: regolith graded flat, with sloping sides down to the natural ground.
-            Begin("Levelled pad");
-            float spread = padDepth * 1.6f;
-            AlsoSolid(() => g.Frustum(Terracotta, -padDepth, Pad.Grow(spread), PadTop, Pad));
-            AddCollider(Pad.x0, -padDepth, Pad.z0, Pad.x1, PadTop, Pad.z1);
-
-            // If the front edge of the pad stands above the ground, an apron ramp leads up onto it.
-            float edge = Pad.z1;
-            if (PadTop - groundAt(0f, edge + 0.5f) > 0.3f)
+            if (graded)
             {
-                float run = 3f, foot = PadTop - 0.5f;
-                for (int i = 0; i < 6; i++)
-                {
-                    foot = Mathf.Min(PadTop - 0.2f, groundAt(0f, edge + run) - 0.15f);
-                    run = Mathf.Clamp((PadTop - foot) / Mathf.Tan(10f * Mathf.Deg2Rad), 3f, 45f);
-                }
-                Ramp(Terracotta, 2.5f, edge, PadTop, edge + run, foot, padDepth, false);
+                BuildGradedGround();
             }
-            End();
+            else
+            {
+                BuildPadBlock();
+            }
 
             Begin("Entry landing and ramp");
             FloorRect l = Landing;
@@ -1210,6 +1203,112 @@ namespace MarsSurvival.Base
             // Pairs of small dark red tanks beside the quarters and the energy room.
             SmallTanks(-17.6f, 4.45f, -1f);
             SmallTanks(9f, -3.95f, 1f);
+            End();
+        }
+
+        /// <summary>
+        /// The pad on graded terrain: the ground is already flat at <see cref="PadTop"/>, so this adds
+        /// the walkable collider, sintered regolith paving where the rover parks and in front of the
+        /// airlock, a sintered path out over the shoulder, and tyre tracks leading off into the plain.
+        /// </summary>
+        private void BuildGradedGround()
+        {
+            Begin("Graded pad");
+            AddCollider(Pad.x0, PadTop - padDepth, Pad.z0, Pad.x1, PadTop, Pad.z1);
+
+            // Sintered paving: microwave-fused regolith tiles with narrow joints.
+            Pavers(-14f, 10f, -5f, 21f, 1.5f);   // rover parking
+            Pavers(-3f, 18.5f, 3f, 24f, 1.5f);   // apron at the foot of the entry ramp
+
+            // Sintered path from the apron straight out across the shoulder.
+            var path = new List<Vector2>();
+            for (float z = 24f; z <= Pad.z1 + 14f; z += 1f) path.Add(new Vector2(0f, z));
+            Strip(Sintered, path, 1.2f, 0.035f);
+
+            // Tyre tracks: the rover leaves the parking bay, swings out of the pad's front left corner
+            // and heads off across the plain; a second, fainter pair loops back in.
+            TyreTracks(new Vector2(-9.5f, 19.5f), new Vector2(-9.5f, 32f), new Vector2(-24f, 40f), new Vector2(-46f, 58f));
+            TyreTracks(new Vector2(-8.6f, 20f), new Vector2(-12f, 36f), new Vector2(-30f, 38f), new Vector2(-58f, 44f));
+            End();
+        }
+
+        /// <summary>Square sintered tiles filling a rectangle on the pad, with joints between them.</summary>
+        private void Pavers(float x0, float z0, float x1, float z1, float tile)
+        {
+            const float joint = 0.06f;
+            for (float x = x0; x < x1 - 0.01f; x += tile)
+            {
+                for (float z = z0; z < z1 - 0.01f; z += tile)
+                {
+                    // Slight height jitter so the paving reads as fused blocks, not a painted floor.
+                    float h = 0.025f + 0.012f * Mathf.Repeat(Mathf.Sin(x * 12.9898f + z * 78.233f) * 43758.55f, 1f);
+                    g.Box(Sintered, x + joint, PadTop - 0.05f, z + joint, Mathf.Min(x + tile, x1) - joint, PadTop + h,
+                        Mathf.Min(z + tile, z1) - joint);
+                }
+            }
+        }
+
+        /// <summary>A flat ribbon laid on the ground along a polyline (outpost-local x, z).</summary>
+        private void Strip(int material, List<Vector2> points, float halfWidth, float lift)
+        {
+            for (int i = 0; i + 1 < points.Count; i++)
+            {
+                Vector2 a = points[i], b = points[i + 1];
+                Vector2 dir = (b - a).normalized;
+                Vector2 side = new Vector2(-dir.y, dir.x) * halfWidth;
+                Vector3 p0 = OnGround(a - side, lift), p1 = OnGround(a + side, lift);
+                Vector3 p2 = OnGround(b + side, lift), p3 = OnGround(b - side, lift);
+                Vector3 below = (p0 + p1 + p2 + p3) * 0.25f - Vector3.up;
+                g.Quad(material, p0, p1, p2, p3, below);
+            }
+        }
+
+        private Vector3 OnGround(Vector2 xz, float lift)
+        {
+            float y = Pad.Contains(xz.x, xz.y) ? PadTop : groundAt(xz.x, xz.y);
+            return new Vector3(xz.x, y + lift, xz.y);
+        }
+
+        /// <summary>Two wheel ruts along a cubic Bezier, 1.7 m apart.</summary>
+        private void TyreTracks(Vector2 p0, Vector2 p1, Vector2 p2, Vector2 p3)
+        {
+            var left = new List<Vector2>();
+            var right = new List<Vector2>();
+            const int steps = 60;
+            for (int i = 0; i <= steps; i++)
+            {
+                float t = i / (float)steps, u = 1f - t;
+                Vector2 p = u * u * u * p0 + 3f * u * u * t * p1 + 3f * u * t * t * p2 + t * t * t * p3;
+                Vector2 d = 3f * u * u * (p1 - p0) + 6f * u * t * (p2 - p1) + 3f * t * t * (p3 - p2);
+                Vector2 side = new Vector2(-d.y, d.x).normalized * 0.85f;
+                left.Add(p - side);
+                right.Add(p + side);
+            }
+            Strip(Rut, left, 0.13f, 0.012f);
+            Strip(Rut, right, 0.13f, 0.012f);
+        }
+
+        /// <summary>The block pad used where the terrain cannot be graded: flat top, sloping sides.</summary>
+        private void BuildPadBlock()
+        {
+            // The levelled pad: regolith graded flat, with sloping sides down to the natural ground.
+            Begin("Levelled pad");
+            float spread = padDepth * 1.6f;
+            AlsoSolid(() => g.Frustum(Terracotta, -padDepth, Pad.Grow(spread), PadTop, Pad));
+            AddCollider(Pad.x0, -padDepth, Pad.z0, Pad.x1, PadTop, Pad.z1);
+
+            // If the front edge of the pad stands above the ground, an apron ramp leads up onto it.
+            float edge = Pad.z1;
+            if (PadTop - groundAt(0f, edge + 0.5f) > 0.3f)
+            {
+                float run = 3f, foot = PadTop - 0.5f;
+                for (int i = 0; i < 6; i++)
+                {
+                    foot = Mathf.Min(PadTop - 0.2f, groundAt(0f, edge + run) - 0.15f);
+                    run = Mathf.Clamp((PadTop - foot) / Mathf.Tan(10f * Mathf.Deg2Rad), 3f, 45f);
+                }
+                Ramp(Terracotta, 2.5f, edge, PadTop, edge + run, foot, padDepth, false);
+            }
             End();
         }
 

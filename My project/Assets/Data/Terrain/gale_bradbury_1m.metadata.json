@@ -1,0 +1,41 @@
+{
+  "name": "gale_bradbury_1m",
+  "width": 4097,
+  "height": 4097,
+  "sampleFormat": "uint16 little-endian, row 0 = south, column 0 = west; elevation = minElevationM + v * elevationStepM",
+  "minElevationM": -4530.0,
+  "maxElevationM": -4480.0,
+  "elevationStepM": 0.0007629510948348211,
+  "regionalTile": "gale_crater_200m",
+  "regionalOriginX": 396,
+  "regionalOriginZ": 744,
+  "regionalCells": 20,
+  "latSouthDeg": -4.618783393250239,
+  "latNorthDeg": -4.551300976637419,
+  "lonWestDeg": 137.40860771964483,
+  "lonEastDeg": 137.47609013625765,
+  "medianOffsetFromRegionalM": -12.80201595455037,
+  "samplesFilledFromRegional": 0,
+  "sourceProductId": "MSL_Gale_DEM_Mosaic_1m_v3",
+  "sourceUrl": "https://planetarymaps.usgs.gov/mosaic/Mars/MSL/MSL_Gale_DEM_Mosaic_1m_v3.tif",
+  "sourcePage": "https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m",
+  "sourceInstruments": "MRO HiRISE stereo DTMs (USGS Astrogeology mosaic); credit NASA/JPL/University of Arizona, USGS",
+  "sourceGridSpacingM": 1.0,
+  "sourceRasterType": "PixelIsPoint",
+  "resampling": "bilinear onto the regional-grid-aligned patch",
+  "downloadedBytes": 356737600,
+  "downloadRequests": 53,
+  "heightmapBytes": 33570818,
+  "heightmapSha256": "25e399dea5c506e9cbae66c5c8f63f8aa3118884dba861fe69d430ee986c9e6f",
+  "retrievedUtc": "2026-11-20T18:00:59Z",
+  "verification": [
+    {
+      "label": "Curiosity landing site (Bradbury Landing)",
+      "latitude": -4.5895,
+      "longitude": 137.4417,
+      "datasetElevationM": -4501.067260818962,
+      "publishedElevationM": -4501,
+      "note": "published MOLA elevation, approximate"
+    }
+  ]
+}

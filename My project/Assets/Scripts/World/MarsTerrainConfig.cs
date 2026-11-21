@@ -66,6 +66,27 @@ namespace MarsSurvival.World
                  "Larger values give bigger, calmer colour regions. 4 samples = a 1.6 km window.")]
         [Range(1, 16)] public int bandSmoothingSamples = 4;
 
+        [Header("1 m HiRISE patch around the outpost (tools/data/fetch_hirise_dtm.py)")]
+        public bool insetEnabled = true;
+        [Tooltip("Raw uint16 little-endian heights, row 0 = south (see its metadata for the scale).")]
+        public TextAsset insetHeightData;
+        public TextAsset insetMetadata;
+        [Tooltip("Width (real metres) of the band along the patch edge that blends onto the 200 m surface.")]
+        [Min(10f)] public float insetBlendMeters = 300f;
+        [Tooltip("How far (real metres) the 200 m mesh is pushed down inside the patch so it never shows through.")]
+        [Min(1f)] public float insetSinkMeters = 150f;
+        [Tooltip("Terrain LOD error in pixels; lower is more triangles.")]
+        [Range(1f, 50f)] public float insetPixelError = 4f;
+        [Tooltip("Beyond this distance (real metres) the patch draws its pre-baked base map instead of the layers.")]
+        [Min(50f)] public float insetBasemapDistanceMeters = 300f;
+        [Tooltip("Paint texels along each edge of the patch (2048 = about 2 m per texel).")]
+        public int insetSplatResolution = 2048;
+        [Tooltip("Optional URP Terrain/Lit material; a copy is used. Assign one so builds keep the shader variants.")]
+        public Material insetMaterial;
+        [Range(0f, 1f)] public float insetHeightTransition = 0.35f;
+        [Tooltip("Paint layers in order: dust, sand, bedrock, gravel (tools/art/make_terrain_layers.py).")]
+        public MarsTerrainLayerTextures[] insetLayers;
+
         [Header("Rocks (procedural decoration, not NASA data; streamed in small tiles around the viewer)")]
         public bool rocksEnabled = true;
         public int rockSeed = 2026;

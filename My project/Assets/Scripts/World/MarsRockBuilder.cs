@@ -86,7 +86,8 @@ namespace MarsSurvival.World
         /// <param name="clearings">Optional circles kept free of rocks: terrain-local X, Z and radius (Unity units).</param>
         /// <returns>A mesh in tile-local space (origin at the tile corner, Y = terrain-local Y).</returns>
         public static Mesh Build(MarsHeightmap map, MarsTerrainConfig config, Vector2 chunkCorner,
-            float chunkSizeX, float chunkSizeZ, int chunkIndex, out int rockCount, List<Vector3> clearings = null)
+            float chunkSizeX, float chunkSizeZ, int chunkIndex, out int rockCount, List<Vector3> clearings = null,
+            MarsTerrainInset inset = null)
         {
             Positions.Clear();
             Normals.Clear();
@@ -117,11 +118,13 @@ namespace MarsSurvival.World
                 float localZ = chunkCorner.y + pz;
                 if (!map.Contains(localX, localZ)) continue;
                 if (InClearing(clearings, localX, localZ, maxRadius)) continue;
-                if (map.SampleSlopeDegrees(localX, localZ, stride) > config.rockMaxSlopeDegrees) continue;
+                bool onPatch = inset != null && inset.Contains(localX, localZ);
+                float slope = onPatch ? inset.SampleSlopeDegrees(localX, localZ) : map.SampleSlopeDegrees(localX, localZ, stride);
+                if (slope > config.rockMaxSlopeDegrees) continue;
 
                 // Mostly small rocks with an occasional boulder.
                 float radius = Mathf.Lerp(minRadius, maxRadius, sizeT * sizeT * sizeT);
-                float groundY = map.SampleFacetedY(localX, localZ, stride);
+                float groundY = onPatch ? inset.SampleY(localX, localZ) : map.SampleFacetedY(localX, localZ, stride);
                 Vector3 centre = new Vector3(px, groundY - radius * squash * 0.3f, pz);
                 float cos = Mathf.Cos(yaw);
                 float sin = Mathf.Sin(yaw);

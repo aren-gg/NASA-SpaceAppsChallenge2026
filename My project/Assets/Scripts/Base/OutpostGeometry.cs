@@ -34,7 +34,9 @@ namespace MarsSurvival.Base
         public const int Terracotta = 0, DustyRose = 1, Olive = 2, Orange = 3, Purple = 4, PalePink = 5,
             Mauve = 6, ClaySand = 7, Glass = 8, GlowWarm = 9, GlowOrange = 10,
             // Hull colours for the habitat shells and the rover: white panels, dark red accents, charcoal trim.
-            White = 11, DarkRed = 12, Charcoal = 13, SolarBlue = 14, MaterialCount = 15;
+            White = 11, DarkRed = 12, Charcoal = 13, SolarBlue = 14,
+            // Worked ground on the graded pad: fused (sintered) regolith paving and compacted wheel ruts.
+            Sintered = 15, Rut = 16, MaterialCount = 17;
 
         private readonly List<Vector3> vertices = new List<Vector3>();
         private readonly List<Vector3> normals = new List<Vector3>();
@@ -256,6 +258,10 @@ namespace MarsSurvival.Base
             all[OutpostGeometry.DarkRed] = MarsPalette.CreateMatteMaterial("Hull Dark Red", new Color(0.42f, 0.12f, 0.13f));
             all[OutpostGeometry.Charcoal] = MarsPalette.CreateMatteMaterial("Hull Charcoal", new Color(0.13f, 0.13f, 0.15f));
             all[OutpostGeometry.SolarBlue] = MarsPalette.CreateMatteMaterial("Solar Cell Blue", new Color(0.20f, 0.30f, 0.62f));
+            all[OutpostGeometry.Sintered] = MarsPalette.CreateMatteMaterial("Sintered Regolith",
+                Color.Lerp(MarsPalette.Terracotta, new Color(0.13f, 0.13f, 0.15f), 0.4f));
+            all[OutpostGeometry.Rut] = MarsPalette.CreateMatteMaterial("Wheel Rut",
+                Color.Lerp(MarsPalette.Terracotta, MarsPalette.DeepPurple, 0.22f));
             return all;
         }
 

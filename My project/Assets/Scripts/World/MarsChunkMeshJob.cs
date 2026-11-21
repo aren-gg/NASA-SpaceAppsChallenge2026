@@ -59,6 +59,13 @@ namespace MarsSurvival.World
         public float steepTan2;
         public float flatTan2;
         public float skirtDepth;
+        /// <summary>
+        /// Grid rectangle covered by the 1 m patch. Vertices strictly inside it are
+        /// lowered by <see cref="sinkDepth"/> (local units) so the patch hides them;
+        /// vertices on its edges stay put, so the seam is exact. 0 = no sinking.
+        /// </summary>
+        public int sinkX0, sinkZ0, sinkX1, sinkZ1;
+        public float sinkDepth;
 
         public Mesh.MeshData mesh;
         /// <summary>Length 3: triangles written per band.</summary>
@@ -191,7 +198,9 @@ namespace MarsSurvival.World
             int ix = originX + cx * stride;
             int iz = originZ + cz * stride;
             float elevation = heights[(mapHeight - 1 - iz) * mapWidth + ix];
-            return new Vector3(cx * stride * cellX, (elevation - baseElevation) * yPerMeter, cz * stride * cellZ);
+            float y = (elevation - baseElevation) * yPerMeter;
+            if (sinkDepth > 0f && ix > sinkX0 && ix < sinkX1 && iz > sinkZ0 && iz < sinkZ1) y -= sinkDepth;
+            return new Vector3(cx * stride * cellX, y, cz * stride * cellZ);
         }
 
         /// <summary>

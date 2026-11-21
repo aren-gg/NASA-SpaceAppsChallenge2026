@@ -17,6 +17,11 @@ namespace MarsSurvival.World
         public static readonly Color PalePink = Hex(0xE9B9BC);
         public static readonly Color Mauve = Hex(0x806886);
         public static readonly Color ClaySand = Hex(0xD8AC8F);
+        /// <summary>
+        /// Scattered rock: dark weathered basalt, a shade between deep purple and terracotta
+        /// (an in-between tone, not a ninth base colour). Rocks must not read as plants.
+        /// </summary>
+        public static readonly Color RockBasalt = Color.Lerp(DeepPurple, Terracotta, 0.4f);
 
         private static Color Hex(int rgb)
         {

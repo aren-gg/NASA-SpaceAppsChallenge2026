@@ -1249,6 +1249,7 @@ namespace MarsSurvival.UI
             new[] { "KSC Veggie / CEA", "Veggie crop identities and per-plant water estimates (provisional) set the leafy greenhouse bed's water use.", "Veggie fact sheet", "https://www.nasa.gov/wp-content/uploads/2019/04/veggie_fact_sheet_508.pdf" },
             new[] { "NASA Mars24", "Sun position, local solar time and Sun distance for day, night and solar power.", "Mars24 algorithm", "https://www.giss.nasa.gov/tools/mars24/help/algorithm.html" },
             new[] { "USGS MOLA-HRSC terrain", "Terrain comes from the bundled USGS MOLA–HRSC elevation product, sampled on a 200 m grid. Smaller rocks, science caches, radio coverage and mission markers are gameplay objects. F3 shows the terrain source and scale.", "NASA Mars Trek", "https://trek.nasa.gov/mars/" },
+            new[] { "HiRISE 1 m terrain", "The 4 km around the outpost uses the USGS Gale 1 m elevation mosaic made from HiRISE stereo images (NASA/JPL/University of Arizona); its edges blend into the 200 m terrain. Ground textures are game art.", "USGS Gale 1 m DEM", "https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m" },
         };
 
         private void BuildLearningWindow()

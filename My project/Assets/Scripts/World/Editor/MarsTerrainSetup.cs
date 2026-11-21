@@ -124,7 +124,7 @@ namespace MarsSurvival.World.EditorTools
             // Dusty rose sits closer to terracotta than clay sand does, so flat ground reads as
             // a soft variation rather than pale patches. Terrain_ClaySand is kept for paths.
             config.flatMaterial = GetOrCreateMaterial("Terrain_DustyRose", MarsPalette.DustyRose);
-            config.rockMaterial = GetOrCreateMaterial("Rock_MutedOlive", MarsPalette.MutedOlive);
+            config.rockMaterial = GetOrCreateMaterial("Rock_Basalt", MarsPalette.RockBasalt);
             if (AssetDatabase.LoadAssetAtPath<Material>(MaterialFolder + "/Terrain_ClaySand.mat") != null)
             {
                 GetOrCreateMaterial("Terrain_ClaySand", MarsPalette.ClaySand); // converts it too
