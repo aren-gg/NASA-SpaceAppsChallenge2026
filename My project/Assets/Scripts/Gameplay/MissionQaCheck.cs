@@ -294,6 +294,7 @@ namespace MarsSurvival.Gameplay
             yield return Frames(2);
             Check(mission.Simulation.State.carriedTools.Count == 0 && !hotbar.CurrentCarried && hotbar.HeldView == null,
                 "Tools go back on the shed; hands and hotbar empty", mission.Notice);
+            Place(Floor(1.6f, -15.6f), MarsWorldTasks.World(MarsWorldTasks.ShedPoint + new Vector3(-0.3f, 1f, 0f))); yield return Frames(3);
             Shot("tool_shed");
             foreach (MarsBaseTool t in MarsBaseTool.All)
                 if (t != null && !t.Carried && Array.IndexOf(MarsSurvival.Tools.MarsTool.Order, t.toolId) >= 0) belt.TryPickUp(t);

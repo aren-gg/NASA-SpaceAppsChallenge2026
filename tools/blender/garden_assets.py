@@ -197,7 +197,10 @@ def toolshed():
     root = empty("ToolShed")
     WHITE, GUN, PANEL = mat("Mat", "E4E1DA", 0.5), mat("Metal", "3A3D44", 0.35), mat("Mat", "2A2D34", 0.6)
     CYAN, AMBER = mat("Glow", "3FE0FF"), mat("Glow", "FFB547")
-    obj("Pegboard", rbox((3.0, 0.06, 2.0), (0, 0.27, 1.3), 0.02), PANEL, root)
+    # Pale bay backs so the dark tools read against them; a warm light strip lights each bay from the top.
+    obj("Pegboard", rbox((3.0, 0.06, 2.0), (0, 0.27, 1.3), 0.02), mat("Mat", "CFCCC4", 0.7), root)
+    for x in (-1.0, 0.0, 1.0):
+        obj("Bay light", rbox((0.84, 0.04, 0.025), (x, 0.2, 1.93), 0), mat("Glow", "FFE9CF"), root)
     obj("Frame", rbox((3.1, 0.12, 0.08), (0, 0.25, 2.32), 0.01), GUN, root)
     for x in (-1.52, -0.5, 0.5, 1.52):        # bay dividers
         obj("Divider", rbox((0.06, 0.5, 2.1), (x, 0.05, 1.25), 0.01), GUN, root)

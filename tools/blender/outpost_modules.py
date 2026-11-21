@@ -471,7 +471,7 @@ def build_module(name, rect, along_x, labels, tag):
         lab = labels[which]
         door = (DOOR_W, DOOR_H) if lab else None
         window = None
-        if door is None:
+        if door is None and name != "Greenhouse":   # the greenhouse's back wall holds the tool shed
             window = (0.0, 1.0, 2.0, 1.6)
         ends.append(end_wall(name + " end", PRINT, f, w, spring, apex, v0, v1, door, window))
         if door:
