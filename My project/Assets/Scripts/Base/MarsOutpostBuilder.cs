@@ -763,12 +763,14 @@ namespace MarsSurvival.Base
                 AddCollider(x0, 0f, -16.26f, x0 + 1.92f, 0.83f, -8.34f);
             }
             // The tool shed at the far end (model: MarsWorldTasks, ToolShed) holds the three garden
-            // tools in labelled bays: the shovel in the floor holder, the sprayer and lamp on the shelf.
+            // tools in labelled bays: the sprayer, the shovel on wall hooks in the middle, and the lamp.
             AddCollider(-1.55f, 0f, -18f, 1.55f, 2.45f, -17.95f);   // pegboard
-            // The model's left bay (seen from the aisle) is at +x: shovel there, lamp at -x.
-            AddCollider(-1.55f, 0f, -18f, 0.5f, 0.95f, -17.5f);     // cabinet under the shelf
-            Tool("regolith_shovel", 1f, 0.08f, -17.7f, 0f, false, -10f);   // blade to the aisle, leaning on the board
-            Tool("hydro_sprayer", 0f, 0.95f, -17.75f, 180f);
+            // Seen from the aisle: sprayer (left, +x), shovel (middle), lamp (right, -x); the model imports mirrored.
+            AddCollider(-1.55f, 0f, -18f, 1.55f, 0.42f, -17.5f);    // low platform under the shovel, and the cabinets' base
+            AddCollider(0.5f, 0f, -18f, 1.55f, 0.95f, -17.5f);      // sprayer cabinet
+            AddCollider(-1.55f, 0f, -18f, -0.5f, 0.95f, -17.5f);    // lamp cabinet
+            Tool("hydro_sprayer", 1f, 0.95f, -17.75f, 180f);
+            Tool("regolith_shovel", 0f, 0.53f, -17.93f, 0f);   // hanging on the board's two hooks, blade to the aisle
             Tool("work_lamp", -1f, 0.95f, -17.75f, 180f);
             Lamp(0f, 2.2f, -16.9f, 4.5f, 0.9f);   // lights the shed bays
             End();

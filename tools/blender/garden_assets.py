@@ -192,33 +192,38 @@ def kiosk():
 
 # ------------------------------------------------------------------ tool shed
 def toolshed():
-    """Tool shed for the greenhouse's far end: three labelled bays (shovel standing in a floor
-    holder, sprayer and lamp on the shelf), 3 m wide, facing -Y, origin on the floor."""
+    """Tool shed for the greenhouse's far end: three labelled bays (sprayer, shovel hanging
+    on two wall hooks in the middle, lamp), 3 m wide, facing -Y, origin on the floor."""
     root = empty("ToolShed")
     WHITE, GUN, PANEL = mat("Mat", "E4E1DA", 0.5), mat("Metal", "3A3D44", 0.35), mat("Mat", "2A2D34", 0.6)
     CYAN, AMBER = mat("Glow", "3FE0FF"), mat("Glow", "FFB547")
-    # Pale bay backs so the dark tools read against them; a warm light strip lights each bay from the top.
-    obj("Pegboard", rbox((3.0, 0.06, 2.0), (0, 0.27, 1.3), 0.02), mat("Mat", "CFCCC4", 0.7), root)
+    # Dark slate bay backs, so the shed stands out from the pale greenhouse wall; a warm light strip
+    # lights each bay from the top so the tools still read.
+    obj("Pegboard", rbox((3.0, 0.06, 2.0), (0, 0.27, 1.3), 0.02), mat("Mat", "3E434C", 0.7), root)
     for x in (-1.0, 0.0, 1.0):
         obj("Bay light", rbox((0.84, 0.04, 0.025), (x, 0.2, 1.93), 0), mat("Glow", "FFE9CF"), root)
     obj("Frame", rbox((3.1, 0.12, 0.08), (0, 0.25, 2.32), 0.01), GUN, root)
     for x in (-1.52, -0.5, 0.5, 1.52):        # bay dividers
         obj("Divider", rbox((0.06, 0.5, 2.1), (x, 0.05, 1.25), 0.01), GUN, root)
-    obj("Cabinet", rbox((2.0, 0.5, 0.9), (0.5, 0.03, 0.45), 0.03), WHITE, root)
-    obj("Shelf", rbox((2.06, 0.56, 0.05), (0.5, 0.03, 0.925), 0.01), GUN, root)
-    obj("Shelf light", rbox((2.0, 0.015, 0.02), (0.5, -0.255, 0.88), 0), CYAN, root)
-    obj("Holder", rbox((0.5, 0.4, 0.08), (-1.0, 0.0, 0.04), 0.02), GUN, root)
-    obj("Holder light", rbox((0.4, 0.015, 0.015), (-1.0, -0.205, 0.07), 0), AMBER, root)
+    # One white cabinet per bay: shelf height for the sprayer and lamp, a low platform under the
+    # hanging shovel (its blade clears it).
+    for x, h in ((-1.0, 0.9), (0.0, 0.4), (1.0, 0.9)):
+        obj("Cabinet", rbox((0.96, 0.5, h), (x, 0.03, h / 2), 0.03), WHITE, root)
+        obj("Shelf", rbox((1.0, 0.56, 0.05), (x, 0.03, h + 0.025), 0.01), GUN, root)
+        obj("Shelf light", rbox((0.92, 0.015, 0.02), (x, -0.255, h - 0.02), 0), CYAN, root)
+    for x in (-0.12, 0.12):                   # two pegs the shovel hangs on, below its handle
+        obj("Hook", cyl(0.012, 0.12, (x, 0.18, 1.62), rot=Matrix.Rotation(math.pi / 2, 3, "X")), GUN, root)
     obj("Awning", rbox((3.2, 0.75, 0.06), (0, -0.07, 2.42), 0.02), WHITE, root)
     obj("Awning light", rbox((3.2, 0.02, 0.025), (0, -0.445, 2.4), 0), CYAN, root)
-    for x, label in ((-1.0, "SHOVEL"), (0.0, "SPRAYER"), (1.0, "LAMP")):
+    for x, label in ((-1.0, "SPRAYER"), (0.0, "SHOVEL"), (1.0, "LAMP")):
         obj("Bay plate", rbox((0.84, 0.03, 0.2), (x, 0.22, 2.08), 0.01), GUN, root)
         bpy.ops.object.text_add(location=(x, 0.2, 2.08)); t = bpy.context.object
         t.data.body = label; t.data.align_x = "CENTER"; t.data.align_y = "CENTER"; t.data.size = 0.11; t.data.extrude = 0.003
         t.rotation_euler = (math.radians(90), 0, 0); t.data.materials.append(AMBER); t.parent = root
         bpy.ops.object.select_all(action="DESELECT"); t.select_set(True); bpy.context.view_layer.objects.active = t
         bpy.ops.object.convert(target="MESH")
-        obj("Bay outline", rbox((0.7, 0.01, 0.015), (x, 0.235, 0.12 if x < -0.5 else 1.0), 0), AMBER, root)
+        if x != 0.0:   # shelf bays: an amber line where the tool sits
+            obj("Bay outline", rbox((0.7, 0.01, 0.015), (x, 0.235, 1.0), 0), AMBER, root)
     return root
 
 
