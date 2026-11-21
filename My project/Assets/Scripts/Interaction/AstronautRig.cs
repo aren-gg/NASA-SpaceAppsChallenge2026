@@ -30,6 +30,9 @@ namespace MarsSurvival.Interaction
             return Folder + "/Astronaut_" + (AstronautLook.Mod(frame, AstronautLook.Frames.Length) == 1 ? "Girl" : "Boy");
         }
 
+        /// <summary>False when the model did not import as Humanoid (it can't animate); the caller falls back.</summary>
+        public bool Usable { get { return animator != null && animator.isHuman && upperArmL != null && upperArmR != null; } }
+
         public readonly GameObject root;
         private readonly Transform model;
         private readonly Animator animator;
@@ -316,25 +319,27 @@ namespace MarsSurvival.Interaction
         /// <summary>The gear's colour slots (soft pastel, VRoid style); null for the character's own materials.</summary>
         private Material Suit(string slot)
         {
-            Color mint = new Color32(0x7F, 0xD8, 0xC8, 255);
+            // A realistic NASA EVA suit (PBR, no outline); only the faces and hair are anime-shaded.
+            Color suit = Color.Lerp(new Color32(0xEE, 0xEC, 0xE6, 255), look.Suit, 0.35f);
             switch (slot)
             {
-                // The suit body bends at the hips and knees; a thin outline keeps the ink from poking through the folds.
-                case "Suit": return TwoSided(Toon(slot, Color.Lerp(Color.white, look.Suit, 0.85f), null, 0.0008f));
-                case "Joint": return TwoSided(Toon(slot, new Color32(0xC9, 0xC3, 0xD6, 255), null, 0.0008f));
-                case "Accent": return Toon(slot, look.Accent, null);
-                case "Trim": return Toon(slot, mint, null);
-                case "Glove": case "Boot": case "Pack": return Toon(slot, new Color32(0xF5, 0xF2, 0xF7, 255), null);
+                case "Suit": return Lit(slot, suit, 0.28f);
+                case "Helmet Shell": return Lit(slot, suit, 0.5f);
+                case "Accent": return Lit(slot, look.Accent, 0.4f);
+                case "Trim": return Lit(slot, new Color32(0x3B, 0x3F, 0x46, 255), 0.6f, 0.8f);
+                case "Glove": return Lit(slot, new Color32(0x2A, 0x2C, 0x31, 255), 0.35f);
+                case "Boot": return Lit(slot, new Color32(0x34, 0x36, 0x3C, 255), 0.3f);
+                case "Comfort Cap": return Lit(slot, new Color32(0x4A, 0x4E, 0x57, 255), 0.15f);
+                case "Flag Red": return Lit(slot, new Color32(0xB4, 0x23, 0x2A, 255), 0.35f);
                 case "Visor":
                 {
-                    // A clear bubble with a hint of tint, so the face shows inside the helmet.
-                    Material v = Lit(slot, Color.Lerp(new Color(0.8f, 0.92f, 1f), look.Visor, 0.25f), 0.95f, 0f);
-                    MarsAstronautBody.MakeSeeThrough(v, look.ClearVisor ? 0.06f : 0.12f);
+                    // Gold sun visor, mirrored and nearly opaque, as on a real EVA helmet.
+                    Material v = Lit(slot, look.ClearVisor ? new Color(0.75f, 0.85f, 0.95f) : look.Visor, 0.95f, 0.9f);
+                    if (look.ClearVisor) MarsAstronautBody.MakeSeeThrough(v, 0.15f);
                     return v;
                 }
-                case "Screen": return Toon(slot, new Color(0.25f, 0.85f, 1f), null, 0f, new Color(0.15f, 0.55f, 0.7f));
-                case "Lamp": case "Light Cyan": return Toon(slot, new Color(0.45f, 0.92f, 1f), null, 0f, new Color(0.25f, 0.7f, 0.85f));
-                case "Light Amber": return Toon(slot, new Color(1f, 0.72f, 0.3f), null, 0f, new Color(0.7f, 0.4f, 0.1f));
+                case "Screen": return Lit(slot, new Color(0.05f, 0.08f, 0.11f), 0.85f, 0f, new Color(0.37f, 0.83f, 1f) * 1.2f);
+                case "Lamp": return Lit(slot, Color.black, 0.5f, 0f, new Color(1f, 0.94f, 0.84f) * 1.8f);
                 default: return null;
             }
         }

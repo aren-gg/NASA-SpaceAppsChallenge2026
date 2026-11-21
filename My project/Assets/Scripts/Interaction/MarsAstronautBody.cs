@@ -102,9 +102,15 @@ namespace MarsSurvival.Interaction
             if (AstronautRig.Available(look.frame))
             {
                 rig = new AstronautRig(transform, look);
-                rig.SetHelmet(helmetOn);
-                rig.SetHeadVisible(headVisible);
-                return;
+                if (rig.Usable)
+                {
+                    rig.SetHelmet(helmetOn);
+                    rig.SetHeadVisible(headVisible);
+                    return;
+                }
+                Debug.LogWarning("Astronaut: Resources/Astronaut model is not Humanoid; using the blocky astronaut.");
+                rig.Destroy();
+                rig = null;
             }
             CreateMaterials();
             bool frameB = AstronautLook.Mod(look.frame, AstronautLook.Frames.Length) == 1;

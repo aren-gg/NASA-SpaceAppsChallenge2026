@@ -28,7 +28,7 @@ EXPORT = "/Users/andrewhuangjin/Documents/code/nasa/My project/Assets/Resources/
 
 # Game hair style -> pack hair mesh (MarsSurvival AstronautLook.HairStyles, same order).
 HAIRS = ["SimpleParted", "Buzzed", "BuzzedFemale", "Buns", "Long"]
-CLIPS = {"Idle_Loop": "Idle", "Walk_Formal_Loop": "Walk", "Jog_Fwd_Loop": "Run", "Sprint_Loop": "Sprint",
+CLIPS = {"Idle_Loop": "Idle", "Walk_Loop": "Walk", "Jog_Fwd_Loop": "Run", "Sprint_Loop": "Sprint",
          "Jump_Start": "Jump_Start", "Jump_Loop": "Fall", "Jump_Land": "Jump_Land"}
 
 def use(arm, action):
@@ -162,5 +162,5 @@ def export_clips():
     bpy.ops.export_scene.fbx(filepath=path, use_selection=True, object_types={"ARMATURE"}, apply_scale_options="FBX_SCALE_UNITS",
                              axis_forward="-Z", axis_up="Y", add_leaf_bones=False, primary_bone_axis="Y", secondary_bone_axis="X",
                              bake_anim=True, bake_anim_use_all_actions=True, bake_anim_use_nla_strips=False,
-                             bake_anim_force_startend_keying=True, bake_anim_simplify_factor=0.5)
+                             bake_anim_force_startend_keying=True, bake_anim_simplify_factor=0.0)
     return path

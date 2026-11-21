@@ -70,9 +70,14 @@ Made for the NASA Space Apps Challenge 2026.
 
 ## Characters and animation
 
+- **Astronaut (NASA 3D Resources)**  
+  NASA 3D Resources; model by DigitalSpace Corporation.  
+  Used for: The base of the astronaut's EVA suit, detailed in Blender after "Astronaut by Jungle Jim" (Sketchfab, CC BY 4.0, <https://sketchfab.com/3d-models/astronaut-by-jungle-jim-c775a977606a4e4e990afe783c6bc845>) as design reference.  
+  Source: <https://science.nasa.gov/3d-resources/astronaut/>
+
 - **VRoid Studio sample models (HairSample_Male, HairSample_Female)**  
   pixiv Inc. Released by VRoid under CC0 1.0 (via OpenGameArt).  
-  Used for: The faces and hair of the male and female astronauts. The space suits are original.  
+  Used for: The faces and hair of the male and female astronauts, seen when the helmet comes off indoors.  
   Source: <https://opengameart.org/content/vroid-studio-cc0-models>
 
 - **Universal Animation Library [Standard]**  
