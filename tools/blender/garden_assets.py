@@ -272,8 +272,26 @@ def toolshed():
 
 
 # ------------------------------------------------------------------ export and icons
+def flatten(root):
+    """Joins each child group's meshes into one mesh named after the group, directly under the root.
+    The FBX exporter turns Z-up into Y-up only one level down, so deeper meshes came in on their side."""
+    for group in [c for c in root.children if c.type == "EMPTY"]:
+        meshes = [o for o in group.children_recursive if o.type == "MESH"]
+        if not meshes: continue
+        bpy.ops.object.select_all(action="DESELECT")
+        for o in meshes: o.select_set(True)
+        bpy.context.view_layer.objects.active = meshes[0]
+        bpy.ops.object.join()
+        joined = bpy.context.view_layer.objects.active
+        mw = joined.matrix_world.copy(); joined.parent = root; joined.matrix_world = mw
+        joined.name = joined.data.name = group.name.split(".")[0]
+        for o in list(group.children_recursive): bpy.data.objects.remove(o, do_unlink=True)
+        bpy.data.objects.remove(group, do_unlink=True)
+
+
 def export(root, name):
     os.makedirs(OUT, exist_ok=True)
+    flatten(root)
     bpy.ops.object.select_all(action="DESELECT")
     def walk(o):
         o.select_set(True)
