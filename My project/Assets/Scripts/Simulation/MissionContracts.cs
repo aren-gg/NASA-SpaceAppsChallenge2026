@@ -22,18 +22,20 @@ namespace MarsSurvival.Simulation
         public const int StartCredits = 30;
     }
 
-    /// <summary>A seed the shop sells: what it costs, how many sols it takes, what the crop sells for and how filling it is.</summary>
+    /// <summary>A seed the shop sells: what it costs, how many real seconds it grows once watered, what the crop sells for and how filling it is.</summary>
     public sealed class SeedKind
     {
         public string id, name;
         public int price, sellPrice;
-        public double sols, food;
+        public double seconds, food;
+        /// <summary>Mission (game) seconds to ripen once watered.</summary>
+        public double GameSeconds { get { return seconds * MissionSettings.TimeScale; } }
 
         public static readonly SeedKind[] All =
         {
-            new SeedKind { id = "lettuce", name = "Lettuce", price = 10, sellPrice = 15, sols = 2, food = 25 },
-            new SeedKind { id = "potato", name = "Potato", price = 25, sellPrice = 40, sols = 4, food = 45 },
-            new SeedKind { id = "tomato", name = "Tomato", price = 60, sellPrice = 100, sols = 6, food = 30 },
+            new SeedKind { id = "lettuce", name = "Lettuce", price = 10, sellPrice = 15, seconds = 30, food = 25 },
+            new SeedKind { id = "tomato", name = "Tomato", price = 25, sellPrice = 45, seconds = 60, food = 35 },
+            new SeedKind { id = "watermelon", name = "Watermelon", price = 60, sellPrice = 130, seconds = 120, food = 60 },
         };
 
         public static SeedKind Find(string id) { return Array.Find(All, s => s.id == id); }
@@ -54,13 +56,16 @@ namespace MarsSurvival.Simulation
         public double growth;
         /// <summary>Mission time until which the soil stays moist (plants only grow while moist).</summary>
         public double wetUntil;
-        public bool Ripe { get { return seed != "" && growth >= 1; } }
+        // The moisture from one watering ends just as growth reaches 1; allow for rounding over many steps.
+        public bool Ripe { get { return seed != "" && growth >= 0.9999; } }
+        /// <summary>Real seconds until ripe while moist (the plot timer).</summary>
+        public double SecondsLeft { get { SeedKind k = SeedKind.Find(seed); return k == null ? 0 : Math.Max(0, (1 - growth) * k.seconds); } }
     }
 
     [Serializable]
     public sealed class MissionState
     {
-        public int schemaVersion = 2, seed = 2026;
+        public int schemaVersion = 3, seed = 2026;
         public MissionPhase phase;
         public double startUnix = 1763985600, elapsedSeconds;
         public AstronautState astronaut = new AstronautState();

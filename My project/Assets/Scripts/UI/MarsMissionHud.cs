@@ -29,9 +29,10 @@ namespace MarsSurvival.UI
         private readonly TMP_Text[] values = new TMP_Text[3];
         private readonly Color[] colors = new Color[3];
         private RectTransform shop;
-        private TMP_Text shopCredits;
-        private TMP_Text[] seedRows, basketRows;
-        private TMP_Text expandRow;
+        private TMP_Text shopCredits, expandRow;
+        private TMP_Text[] owned, basketRows;
+        private Button[] buy, sell;
+        private Button expand;
         private GameObject gameplay;
         private PauseMenu pause;
         private EndScreen end;
@@ -132,41 +133,111 @@ namespace MarsSurvival.UI
             end = EndScreen.Create(safe);
         }
 
+        /// <summary>
+        /// The seed shop: a list of item cards, each with its crop icon, grow time, sell price, how many
+        /// you own and a price button; then the greenhouse expansion and the harvest to sell.
+        /// </summary>
         private void BuildShop(Transform parent)
         {
-            shop = Plate(parent, "Seed shop", new Vector2(1, .5f), new Vector2(-16, 0), new Vector2(560, 0));
+            Color accent = UiTheme.Accent;
+            shop = Plate(parent, "Seed shop", new Vector2(1, .5f), new Vector2(-16, 0), new Vector2(620, 0));
             shop.pivot = new Vector2(1, .5f);
-            shop.GetComponent<Image>().color = WithAlpha(ink, 0.92f);
+            shop.GetComponent<Image>().color = WithAlpha(ink, 0.94f);
             VerticalLayoutGroup list = shop.gameObject.AddComponent<VerticalLayoutGroup>();
-            list.padding = new RectOffset(24, 24, 20, 20);
+            list.padding = new RectOffset(22, 22, 18, 18);
             list.spacing = 8;
             list.childControlHeight = list.childControlWidth = true;
             list.childForceExpandHeight = false;
             shop.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            Row(shop, out shopCredits, "Seed shop", 26);
-            seedRows = new TMP_Text[SeedKind.All.Length];
-            for (int i = 0; i < SeedKind.All.Length; i++)
+            RectTransform head = Line(shop, 56, 0f);
+            Label(head, "SEED SHOP", 32, paper, TextAlignmentOptions.MidlineLeft).fontStyle = FontStyles.Bold;
+            shopCredits = Label(head, "", 24, accent, TextAlignmentOptions.MidlineRight);
+            Fill(Line(shop, 2, 0f), WithAlpha(accent, 0.6f));
+
+            int n = SeedKind.All.Length;
+            owned = new TMP_Text[n]; basketRows = new TMP_Text[n]; buy = new Button[n]; sell = new Button[n];
+            for (int i = 0; i < n; i++)
+            {
+                SeedKind k = SeedKind.All[i];
+                string id = k.id;
+                RectTransform card = Line(shop, 104, 0.06f);
+                Icon(card, id, 12, 8, 88);
+                RectTransform name = Region(card, 116, 56, 300, 36);
+                Label(name, k.name, 27, paper, TextAlignmentOptions.MidlineLeft).fontStyle = FontStyles.Bold;
+                Label(Region(card, 116, 30, 320, 26), "Ripe " + Duration(k.seconds) + " after watering  ·  sells " + k.sellPrice, 18, muted, TextAlignmentOptions.MidlineLeft);
+                owned[i] = Label(Region(card, 116, 6, 300, 24), "", 18, WithAlpha(accent, 0.9f), TextAlignmentOptions.MidlineLeft);
+                buy[i] = ShopButton(card, k.price + " cr", 150, 56, accent, () => mission.Execute("buy", id));
+            }
+            RectTransform grow = Line(shop, 64, 0.06f);
+            expandRow = Label(Region(grow, 16, 0, 380, 64), "", 22, paper, TextAlignmentOptions.MidlineLeft);
+            expand = ShopButton(grow, "", 150, 48, accent, () => mission.Execute("buy", "plots"));
+
+            RectTransform harvestHead = Line(shop, 40, 0f);
+            Label(harvestHead, "HARVEST", 22, muted, TextAlignmentOptions.BottomLeft);
+            for (int i = 0; i < n; i++)
             {
                 string id = SeedKind.All[i].id;
-                RectTransform row = Row(shop, out seedRows[i], "", 21);
-                Action(row, "Buy", () => mission.Execute("buy", id));
+                RectTransform row = Line(shop, 60, 0.04f);
+                Icon(row, id, 10, 6, 48);
+                basketRows[i] = Label(Region(row, 70, 0, 360, 60), "", 21, paper, TextAlignmentOptions.MidlineLeft);
+                sell[i] = ShopButton(row, "Sell", 120, 44, StatBar.ColorOf(Ui.UiButtonColor), () => mission.Execute("sell", id));
             }
-            RectTransform expand = Row(shop, out expandRow, "", 21);
-            Action(expand, "Buy", () => mission.Execute("buy", "plots"));
-            TMP_Text basketTitle;
-            Row(shop, out basketTitle, "Harvest", 26);
-            basketRows = new TMP_Text[SeedKind.All.Length];
-            for (int i = 0; i < SeedKind.All.Length; i++)
-            {
-                string id = SeedKind.All[i].id;
-                RectTransform row = Row(shop, out basketRows[i], "", 21);
-                Action(row, "Sell", () => mission.Execute("sell", id));
-            }
-            TMP_Text closeLine;
-            RectTransform close = Row(shop, out closeLine, "", 21);
-            Action(close, "Close (Esc)", () => mission.SetShopOpen(false)).sizeDelta = new Vector2(180, 40);
+            RectTransform foot = Line(shop, 52, 0f);
+            ShopButton(foot, "Close (Esc)", 180, 44, StatBar.ColorOf(Ui.UiButtonColor), () => mission.SetShopOpen(false));
             shop.gameObject.SetActive(false);
+        }
+
+        /// <summary>Greys out a button you can't use (can't afford, nothing to sell), not by colour alone: it stops clicking too.</summary>
+        private void Enable(Button button, bool on, Color fill)
+        {
+            button.interactable = on;
+            button.targetGraphic.color = on ? fill : WithAlpha(muted, 0.35f);
+            button.GetComponentInChildren<TMP_Text>().color = on ? (fill.grayscale > 0.5f ? ink : paper) : WithAlpha(paper, 0.5f);
+        }
+
+        private static string Duration(double seconds) { return seconds < 60 ? seconds + " s" : (seconds / 60) + " min"; }
+
+        /// <summary>A full-width row of the shop list, with an optional faint backing.</summary>
+        private RectTransform Line(Transform parent, float height, float backing)
+        {
+            RectTransform row = NewRect("Row", parent);
+            LayoutElement e = row.gameObject.AddComponent<LayoutElement>();
+            e.minHeight = e.preferredHeight = height;
+            if (backing > 0f) Fill(row, WithAlpha(paper, backing));
+            return row;
+        }
+
+        /// <summary>The crop's icon (Resources/Garden/Icons, rendered in Blender) on a dark tile.</summary>
+        private void Icon(RectTransform row, string id, float x, float y, float size)
+        {
+            RectTransform tile = Region(row, x, y, size, size);
+            Fill(tile, WithAlpha(ink, 0.8f));
+            Image icon = NewRect("Icon", tile).gameObject.AddComponent<Image>();
+            icon.rectTransform.anchorMin = Vector2.zero; icon.rectTransform.anchorMax = Vector2.one;
+            icon.rectTransform.offsetMin = icon.rectTransform.offsetMax = Vector2.zero;
+            icon.sprite = Resources.Load<Sprite>(MarsWorldTasks.GardenFolder + "/Icons/" + id);
+            icon.preserveAspect = true;
+            icon.raycastTarget = false;
+        }
+
+        /// <summary>A button on the right of a row; its label reads in the ink colour on the fill.</summary>
+        private Button ShopButton(RectTransform row, string label, float width, float height, Color fill, Action click)
+        {
+            RectTransform rect = NewRect(label, row);
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(1, .5f);
+            rect.anchoredPosition = new Vector2(-12, 0);
+            rect.sizeDelta = new Vector2(width, height);
+            Image image = rect.gameObject.AddComponent<Image>();
+            image.color = fill;
+            Button button = rect.gameObject.AddComponent<Button>();
+            button.targetGraphic = image;
+            ColorBlock states = ColorBlock.defaultColorBlock;
+            states.disabledColor = new Color(0.45f, 0.45f, 0.45f, 0.5f);
+            button.colors = states;
+            button.onClick.AddListener(() => { click(); MarsSfx.Play(MarsSfx.Sound.Click); });
+            Label(rect, label, 22, fill.grayscale > 0.5f ? ink : paper, TextAlignmentOptions.Center).fontStyle = FontStyles.Bold;
+            return button;
         }
 
         // ------------------------------------------------------------------ refresh
@@ -196,14 +267,18 @@ namespace MarsSurvival.UI
             if (open)
             {
                 MissionSimulation sim = mission.Simulation;
-                shopCredits.text = "Seed shop<pos=62%><size=22>" + s.credits + " credits</size>";
+                shopCredits.text = s.credits + " credits";
                 for (int i = 0; i < SeedKind.All.Length; i++)
                 {
                     SeedKind k = SeedKind.All[i];
-                    seedRows[i].text = k.name + "  ·  " + k.sols + " sols<pos=46%>" + k.price + " cr<pos=62%>own " + s.seeds[i];
-                    basketRows[i].text = k.name + "  ×" + s.basket[i] + "<pos=46%>+" + k.sellPrice + " each";
+                    owned[i].text = s.seeds[i] > 0 ? "Owned  ×" + s.seeds[i] : "None owned";
+                    Enable(buy[i], s.credits >= k.price, UiTheme.Accent);
+                    basketRows[i].text = k.name + "  ×" + s.basket[i] + "<pos=55%><color=#" + ColorUtility.ToHtmlStringRGB(muted) + ">+" + k.sellPrice + " each</color>";
+                    Enable(sell[i], s.basket[i] > 0, StatBar.ColorOf(Ui.UiButtonColor));
                 }
-                expandRow.text = sim.CanExpand ? "Add " + MissionSettings.PlotsPerExpansion + " plots<pos=46%>" + sim.ExpansionPrice + " cr" : "Greenhouse full";
+                expandRow.text = sim.CanExpand ? "Greenhouse  ·  add " + MissionSettings.PlotsPerExpansion + " plots" : "Greenhouse full";
+                Enable(expand, sim.CanExpand && s.credits >= sim.ExpansionPrice, UiTheme.Accent);
+                expand.GetComponentInChildren<TMP_Text>().text = sim.CanExpand ? sim.ExpansionPrice + " cr" : "—";
             }
 
             if (!mission.IsRunning && !ended)
@@ -259,33 +334,6 @@ namespace MarsSurvival.UI
             label.overflowMode = TextOverflowModes.Ellipsis;
             label.raycastTarget = false;
             return label;
-        }
-
-        /// <summary>A shop line: text on the left, room for a button on the right.</summary>
-        private RectTransform Row(Transform parent, out TMP_Text text, string value, float size)
-        {
-            RectTransform row = NewRect("Row", parent);
-            LayoutElement height = row.gameObject.AddComponent<LayoutElement>();
-            height.minHeight = height.preferredHeight = 44;
-            text = Label(row, value, size, paper, TextAlignmentOptions.MidlineLeft);
-            text.richText = true;
-            text.rectTransform.offsetMax = new Vector2(-120, 0);
-            return row;
-        }
-
-        private RectTransform Action(RectTransform row, string label, Action click)
-        {
-            RectTransform rect = NewRect(label, row);
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(1, .5f);
-            rect.sizeDelta = new Vector2(110, 40);
-            Image image = rect.gameObject.AddComponent<Image>();
-            image.color = StatBar.ColorOf(Ui.UiButtonColor);
-            Button button = rect.gameObject.AddComponent<Button>();
-            button.targetGraphic = image;
-            button.colors = StatBar.UiStates;
-            button.onClick.AddListener(() => { click(); MarsSfx.Play(MarsSfx.Sound.Click); });
-            Label(rect, label, 20, paper, TextAlignmentOptions.Center);
-            return rect;
         }
 
         private static RectTransform NewRect(string name, Transform parent)

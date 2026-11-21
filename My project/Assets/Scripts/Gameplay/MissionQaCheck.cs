@@ -355,13 +355,13 @@ namespace MarsSurvival.Gameplay
 
             // The shop: E on the terminal opens it; buying takes credits and gives seeds.
             MarsTaskTarget terminal = FindTarget(t => t.kind == MarsTaskTarget.Kind.Shop);
-            Check(terminal != null, "Seed shop terminal in the greenhouse");
+            Check(terminal != null, "Seed shop kiosk in storage");
             if (terminal != null)
             {
-                Place(Floor(-0.6f, -7.9f), terminal.transform.position + Vector3.up * 0.9f); yield return Frames(3);
+                Place(Floor(-10.6f, 1.2f), terminal.transform.position + Vector3.up * 1.1f); yield return Frames(3);
                 MarsTaskTarget aimed = mission.Tools.FindUse(player.AimTransform, s, out string label);
                 Vector3 tc = terminal.GetComponent<Collider>().bounds.center - player.AimTransform.position;
-                Check(aimed == terminal, "Looking at the terminal offers E to open the shop", (label ?? "nothing") + " d=" + tc.magnitude.ToString("0.00") +
+                Check(aimed == terminal, "Looking at the kiosk offers E to open the shop", (label ?? "nothing") + " d=" + tc.magnitude.ToString("0.00") +
                     " angle=" + Vector3.Angle(player.AimTransform.forward, tc).ToString("0") + " usable=" + MarsTaskTarget.Usables.Contains(terminal) + " local=" + outpost.transform.InverseTransformPoint(player.transform.position));
             }
             mission.SetShopOpen(true);
@@ -369,9 +369,9 @@ namespace MarsSurvival.Gameplay
             Check(mission.ShopOpen && mission.InputBlocked && Cursor.visible, "The shop opens, frees the cursor and stops walking");
             yield return ScreenShot("screen_shop");
             int credits = s.credits;
-            mission.Execute("buy", "potato");
-            Check(s.credits == credits - 25 && s.seeds[1] == 1, "Buy potato seeds for 25 credits", mission.Notice);
             mission.Execute("buy", "tomato");
+            Check(s.credits == credits - 25 && s.seeds[1] == 1, "Buy tomato seeds for 25 credits", mission.Notice);
+            mission.Execute("buy", "watermelon");
             Check(s.credits == credits - 25 && s.seeds[2] == 0 && mission.Notice.Contains("Not enough"), "Can't buy what you can't afford", mission.Notice);
             mission.SetShopOpen(false);
             Check(!mission.ShopOpen && !mission.InputBlocked, "Closing the shop returns to walking");
@@ -382,9 +382,9 @@ namespace MarsSurvival.Gameplay
             Check(s.plots[0].seed == "lettuce" && s.plots[2].seed == "lettuce" && s.seeds[0] == 0, "Shovel sows the three lettuce seeds", s.seeds[0] + " left");
             var hotbar = MarsSurvival.Tools.MarsExpedition.Instance.Belt;
             hotbar.Select(0);
-            hotbar.Current.Secondary(null); // R: next seed (potato)
-            UseToolOn("regolith_shovel", Plot(3), "Shovel sows potato after R");
-            Check(s.plots[3].seed == "potato", "R switches the shovel to potato seeds", s.plots[3].seed);
+            hotbar.Current.Secondary(null); // R: next seed (tomato)
+            UseToolOn("regolith_shovel", Plot(3), "Shovel sows tomato after R");
+            Check(s.plots[3].seed == "tomato", "R switches the shovel to tomato seeds", s.plots[3].seed);
             var locked = hotbar.Current.Plan(new MarsSurvival.Tools.ToolTarget { Hit = true, Collider = Plot(10).GetComponent<Collider>() });
             Check(locked != null && locked.Blocked && locked.Label.Contains("Locked"), "Locked plots refuse sowing", locked == null ? "no plan" : locked.Label);
             PlayerContext idle = mission.Context; idle.moving = false;
@@ -392,15 +392,18 @@ namespace MarsSurvival.Gameplay
             Check(s.plots[0].growth == 0, "A dry plot does not grow", s.plots[0].growth.ToString("0.00"));
             for (int i = 0; i < 4; i++) UseToolOn("hydro_sprayer", Plot(i), "Sprayer (2) waters plot " + (i + 1));
             Check(s.plots[0].wetUntil > s.elapsedSeconds, "Sprayer waters a plot", mission.Notice);
-            for (int k = 0; k < 4; k++)
-            {
-                for (int i = 0; i < 4; i++) sim.Command("water", i.ToString(), idle, out string _);
-                s.astronaut.food = s.astronaut.water = 100;
-                sim.Step(MissionSettings.SolSeconds * 0.5, mission.Environment, idle);
-            }
-            Check(s.plots[0].Ripe && !s.plots[3].Ripe && s.plots[3].growth > 0.4, "Lettuce ripens in 2 sols, potato is half grown",
+            yield return Frames(2);
+            TMPro.TextMeshPro timer = Plot(0).transform.Find("Timer").GetComponent<TMPro.TextMeshPro>();
+            Check(timer.gameObject.activeInHierarchy && timer.text.StartsWith("0:"), "A watered lettuce shows its ripening timer", timer.text);
+            Place(Floor(0.3f, -13.5f), Floor(-1.6f, -9f)); yield return Frames(3);   // look back at the first plots by the door
+            Shot("garden_timers");
+            double lettuceTime = SeedKind.Find("lettuce").GameSeconds;
+            for (double t = 0; t < lettuceTime - 1; t += 10) sim.Step(Math.Min(10, lettuceTime - t), mission.Environment, idle);
+            s.astronaut.food = s.astronaut.water = 100;
+            Check(s.plots[0].Ripe && !s.plots[3].Ripe && Math.Abs(s.plots[3].growth - 0.5) < 0.02, "One watering: lettuce ripe in 30 s, tomato half grown",
                 s.plots[0].growth.ToString("0.00") + " / " + s.plots[3].growth.ToString("0.00"));
             yield return Frames(2);
+            Place(Floor(0.3f, -13.5f), Floor(-1.6f, -9f)); yield return Frames(3);   // look back at the first plots by the door
             Shot("garden_ripe");
             Place(Plot(0).transform.position + new Vector3(1.9f, 0, 0), Plot(0).transform.position + Vector3.up * 0.2f); yield return Frames(3);   // from the aisle
             MarsTaskTarget ripe = mission.Tools.FindUse(player.AimTransform, s, out string pickLabel);

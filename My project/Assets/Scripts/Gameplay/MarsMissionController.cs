@@ -193,7 +193,7 @@ namespace MarsSurvival.Gameplay
         private static MissionState ReadSave(string path)
         {
             MissionState state = JsonUtility.FromJson<MissionState>(File.ReadAllText(path));
-            if (state == null || state.schemaVersion != 2 || state.astronaut == null || state.phase != MissionPhase.Running || state.unlockedPlots < 0 || state.unlockedPlots > MissionSettings.MaxPlots || state.credits < 0)
+            if (state == null || state.schemaVersion != 3 || state.astronaut == null || state.phase != MissionPhase.Running || state.unlockedPlots < 0 || state.unlockedPlots > MissionSettings.MaxPlots || state.credits < 0)
                 throw new InvalidDataException("Invalid or incompatible save.");
             return state;
         }

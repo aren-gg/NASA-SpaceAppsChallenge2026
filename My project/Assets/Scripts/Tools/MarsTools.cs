@@ -234,7 +234,7 @@ namespace MarsSurvival.Tools
     public sealed class HydroSprayer : MarsTool
     {
         // Watering can: the spout points along OBJ +X (Unity -X).
-        public HydroSprayer() : base("hydro_sprayer", "Sprayer", "Water a growing plot: it grows while the soil stays moist (one sol).",
+        public HydroSprayer() : base("hydro_sprayer", "Sprayer", "Water a sown plot: it grows until ripe (lettuce 30 s, tomato 1 min, watermelon 2 min).",
             ToolPose.Upright, Vector3.left, Vector3.up, new Vector3(0f, 0.16f, 0.11f))
         {
             // Carried by the side of the tank, like a watering can, so the tank stays in view.

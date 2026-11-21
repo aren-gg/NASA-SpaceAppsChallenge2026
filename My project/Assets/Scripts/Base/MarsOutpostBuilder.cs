@@ -720,7 +720,7 @@ namespace MarsSurvival.Base
         private void BuildStorage()
         {
             FloorRect r = Storage;
-            BeginRoom("Storage", r, "Seeds, tools and food, and the bunk.", "Work Lamp");
+            BeginRoom("Storage", r, "The seed shop kiosk, tools and food, and the bunk.", "Work Lamp");
             Shell(r, 2.7f, White, DarkRed, 1.1f, null, new[] { Arch(0f) }, null, null);
             // shortcut: plain blocks stand in for furniture until it is modelled.
             Block(Olive, -15.6f, 2.9f, -13.6f, 3.6f, 1.75f);        // food locker
@@ -748,7 +748,7 @@ namespace MarsSurvival.Base
         {
             FloorRect r = Greenhouse;
             BeginRoom("Greenhouse", r,
-                "Greenhouse: buy seeds at the shop terminal, then sow, water and pick crops to eat or sell.",
+                "Greenhouse: buy seeds at the kiosk in storage, then sow, water and pick crops to eat or sell.",
                 "Regolith Shovel, Hydroponic Sprayer");
             const float h = 2.7f;
             Opening[] west = { Window(-9.5f, 1.6f), Window(-12.5f, 1.6f), Window(-15.5f, 1.6f) };

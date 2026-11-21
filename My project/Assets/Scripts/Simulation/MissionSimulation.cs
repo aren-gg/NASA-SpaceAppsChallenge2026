@@ -83,8 +83,10 @@ namespace MarsSurvival.Simulation
                 case "water":
                     if (plot == null || plot.seed == "") return Fail("Nothing is sown here.", out reason);
                     if (plot.Ripe) return Fail("Ripe. Pick it with E.", out reason);
-                    plot.wetUntil = State.elapsedSeconds + MissionSettings.SolSeconds;
-                    reason = "Watered. It stays moist for one sol.";
+                    // One watering carries the crop to ripe: it stays moist for the rest of its grow time.
+                    SeedKind grown = SeedKind.Find(plot.seed);
+                    plot.wetUntil = State.elapsedSeconds + grown.GameSeconds * (1 - plot.growth);
+                    reason = "Watered. Ripe in " + Math.Ceiling(grown.seconds * (1 - plot.growth)) + " s.";
                     break;
                 case "pick":
                 {
@@ -149,7 +151,7 @@ namespace MarsSurvival.Simulation
                 if (plot.seed == "" || plot.Ripe) continue;
                 // Growth only counts while the soil is moist.
                 double wet = Math.Max(0, Math.Min(seconds, plot.wetUntil - State.elapsedSeconds));
-                plot.growth = Math.Min(1, plot.growth + wet / MissionSettings.SolSeconds / SeedKind.Find(plot.seed).sols);
+                plot.growth = Math.Min(1, plot.growth + wet / SeedKind.Find(plot.seed).GameSeconds);
             }
             State.elapsedSeconds += seconds;
             if (!Asleep) State.sleepUntil = 0;
