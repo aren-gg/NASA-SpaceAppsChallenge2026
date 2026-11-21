@@ -29,7 +29,7 @@ namespace MarsSurvival.UI
         private MarsAstronautPlayer player;
         private GameObject canvasObject;
         private AstronautLook draft, opened;
-        private bool wasPaused, previewHelmet;
+        private bool wasPaused;
         private float orbit = 180f;
         private int openedFrame;
         private readonly List<Action> refreshers = new List<Action>();
@@ -92,7 +92,6 @@ namespace MarsSurvival.UI
             opened = AstronautLook.Current.Clone();
             draft = opened.Clone();
             orbit = 180f;
-            previewHelmet = false;
             IsOpen = true;
             openedFrame = Time.frameCount;
             wasPaused = mission.Paused;
@@ -122,7 +121,6 @@ namespace MarsSurvival.UI
             if (!IsOpen || player == null || player.ViewCamera == null || player.Body == null) return;
             MarsAstronautBody body = player.Body;
             body.SetHeadVisible(true);
-            body.SetHelmet(previewHelmet);
             Transform cam = player.ViewCamera.transform;
             float u = player.transform.lossyScale.y;
             Vector3 target = player.transform.position + Vector3.up * 1.05f * u;
@@ -192,25 +190,13 @@ namespace MarsSurvival.UI
             stack.spacing = 6f;
             stack.childForceExpandWidth = true;
 
-            Section(panel, "Body");
-            Row(panel, "Astronaut", AstronautLook.Frames, l => l.frame, (l, v) => l.frame = v);
-            Row(panel, "Skin", AstronautLook.SkinNames, l => l.skin, (l, v) => l.skin = v);
-            Row(panel, "Hair", AstronautLook.HairStyles, l => l.hairStyle, (l, v) => l.hairStyle = v);
-            Row(panel, "Hair colour", AstronautLook.HairColorNames, l => l.hairColor, (l, v) => l.hairColor = v);
+            // One astronaut, helmet always sealed: only the suit's colours change.
             Section(panel, "Suit");
             Row(panel, "Suit", AstronautLook.SuitNames, l => l.suit, (l, v) => l.suit = v);
             Row(panel, "Accent", AstronautLook.AccentNames, l => l.accent, (l, v) => l.accent = v);
             Row(panel, "Visor", AstronautLook.VisorNames, l => l.visor, (l, v) => l.visor = v);
-            Row(panel, "Helmet", AstronautLook.Helmets, l => l.helmet, (l, v) => l.helmet = v);
-            Row(panel, "Backpack", AstronautLook.Backpacks, l => l.backpack, (l, v) => l.backpack = v);
-            Row(panel, "Indoors", AstronautLook.IndoorHelmet, l => l.indoorHelmet, (l, v) => l.indoorHelmet = v);
 
             RectTransform actions = Line(panel, "Actions");
-            Button preview = StatBar.Button(actions, "Preview: helmet off", null);
-            TMP_Text previewLabel = preview.GetComponentInChildren<TMP_Text>();
-            preview.onClick.AddListener(() => { previewHelmet = !previewHelmet; Refresh(); });
-            refreshers.Add(() => previewLabel.text = previewHelmet ? "Preview: helmet on" : "Preview: helmet off");
-            Flexible(preview, 1.4f);
             Flexible(StatBar.Button(actions, "Reset", () => { draft = opened.Clone(); AstronautLook.Apply(draft); Refresh(); }), 1f);
             Flexible(StatBar.Button(actions, "Done", Hide), 1f);
             foreach (TMP_Text t in actions.GetComponentsInChildren<TMP_Text>()) Shrink(t);

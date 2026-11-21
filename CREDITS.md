@@ -72,23 +72,13 @@ Made for the NASA Space Apps Challenge 2026.
 
 - **Astronaut (NASA 3D Resources)**  
   NASA 3D Resources; model by DigitalSpace Corporation.  
-  Used for: The base of the astronaut's EVA suit, detailed in Blender after "Astronaut by Jungle Jim" (Sketchfab, CC BY 4.0, <https://sketchfab.com/3d-models/astronaut-by-jungle-jim-c775a977606a4e4e990afe783c6bc845>) as design reference.  
+  Used for: The astronaut's EVA suit and sealed helmet, detailed in Blender after "Astronaut by Jungle Jim" (Sketchfab, CC BY 4.0, <https://sketchfab.com/3d-models/astronaut-by-jungle-jim-c775a977606a4e4e990afe783c6bc845>) as design reference.  
   Source: <https://science.nasa.gov/3d-resources/astronaut/>
 
-- **VRoid Studio sample models (HairSample_Male, HairSample_Female)**  
-  pixiv Inc. Released by VRoid under CC0 1.0 (via OpenGameArt).  
-  Used for: The faces and hair of the male and female astronauts, seen when the helmet comes off indoors.  
-  Source: <https://opengameart.org/content/vroid-studio-cc0-models>
-
-- **Universal Animation Library [Standard]**  
-  Quaternius. CC0 1.0.  
-  Used for: The astronauts' idle, walk, run, sprint, jump and fall animations.  
-  Source: <https://quaternius.itch.io/universal-animation-library>
-
-- **Universal Base Characters [Standard]**  
-  Quaternius. CC0 1.0.  
-  Used for: The rig the animations and the helmet-on animation were made on.  
-  Source: <https://quaternius.itch.io/universal-base-characters>
+- **CMU Graphics Lab Motion Capture Database**  
+  Carnegie Mellon University (<http://mocap.cs.cmu.edu/>), created with funding from NSF EIA-0196217; BVH conversion by Bruce Hahne (<https://github.com/meshula/cmu-mocap>). Free for research and commercial use.  
+  Used for: The astronaut's idle, walk, run, sprint and jump motion (subjects 16 and 77), retargeted onto the suit in Blender.  
+  Source: <http://mocap.cs.cmu.edu/>
 
 ## Software and fonts
 

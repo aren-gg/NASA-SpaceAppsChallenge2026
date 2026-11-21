@@ -79,11 +79,7 @@ namespace MarsSurvival.UI
             public float blend;
             public RectTransform close;
         }
-        private Overlay help, credits, chooser;
-        /// <summary>The astronaut picked on the chooser card: 0 male, 1 female.</summary>
-        private int chosen;
-        private readonly Image[] chooseRings = new Image[2];
-        private readonly TMP_Text[] chooseTags = new TMP_Text[2];
+        private Overlay help, credits;
         private CanvasGroup menuGroup;
         private TMP_Text title;
         private RectTransform stripes;
@@ -264,17 +260,15 @@ namespace MarsSurvival.UI
                 {
                     if (help.open) help.open = false;
                     if (credits.open) credits.open = false;
-                    if (chooser.open) chooser.open = false;
                 }
 #endif
             }
 
             Blend(help, dt);
             Blend(credits, dt);
-            Blend(chooser, dt);
             // The menu steps back while a card is open, so nothing shows through it.
-            if (menuGroup != null && help.group != null && credits.group != null && chooser.group != null)
-                menuGroup.alpha = 1f - Smooth(Mathf.Max(Mathf.Max(help.blend, credits.blend), chooser.blend));
+            if (menuGroup != null && help.group != null && credits.group != null)
+                menuGroup.alpha = 1f - Smooth(Mathf.Max(help.blend, credits.blend));
         }
 
         private static void Blend(Overlay o, float dt)
@@ -481,7 +475,7 @@ namespace MarsSurvival.UI
             stripes = rule.rectTransform;
             stripes.localScale = new Vector3(0f, 1f, 1f);
 
-            RectTransform start = MakeButton(column, "Start mission", ButtonStyle.Primary, OpenChooser);
+            RectTransform start = MakeButton(column, "Start mission", ButtonStyle.Primary, StartMission);
             Place(start, ref y, 420f, 84f, 16f, index++);
             RectTransform how = MakeButton(column, "How to play", ButtonStyle.Secondary, () => Show(help));
             Place(how, ref y, 420f, 68f, 12f, index++);
@@ -490,7 +484,6 @@ namespace MarsSurvival.UI
 
             BuildHelp(root);
             BuildCredits(root);
-            BuildChooser(root);
         }
 
         /// <summary>A modal card centred on screen with a dimmed backdrop that closes it.</summary>
@@ -530,91 +523,6 @@ namespace MarsSurvival.UI
             o.group.alpha = 0f;
             overlay.gameObject.SetActive(false);
             return o;
-        }
-
-        // ------------------------------------------------------------------ astronaut chooser
-
-        private void OpenChooser()
-        {
-            if (state != State.Open) return;
-            chosen = MarsSurvival.Interaction.AstronautLook.Mod(MarsSurvival.Interaction.AstronautLook.Current.frame, MarsSurvival.Interaction.AstronautLook.Frames.Length);
-            RefreshChooser();
-            Show(chooser);
-        }
-
-        /// <summary>
-        /// "Choose your astronaut": two large headshot cards (Male, Female). The picked
-        /// card gets an accent ring and a "Selected" tag (not colour alone); Launch saves the choice
-        /// and starts the mission, Back or Esc returns to the menu.
-        /// </summary>
-        private void BuildChooser(Transform root)
-        {
-            Color pink = MarsTrainer.UI.UiTheme.Text;
-            chooser = MakeOverlay(root, "Choose Astronaut", "Choose your astronaut", new Vector2(980f, 860f));
-            TMP_Text sub = NewText(chooser.card, "Pick who walks out onto Mars. Suit colours and hair can be changed later in the wardrobe (C).",
-                                   24, WithAlpha(pink, 0.85f), FontStyle.Normal, TextAnchor.UpperLeft);
-            TopLeft(sub.rectTransform, new Vector2(64f, -116f), new Vector2(852f, 64f));
-
-            string[] portraits = { "Astronaut/Portrait_Boy", "Astronaut/Portrait_Girl" };
-            for (int i = 0; i < 2; i++)
-            {
-                int index = i;
-                RectTransform card = NewRect(MarsSurvival.Interaction.AstronautLook.Frames[i], chooser.card);
-                TopLeft(card, new Vector2(64f + i * 444f, -200f), new Vector2(408f, 470f));
-                Image back = card.gameObject.AddComponent<Image>();
-                back.sprite = roundFill; back.type = Image.Type.Sliced;
-                back.color = WithAlpha(MarsTrainer.UI.UiTheme.Ink, 0.55f);
-                Button button = card.gameObject.AddComponent<Button>();
-                button.targetGraphic = back;
-                button.transition = Selectable.Transition.ColorTint;
-                button.navigation = new Navigation { mode = Navigation.Mode.Automatic };
-                button.onClick.AddListener(() => { chosen = index; RefreshChooser(); });
-
-                Image portrait = NewRect("Portrait", card).gameObject.AddComponent<Image>();
-                portrait.sprite = Resources.Load<Sprite>(portraits[i]);
-                portrait.preserveAspect = true;
-                portrait.raycastTarget = false;
-                TopLeft(portrait.rectTransform, new Vector2(24f, -20f), new Vector2(360f, 360f));
-
-                TMP_Text label = NewText(card, MarsSurvival.Interaction.AstronautLook.Frames[i], 34, pink, FontStyle.Bold, TextAnchor.MiddleCenter);
-                TopLeft(label.rectTransform, new Vector2(0f, -384f), new Vector2(408f, 44f));
-                chooseTags[i] = NewText(card, "SELECTED", 20, MarsTrainer.UI.UiTheme.Accent, FontStyle.Bold, TextAnchor.MiddleCenter);
-                TopLeft(chooseTags[i].rectTransform, new Vector2(0f, -426f), new Vector2(408f, 30f));
-
-                Image ring = NewRect("Ring", card).gameObject.AddComponent<Image>();
-                ring.sprite = roundRing; ring.type = Image.Type.Sliced; ring.raycastTarget = false;
-                Stretch(ring.rectTransform);
-                chooseRings[i] = ring;
-            }
-
-            // Back (the overlay's close button) on the left, Launch on the right.
-            // One primary action per card: Back is secondary.
-            Vector2 closeSize = chooser.close.sizeDelta;
-            Destroy(chooser.close.gameObject);
-            chooser.close = MakeButton(chooser.card, "Back", ButtonStyle.Secondary, () => chooser.open = false);
-            chooser.close.anchorMin = chooser.close.anchorMax = chooser.close.pivot = new Vector2(0f, 0f);
-            chooser.close.sizeDelta = closeSize;
-            chooser.close.anchoredPosition = new Vector2(64f, 48f);
-            RectTransform launch = MakeButton(chooser.card, "Launch mission", ButtonStyle.Primary, () =>
-            {
-                MarsSurvival.Interaction.AstronautLook.Choose(chosen);
-                chooser.open = false;
-                StartMission();
-            });
-            launch.anchorMin = launch.anchorMax = launch.pivot = new Vector2(1f, 0f);
-            launch.sizeDelta = new Vector2(320f, 72f);
-            launch.anchoredPosition = new Vector2(-64f, 48f);
-            RefreshChooser();
-        }
-
-        private void RefreshChooser()
-        {
-            for (int i = 0; i < 2; i++)
-            {
-                bool on = i == chosen;
-                if (chooseRings[i] != null) chooseRings[i].color = on ? MarsTrainer.UI.UiTheme.Accent : WithAlpha(MarsTrainer.UI.UiTheme.Text, 0.18f);
-                if (chooseTags[i] != null) chooseTags[i].gameObject.SetActive(on);
-            }
         }
 
         private void BuildHelp(Transform root)

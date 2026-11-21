@@ -5,7 +5,9 @@ of "Astronaut by Jungle Jim" (Sketchfab, CC BY): white suit, gold visor, gunmeta
 with an orange button, orange arm and leg stripes, chest-to-pack hoses, thigh pockets, a wrist
 computer, dark gloves and soles, helmet lamps and a flag patch.
 
-build() leaves one object per part in outpost-local metres (feet at 0, facing -Y).
+build() leaves one object per part in outpost-local metres (feet at 0, facing -Y);
+build_astronaut() adds the sealed helmet and the skeleton, export_astronaut() writes
+Assets/Resources/Astronaut/Astronaut.fbx. Clips: astronaut_mocap.py.
 """
 import bpy, bmesh, math, os
 from mathutils import Vector, Matrix
@@ -184,68 +186,10 @@ def build():
     bpy.ops.object.select_all(action="DESELECT")
     return body, parts
 
-UBC = "/private/tmp/claude-501/-Users-andrewhuangjin-Documents-code-nasa/dde12ac5-72ac-40e4-ac25-0e1f0d275ab6/scratchpad/dl/x/Universal Base Characters[Standard]/"
 NECK = Vector((0.0, -0.02, 1.53))      # the suit's neck ring
 
-def split_helmet(body):
-    """The helmet (shell, visor) becomes its own object so it can come off indoors."""
-    me = body.data
-    bm = bmesh.new(); bm.from_mesh(me)
-    sel = [f for f in bm.faces if f.material_index == 1 or (f.calc_center_median().z > 1.535 and abs(f.calc_center_median().x) < 0.17
-           and f.calc_center_median().y < 0.12)]
-    new = bmesh.new()
-    vmap = {}
-    for f in sel:
-        vs = []
-        for v in f.verts:
-            if v not in vmap: vmap[v] = new.verts.new(v.co)
-            vs.append(vmap[v])
-        nf = new.faces.new(vs); nf.material_index = f.material_index; nf.smooth = f.smooth
-    bmesh.ops.delete(bm, geom=sel, context="FACES")
-    bm.to_mesh(me); bm.free()
-    hm = bpy.data.meshes.new("Helmet"); new.to_mesh(hm); new.free()
-    for m in me.materials: hm.materials.append(m)
-    helmet = bpy.data.objects.new("Helmet", hm); bpy.context.scene.collection.objects.link(helmet)
-    return helmet
-
-def add_head(sex):
-    """A realistic head and hair from the Quaternius base characters (CC0), seated in the neck ring."""
-    before = set(bpy.data.objects)
-    bpy.ops.import_scene.gltf(filepath=UBC + "Base Characters/Godot - UE/Superhero_%s_FullBody.gltf" % sex)
-    new = [o for o in bpy.data.objects if o not in before]
-    arm = next(o for o in new if o.type == "ARMATURE")
-    neck = arm.matrix_world @ arm.data.bones["neck_01"].head_local
-    hair_name = "Hair_SimpleParted" if sex == "Male" else "Hair_Buns"
-    hb = set(bpy.data.objects)
-    bpy.ops.import_scene.gltf(filepath=UBC + "Hairstyles/Origin at 0/glTF (Godot)/" + hair_name + ".gltf")
-    hair = [o for o in bpy.data.objects if o not in hb and o.type == "MESH"]
-    for o in [o for o in bpy.data.objects if o not in hb and o.type != "MESH"]: bpy.data.objects.remove(o, do_unlink=True)
-    keep = []
-    for o in new + hair:
-        if o.type != "MESH" or o.name.startswith("Icosphere"): continue
-        mw = o.matrix_world.copy(); o.parent = None; o.matrix_world = mw
-        o.modifiers.clear()
-        bpy.context.view_layer.objects.active = o; o.select_set(True)
-        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True); o.select_set(False)
-        if "Superhero" in o.name or "superhero" in o.name.lower():
-            bm = bmesh.new(); bm.from_mesh(o.data)
-            # keep the head and a short neck that sits inside the suit's neck ring
-            bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.z < neck.z - 0.02 or
-                                       (v.co.z < neck.z + 0.06 and math.hypot(v.co.x - neck.x, v.co.y - neck.y) > 0.075)], context="VERTS")
-            bm.to_mesh(o.data); bm.free(); o.name = "Head"
-        else:
-            o.name = "Hair" if o in hair else ("Eyebrows" if o.dimensions.x > 0.11 else "Eyes")
-            if o in hair or o.name == "Eyebrows":
-                o.data.materials.clear(); o.data.materials.append(mat("Hair", "2B1E17" if sex == "Male" else "3A2418", 0.55))
-        o.data.transform(Matrix.Translation(NECK - neck + Vector((0, 0, 0.01))))
-        keep.append(o)
-    for o in new:
-        if o not in keep and o.name in bpy.data.objects: bpy.data.objects.remove(o, do_unlink=True)
-    return keep
-
-# ---------------------------------------------------------------- v2: own helmet, smaller pack, anime Asian heads
-HEAD_SCALE = 1.3      # the head (and so the helmet sized round it) a bit larger than life, for readability
-VROID = "/private/tmp/claude-501/-Users-andrewhuangjin-Documents-code-nasa/dde12ac5-72ac-40e4-ac25-0e1f0d275ab6/scratchpad/vroid/"
+# ---------------------------------------------------------------- sealed helmet, smaller pack
+HEAD_SCALE = 1.3      # sizes the neck seal to the helmet
 
 def strip_helmet_and_shrink_pack(body):
     """Removes NASA's boxy helmet (and its side light blocks) and makes the PLSS pack smaller."""
@@ -262,64 +206,6 @@ def strip_helmet_and_shrink_pack(body):
             v.co.y = 0.11 + (v.co.y - 0.11) * 0.5
             v.co.z = 1.2 + (v.co.z - 1.2) * 0.68
     bm.to_mesh(me); bm.free()
-
-def add_vroid_head(kind):
-    """The VRoid character's head, hair and neck (CC0), turned to face -Y and seated in the neck ring."""
-    before = set(bpy.data.objects)
-    bpy.ops.import_scene.gltf(filepath=VROID + ("male" if kind == "Male" else "female") + ".glb")
-    new = [o for o in bpy.data.objects if o not in before]
-    arm = next(o for o in new if o.type == "ARMATURE")
-    neck = arm.matrix_world @ arm.data.bones["J_Bip_C_Neck"].head_local
-    eye = arm.matrix_world @ arm.data.bones["J_Adj_L_FaceEye"].head_local
-    turn = Matrix.Rotation(math.pi, 4, "Z") if (eye - neck).y > 0 else Matrix.Identity(4)   # face -Y like the suit
-    T = Matrix.Translation(NECK) @ Matrix.Scale(HEAD_SCALE, 4) @ turn @ Matrix.Translation(-neck)
-    keep = []
-    for o in new:
-        if o.type != "MESH" or o.name.startswith("Icosphere"): continue
-        mw = o.matrix_world.copy(); o.parent = None; o.matrix_world = mw
-        o.modifiers.clear()
-        bpy.context.view_layer.objects.active = o; o.select_set(True)
-        if o.data.shape_keys:   # expressions are not used; they would also pin the mesh where it was
-            o.shape_key_clear()
-        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True); o.select_set(False)
-        if o.name.startswith("Body"):
-            bm = bmesh.new(); bm.from_mesh(o.data)
-            skin = {i for i, m in enumerate(o.data.materials) if m and "SKIN" in m.name}
-            bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.material_index not in skin or
-                                       f.calc_center_median().z < neck.z - 0.03], context="FACES")
-            bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
-            bm.to_mesh(o.data); bm.free(); o.name = "Neck skin"
-        elif o.name.startswith("Face"):
-            o.name = "Face"   # not "Head": that is the bone's name, and Unity's Humanoid needs it unique
-            for m in o.data.materials:      # dark brown eyes
-                if m and "EyeIris" in m.name:
-                    tex = next((n for n in m.node_tree.nodes if n.type == "TEX_IMAGE" and n.image), None)
-                    if tex:
-                        img = tex.image; px = list(img.pixels)
-                        for k in range(0, len(px), 4):
-                            lum = min(1.0, (0.3 * px[k] + 0.59 * px[k + 1] + 0.11 * px[k + 2]) * 1.3)
-                            px[k], px[k + 1], px[k + 2] = lum * 0.36, lum * 0.22, lum * 0.15
-                        brown = bpy.data.images.new("EyeIris_Brown", img.size[0], img.size[1], alpha=True)
-                        brown.pixels = px; brown.pack(); tex.image = brown
-        elif o.name.startswith("Hair"):
-            o.name = "Hair"
-            if kind == "Female":   # cat ears off
-                bm = bmesh.new(); bm.from_mesh(o.data); seen = set(); kill = []
-                for v in bm.verts:
-                    if v in seen: continue
-                    isl, st = [], [v]
-                    while st:
-                        x = st.pop()
-                        if x in seen: continue
-                        seen.add(x); isl.append(x); st.extend(e.other_vert(x) for e in x.link_edges)
-                    zc = sum(x.co.z for x in isl) / len(isl); xc = sum(x.co.x for x in isl) / len(isl)
-                    if zc > neck.z + 0.25 and abs(xc - neck.x) > 0.06 and len(isl) < 1500: kill.extend(isl)
-                bmesh.ops.delete(bm, geom=kill, context="VERTS"); bm.to_mesh(o.data); bm.free()
-        o.data.transform(T)
-        keep.append(o)
-    for o in new:
-        if o not in keep and o.name in bpy.data.objects: bpy.data.objects.remove(o, do_unlink=True)
-    return keep
 
 def add_neck_seal_and_helmet(head_parts):
     """A soft fabric neck seal inside a gunmetal neck ring, and a rounded helmet sized to the head with
@@ -344,12 +230,15 @@ def add_neck_seal_and_helmet(head_parts):
     # helmet sized to the head and hair
     pts = [o.matrix_world @ v.co for o in head_parts if o.name in ("Face", "Hair") for v in o.data.vertices]
     pts = [p for p in pts if p.z > NECK.z + 0.02]
-    lo = Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts)))
-    hi = Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts)))
-    hc = (lo + hi) / 2
-    R = max((p - hc).length for p in pts) * 0.9 + 0.025
-    R = min(max(R, 0.255), 0.3)
-    hc.z = max(hc.z, NECK.z + R * 0.78)
+    if pts:
+        lo = Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts)))
+        hi = Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts)))
+        hc = (lo + hi) / 2
+        R = max((p - hc).length for p in pts) * 0.9 + 0.025
+        R = min(max(R, 0.255), 0.3)
+        hc.z = max(hc.z, NECK.z + R * 0.78)
+    else:       # no head: the helmet at the size the game shipped with
+        R = 0.255; hc = Vector((0, NECK.y, 1.74))
     def sphere_bm(r):
         b = bmesh.new(); bmesh.ops.create_uvsphere(b, u_segments=48, v_segments=24, radius=r)
         bmesh.ops.translate(b, vec=hc, verts=b.verts); return b
@@ -442,6 +331,8 @@ def rig(body, head_parts, seal, helmet, gear):
     groups = {n: body.vertex_groups.new(name=n) for n in segs}
     for v in body.data.vertices:
         p = v.co; s = 1 if p.x > 0 else -1; L = "l" if s > 0 else "r"
+        if p.y > 0.1 and p.z > 0.8 and abs(p.x) < 0.31:      # the backpack rides rigidly on the upper back
+            groups["spine_03"].add([v.index], 1.0, "REPLACE"); continue
         if s * p.x > 0.27 and p.z > 1.1: allowed = ["clavicle_" + L, "upperarm_" + L, "lowerarm_" + L, "hand_" + L]
         elif p.z < 0.9 and abs(p.x) > 0.03: allowed = ["thigh_" + L, "calf_" + L, "foot_" + L, "ball_" + L]
         elif p.z < 0.95: allowed = ["pelvis", "thigh_" + L]
@@ -458,7 +349,7 @@ def rig(body, head_parts, seal, helmet, gear):
         return min(segs, key=lambda n: dist(p, *segs[n]))
     for o in gear:
         c = sum((o.matrix_world @ Vector(b) for b in o.bound_box), Vector()) / 8
-        bone_parent(o, nearest(c))
+        bone_parent(o, "spine_03" if c.y > 0.1 and c.z > 0.8 and abs(c.x) < 0.31 else nearest(c))
     for o in head_parts:
         bone_parent(o, "neck_01" if o.name.startswith("Neck skin") else "Head")
     for o in seal:
@@ -470,46 +361,36 @@ def rig(body, head_parts, seal, helmet, gear):
         mw = o.matrix_world.copy(); o.parent = hnode; o.matrix_world = mw
     return arm_o
 
-def save_textures(kind, objs):
-    """Each face/hair texture goes to Resources/Astronaut/Textures/<Kind>_<material>.png and the material
-    takes that name, so the game loads the texture by the material's name."""
-    tex_dir = os.path.join(EXPORT, "Textures"); os.makedirs(tex_dir, exist_ok=True)
-    for o in objs:
-        for m in o.data.materials:
-            if not m or not m.use_nodes or m.name.startswith(kind + "_"): continue
-            node = next((nd for nd in m.node_tree.nodes if nd.type == "TEX_IMAGE" and nd.image), None)
-            if node is None: continue
-            stem = kind + "_" + "".join(c if c.isalnum() or c in "_-" else "_" for c in m.name.split(".")[0])
-            img = node.image; img.filepath_raw = os.path.join(tex_dir, stem + ".png"); img.file_format = "PNG"; img.save()
-            m.name = stem
-
-def build_character(kind):
-    """kind: "Male" or "Female". Returns (armature, helmet objects)."""
+# ---------------------------------------------------------------- v3: one astronaut, helmet always on
+def build_astronaut():
+    """The single playable astronaut: the detailed NASA suit with its sealed helmet (gold visor down)
+    and a dark comfort-cap head form inside it. No faces; the helmet never comes off."""
     body, gear = build()
     for o in list(bpy.data.objects):
         if o.name.startswith("Lamp") and o in gear: gear.remove(o); bpy.data.objects.remove(o, do_unlink=True)
     for o in list(gear):
-        if o.type == "CURVE":      # hoses: curves -> meshes for export
+        if o.type == "CURVE":
             bpy.ops.object.select_all(action="DESELECT"); o.select_set(True); bpy.context.view_layer.objects.active = o
             bpy.ops.object.convert(target="MESH"); gear[gear.index(o)] = bpy.context.object
     strip_helmet_and_shrink_pack(body)
-    head = add_vroid_head(kind)
-    seal, helmet = add_neck_seal_and_helmet(head)
-    save_textures("Boy" if kind == "Male" else "Girl", head)
+    seal, helmet = add_neck_seal_and_helmet([])
+    bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=12, radius=0.1)
+    bmesh.ops.scale(bm, vec=Vector((1.0, 1.15, 1.25)), verts=bm.verts)
+    bmesh.ops.translate(bm, vec=Vector((0, NECK.y, NECK.z + 0.17)), verts=bm.verts)
+    head = [obj("Head form", bm, mat("Comfort Cap", "4A4E57", 0.85))]
     arm = rig(body, head, seal, helmet, gear)
-    return arm, helmet
+    return arm
 
-def export_character(arm, kind):
+def export_astronaut(arm):
     bpy.ops.object.select_all(action="DESELECT")
     def walk(o):
         o.select_set(True)
         for c in o.children: walk(c)
     walk(arm)
     bpy.context.view_layer.objects.active = arm
-    path = os.path.join(EXPORT, "Astronaut_%s.fbx" % ("Boy" if kind == "Male" else "Girl"))
+    path = os.path.join(EXPORT, "Astronaut.fbx")
     bpy.ops.export_scene.fbx(filepath=path, use_selection=True, object_types={"ARMATURE", "MESH", "EMPTY"},
                              apply_scale_options="FBX_SCALE_UNITS", axis_forward="-Z", axis_up="Y",
                              use_mesh_modifiers=True, mesh_smooth_type="FACE", add_leaf_bones=False,
-                             primary_bone_axis="Y", secondary_bone_axis="X", bake_anim=False,
-                             path_mode="COPY", embed_textures=True)
+                             primary_bone_axis="Y", secondary_bone_axis="X", bake_anim=False)
     return path

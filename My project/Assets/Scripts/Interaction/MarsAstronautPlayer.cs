@@ -602,12 +602,10 @@ namespace MarsSurvival.Interaction
             UpdateHelmet(mission);
         }
 
-        /// <summary>Helmet on outside; off inside the pressurised base unless the look keeps it on.</summary>
+        /// <summary>The helmet stays sealed everywhere, indoors and out.</summary>
         private void UpdateHelmet(MarsSurvival.Gameplay.MarsMissionController mission)
         {
-            if (body == null) return;
-            bool outdoors = mission == null || mission.Context.zone == MarsSurvival.Simulation.PlayerZone.Outdoors;
-            body.SetHelmet(outdoors || !AstronautLook.Current.HelmetOffIndoors);
+            if (body != null) body.SetHelmet(true);
         }
 
         /// <summary>Scroll up moves the camera in, past the closest distance into first person; scroll down moves it out.</summary>

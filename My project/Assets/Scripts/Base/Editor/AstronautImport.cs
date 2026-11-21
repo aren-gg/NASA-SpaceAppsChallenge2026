@@ -4,17 +4,16 @@ using UnityEditor;
 namespace MarsSurvival.Base.EditorTools
 {
     /// <summary>
-    /// Import settings for the astronauts (Assets/Resources/Astronaut, from
-    /// tools/blender/astronaut_vroid.py and astronaut_build.py): every model Humanoid, so the
-    /// clips in Astronaut_Clips (a different skeleton) retarget onto the male and female astronauts.
-    /// Clips play in place (root motion baked into the pose); locomotion and the fall loop.
+    /// Import settings for the astronaut (Assets/Resources/Astronaut, from tools/blender/astronaut_nasa.py
+    /// and astronaut_mocap.py): the body and the clip file are both Humanoid on the same skeleton, so
+    /// the motion-capture clips play on the body as recorded. Clips play in place and loop.
     /// </summary>
     public sealed class AstronautImport : AssetPostprocessor
     {
         private static readonly string[] Looping = { "Idle", "Walk", "Run", "Sprint", "Fall" };
 
         /// <summary>Bumped when these settings change, so Unity re-imports the astronaut files.</summary>
-        public override uint GetVersion() { return 5; }
+        public override uint GetVersion() { return 6; }
 
         private void OnPreprocessModel()
         {
@@ -43,15 +42,6 @@ namespace MarsSurvival.Base.EditorTools
                 clip.keepOriginalOrientation = clip.keepOriginalPositionY = clip.keepOriginalPositionXZ = true;
             }
             importer.clipAnimations = clips;
-        }
-
-        private void OnPreprocessTexture()
-        {
-            if (!assetPath.Contains("/Resources/Astronaut/Portrait")) return;
-            var importer = (TextureImporter)assetImporter;
-            importer.textureType = TextureImporterType.Sprite;
-            importer.alphaIsTransparency = true;
-            importer.mipmapEnabled = false;
         }
     }
 }

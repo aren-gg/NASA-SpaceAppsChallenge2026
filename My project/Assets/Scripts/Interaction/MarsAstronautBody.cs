@@ -71,11 +71,11 @@ namespace MarsSurvival.Interaction
             }
         }
 
-        /// <summary>Puts the helmet on or takes it off (showing the face and the full hairstyle).</summary>
+        /// <summary>The helmet stays sealed at all times, indoors and out; the call is kept for callers.</summary>
         public void SetHelmet(bool on)
         {
-            helmetOn = on;
-            if (rig != null) { rig.SetHelmet(on); return; }
+            helmetOn = on = true;
+            if (rig != null) return;
             bool clear = look != null && look.ClearVisor;
             if (helmetPart != null) helmetPart.SetActive(on);
             if (headPart != null) headPart.SetActive(!on || clear);
@@ -98,13 +98,12 @@ namespace MarsSurvival.Interaction
             look = (newLook ?? new AstronautLook()).Clone();
             Clear();
             built = true;
-            // The skinned astronaut (male or female, from Blender) when its models are in Resources.
-            if (AstronautRig.Available(look.frame))
+            // The skinned NASA-suit astronaut (from Blender) when its model is in Resources.
+            if (AstronautRig.Available())
             {
                 rig = new AstronautRig(transform, look);
                 if (rig.Usable)
                 {
-                    rig.SetHelmet(helmetOn);
                     rig.SetHeadVisible(headVisible);
                     return;
                 }
