@@ -21,15 +21,13 @@ namespace MarsSurvival.Gameplay
             var ctx = new PlayerContext { zone = PlayerZone.Outdoors, station = "", moving = player.Speed > 0.05, sprinting = player.IsSprinting, distanceFromBase = Vector3.Distance(position, outpost.DoorPosition) };
             if (p.y > -0.5f && p.y < 3.5f)
             {
-                if (MarsOutpostBuilder.Shelter.Contains(p.x, p.z)) { ctx.zone = PlayerZone.Shelter; ctx.station = "shelter"; }
-                else if (MarsOutpostBuilder.Airlock.Contains(p.x, p.z)) { ctx.zone = PlayerZone.Airlock; ctx.station = "airlock"; }
+                if (MarsOutpostBuilder.Airlock.Contains(p.x, p.z)) { ctx.zone = PlayerZone.Airlock; ctx.station = "airlock"; }
                 else
                 {
                     foreach (var room in outpost.Rooms) if (room.Contains(p.x, p.z)) { ctx.zone = PlayerZone.Habitat; ctx.station = "habitat"; break; }
-                    if ((Math.Abs(p.z) < 0.9 && p.x > -26 && p.x < 20.5) || (Math.Abs(p.x) < 0.9 && p.z > -18 && p.z < 16.75)) ctx.zone = PlayerZone.Habitat;
-                    if (MarsOutpostBuilder.Hub.Contains(p.x, p.z) && p.x < -0.8f && p.z > 0.8f) ctx.station = "galley";
+                    // the tunnels between the wings
+                    if ((Math.Abs(p.z) < 1.5 && p.x > -16 && p.x < 16) || (Math.Abs(p.x) < 1.5 && p.z > -18 && p.z < 16.75)) ctx.zone = PlayerZone.Habitat;
                     if (MarsOutpostBuilder.Greenhouse.Contains(p.x, p.z)) ctx.station = "greenhouse";
-                    if (MarsOutpostBuilder.Quarters.Contains(p.x, p.z)) ctx.station = "quarters";
                 }
             }
             return ctx;

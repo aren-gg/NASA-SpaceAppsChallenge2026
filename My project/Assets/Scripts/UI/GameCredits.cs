@@ -85,7 +85,7 @@ namespace MarsSurvival.UI
                     "https://science.nasa.gov/3d-resources/astronaut/"),
                 new Entry("CMU Graphics Lab Motion Capture Database",
                     "Carnegie Mellon University (mocap.cs.cmu.edu), created with funding from NSF EIA-0196217; BVH conversion by Bruce Hahne. Free for research and commercial use.",
-                    "The astronaut's idle, walk, run, sprint and jump motion (subjects 16 and 77), retargeted onto the suit in Blender.",
+                    "The astronaut's idle, walk, run, sprint and jump motion (subjects 16 and 82), retargeted onto the suit in Blender.",
                     "http://mocap.cs.cmu.edu/")),
 
             new Section("Software and fonts",

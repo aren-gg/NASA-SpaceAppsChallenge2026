@@ -1,5 +1,12 @@
 """
-Marsivity outpost modules v2: real interiors and exteriors in one model per module.
+Marsivity outpost modules v3: a hub (reception) and three wings, built roomy.
+
+Plan (game x right, game z forward):           Airlock - EXIT
+                                                   |
+                        Storage ------------- HUB (reception) ------------- Utilities
+                                                   |
+                                               Greenhouse
+Doorways are 2 m wide and tunnels 3 m, so the astronaut never threads a needle.
 
 Replaces outpost_shells.py (outer skins laid over the code-built rooms). Every module here is
 a closed, manifold printed shell whose inner face IS the room's wall and ceiling, plus the
@@ -69,6 +76,7 @@ CYAN = mat("Shell Light Cyan", "000000", 0.4, emit="3FE0FF", strength=14)
 AMBER = mat("Shell Light Amber", "000000", 0.4, emit="FFB547", strength=12)
 WARM = mat("Int Light Warm", "000000", 0.4, emit="FFE9CF", strength=10)
 RED = mat("Shell Signal Red", "6E1E22", 0.5)
+SOIL = mat("Int Soil", "3B2A22", 0.95)
 SAND = mat("Preview Regolith", "A65F43", 0.95)
 PROP = mat("Preview Prop", "5B5F68", 0.5, 0.4)
 
@@ -366,16 +374,30 @@ def module_exterior(frame, w, L, spring, apex, fins=True, spine=True, berm=True,
                 bm.faces.new((a[i], a[(i + 1) % 3], b[(i + 1) % 3], b[i]))
             bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
             o = mesh_obj(bm, "Regolith berm", [PRINT_DARK]); o.matrix_world = f
+    # Neon kit after the hub: lit ribs over the vault (cyan and amber alternating, like the dome's
+    # spines), a glowing window ribbon down each side, and a light halo round both end arches.
+    nr = max(2, int(L / 1.7))
+    for r in range(nr + 1):
+        vv = -0.1 + (L + 0.2) * r / nr
+        prof = arch(ow + 0.03, spring, apex + T_WALL + 0.03, steps=26)
+        strip("Neon rib", CYAN if r % 2 == 0 else AMBER, f, [Vector((u, vv, z)) for u, z in prof], 0.06, 0.04)
+    for side in (-1, 1):
+        fbox("Window ribbon", GLASS, (0.03, L - 0.4, 0.42), f, (side * (ow + 0.01), L / 2, 1.55))
+        fbox("Ribbon light", AMBER, (0.04, L - 0.2, 0.035), f, (side * (ow + 0.03), L / 2, 1.83))
+        fbox("Ribbon light", CYAN, (0.04, L - 0.2, 0.035), f, (side * (ow + 0.03), L / 2, 1.27))
+    for vv in (-T_WALL - 0.02, L + T_WALL + 0.02):
+        prof = arch(ow + 0.01, spring, apex + T_WALL + 0.01, steps=30)
+        strip("End halo", CYAN, f, [Vector((u, vv, z)) for u, z in [(ow + 0.01, 0.05)] + prof + [(-ow - 0.01, 0.05)]], 0.07, 0.04)
     if side_label:
         rot = f.to_euler(); rot.x += math.radians(90); rot.z += math.radians(90)
         nf = max(2, int(L / 1.7)); gap = (L + 0.2) / nf          # between the first two fins
         mid, width = -0.1 + gap / 2, gap - 0.4
-        t = text(side_label, CYAN, 0.34, f @ Vector((ow + 0.02, mid, spring - 0.25)), rot)
+        t = text(side_label, CYAN, 0.34, f @ Vector((ow + 0.02, mid, spring - 0.05)), rot)
         bpy.context.view_layer.update()
         fit = (width - 0.2) / max(t.dimensions.x, 1e-3)
         if fit < 1:
             t.data.size *= fit
-        fbox("Label plate", METAL, (0.03, width, 0.5), f, (ow + 0.005, mid, spring - 0.25))
+        fbox("Label plate", METAL, (0.03, width, 0.5), f, (ow + 0.005, mid, spring - 0.05))
 
 def frame_for(rect, along_x):
     """Local frame whose v runs along the vault axis. Returns (frame, w, L)."""
@@ -388,27 +410,55 @@ def frame_for(rect, along_x):
 
 # ------------------------------------------------------------------ the plan
 SPRING, APEX = 2.45, 3.55
+DOOR_W, DOOR_H = 2.0, 2.4
 # name: rect, along_x, doors at v0 / v1 (label shown inside above it), extra
 MODULES = {
-    "Medical":     ((-12, -2.5, -7, 2.5), True, ("QUARTERS-03", "COMMAND-01"), "MEDICAL-02"),
-    "Quarters":    ((-19.5, -3, -14.5, 3), True, ("SHELTER-04", "MEDICAL-02"), "QUARTERS-03"),
-    "Shelter":     ((-26, -2, -22, 2), True, (None, "QUARTERS-03"), "SHELTER-04"),
-    "Energy":      ((7, -2.5, 12, 2.5), True, ("COMMAND-01", "LIFE SUPPORT-06"), "POWER-05"),
-    "LifeSupport": ((14.5, -2.5, 20.5, 2.5), True, ("POWER-05", None), "LIFE SUPPORT-06"),
-    "Greenhouse":  ((-3.5, -18, 3.5, -7), False, (None, "COMMAND-01"), "GREENHOUSE-07"),
-    "Lab":         ((-3, 7, 3, 13), False, ("COMMAND-01", "AIRLOCK-09"), "LAB-08"),
-    "Airlock":     ((-1.7, 13.25, 1.7, 16.75), False, (None, "EXIT"), "AIRLOCK-09"),
+    "Storage":    ((-16, -4, -7.5, 4), True, (None, "COMMAND-01"), "STORAGE-02"),
+    "Utilities":  ((7.5, -4, 16, 4), True, ("COMMAND-01", None), "UTILITIES-03"),
+    "Greenhouse": ((-3.5, -18, 3.5, -7), False, (None, "COMMAND-01"), "GREENHOUSE-04"),
+    "Airlock":    ((-1.7, 13.25, 1.7, 16.75), False, ("COMMAND-01", "EXIT"), "AIRLOCK-05"),
 }
+
+# Garden grid: must match the plot spots in MarsWorldTasks.Build (2 beds x 2 columns x 6 rows).
+CELL_X, CELL_Z, BED_TOP = 0.9, 1.3, 0.83
+BED_COLS = ((-2.75, -1.85), (1.85, 2.75))
+ROW_Z = [-15.55 + r * CELL_Z for r in range(6)]
+
+def garden():
+    """Two raised planters, each a gunmetal grid of 12 soil cells (one plot per cell), with a cyan
+    edge light, amber cell markers and a grow-light bar over each bed."""
+    for cols in BED_COLS:
+        x0, x1 = cols[0] - CELL_X / 2, cols[1] + CELL_X / 2
+        z0, z1 = ROW_Z[0] - CELL_Z / 2, ROW_Z[-1] + CELL_Z / 2
+        cx, cz, w, d = (x0 + x1) / 2, (z0 + z1) / 2, x1 - x0, z1 - z0
+        box("Planter", PRINT_DARK, (w + 0.12, d + 0.12, BED_TOP - 0.06), (cx, cz, (BED_TOP - 0.06) / 2), bevel=0.03)
+        box("Planter kick", METAL, (w + 0.14, d + 0.14, 0.1), (cx, cz, 0.05))
+        for c in cols:
+            for z in ROW_Z:
+                box("Soil", SOIL, (CELL_X - 0.08, CELL_Z - 0.08, 0.03), (c, z, BED_TOP - 0.03))
+        for k in range(3):     # rails between and around the columns
+            x = x0 + k * CELL_X
+            box("Grid rail", METAL, (0.05, d + 0.05, 0.05), (x, cz, BED_TOP))
+        for k in range(7):     # rails between and around the rows
+            z = z0 + k * CELL_Z
+            box("Grid rail", METAL, (w + 0.05, 0.05, 0.05), (cx, z, BED_TOP))
+        for side in (-1, 1):
+            box("Planter light", CYAN, (0.025, d, 0.02), (cx + side * (w / 2 + 0.065), cz, BED_TOP - 0.12))
+        for c in cols:          # amber marker at the aisle end of every cell
+            for z in ROW_Z:
+                box("Cell marker", AMBER, (0.12, 0.02, 0.012), (c, z - CELL_Z / 2 + 0.06, BED_TOP + 0.03))
+        box("Grow bar", METAL, (0.16, d - 0.2, 0.06), (cx, cz, 2.35))
+        box("Grow bar light", WARM, (0.12, d - 0.3, 0.015), (cx, cz, 2.315))
+        for z in (z0 + 0.3, z1 - 0.3):
+            box("Grow bar hanger", STEEL, (0.02, 0.02, 1.2), (cx, z, 2.95))
 
 def build_module(name, rect, along_x, labels, tag):
     piece(name)
     f, w, L = frame_for(rect, along_x)
     spring, apex = SPRING, APEX
-    if name == "Shelter": spring, apex = 2.2, 2.85
     if name == "Airlock": spring, apex = 2.3, 3.0
     if name == "Greenhouse": apex = 3.9
-    # The airlock opens straight into the lab: its back rim stops inside the lab's end wall.
-    shell, _ = vault(name + " shell", PRINT, f, w, L, spring, apex, ext0=(-0.05 if name == "Airlock" else None))
+    shell, _ = vault(name + " shell", PRINT, f, w, L, spring, apex)
     shell.data.materials.append(PRINT_IN)
     # inner faces get the interior material: faces whose normal points to the axis
     inv = f.inverted()
@@ -419,9 +469,7 @@ def build_module(name, rect, along_x, labels, tag):
     ends = []
     for which, (v0, v1) in enumerate(((-T_WALL, 0.0), (L, L + T_WALL))):
         lab = labels[which]
-        door = (1.3, 2.15) if lab or (name == "Lab" and which == 1) or (name == "Airlock") else None
-        if name == "Airlock" and which == 0:
-            continue   # opens straight into the lab's front wall
+        door = (DOOR_W, DOOR_H) if lab else None
         window = None
         if door is None:
             window = (0.0, 1.0, 2.0, 1.6)
@@ -429,7 +477,7 @@ def build_module(name, rect, along_x, labels, tag):
         if door:
             facing = -1 if which == 0 else 1
             vv = v0 if which == 0 else v1
-            portal(f, 0.0 if which == 0 else L, facing, label=lab)
+            portal(f, 0.0 if which == 0 else L, facing, width=DOOR_W, height=DOOR_H, label=lab)
         if window:
             vv = (v0 + v1) / 2
             fbox("Window glass", GLASS, (1.6, 0.04, 1.0), f, (0, vv, 1.5))
@@ -456,13 +504,14 @@ def build_module(name, rect, along_x, labels, tag):
                 path.append((p_, side_, out))
             sweep("Glass arch", PRINT, f, [(-0.08, 0.0), (0.08, 0.0), (0.08, 0.14), (-0.08, 0.14)], path)
         fbox("Grow light", CYAN, (0.04, L - 0.4, 0.03), f, (0, L / 2, apex - 0.2))
+        garden()
     return shell
 
 for name, (rect, along_x, labels, tag) in MODULES.items():
     build_module(name, rect, along_x, labels, tag)
 
 # ------------------------------------------------------------------ tunnels (manifold, flat floor)
-TW, TS, TA = 1.0, 1.9, 2.55       # half width, springline, apex inside
+TW, TS, TA = 1.5, 2.4, 3.0        # half width, springline, apex inside
 def tunnel(i, along_x, a, b):
     piece("Tunnel%d" % i)
     lo, hi = min(a, b), max(a, b)
@@ -500,10 +549,9 @@ TUNNELS = [
     (True, HUB_R_IN + 0.3, 7 + T_), (True, 12 + T_, 14.5 - T_),
     (False, -7 + T_, -HUB_R_IN - 0.3), (False, HUB_R_IN + 0.3, 7 - T_),
 ]
-TUNNELS = [  # wall outer face to wall outer face
-    (True, -12 - T_, -14.5 + T_), (True, -19.5 - T_, -22 + T_), (True, -7 + T_, -HUB_R_IN - 0.2),
-    (True, HUB_R_IN + 0.2, 7 - T_), (True, 12 + T_, 14.5 - T_),
-    (False, -7 + T_, -HUB_R_IN - 0.2), (False, HUB_R_IN + 0.2, 7 - T_),
+TUNNELS = [  # wall outer face to wall outer face: storage, utilities, greenhouse, airlock
+    (True, -7.5 + T_, -HUB_R_IN - 0.2), (True, HUB_R_IN + 0.2, 7.5 - T_),
+    (False, -7 + T_, -HUB_R_IN - 0.2), (False, HUB_R_IN + 0.2, 13.25 - T_),
 ]
 for i, (ax, a, b) in enumerate(TUNNELS):
     tunnel(i, ax, a, b)
@@ -552,7 +600,7 @@ hub = lathe_closed("Hub shell", outer, inner, [PRINT, PRINT_IN])
 cut = []
 for k in range(4):
     a = k * math.pi / 2
-    c = box("cut", PRINT, (1.3, 1.4, 2.15 + 0.31), (math.cos(a) * 5.75, math.sin(a) * 5.75, (2.15 - 0.31) / 2), rot=(0, 0, a + math.pi / 2))
+    c = box("cut", PRINT, (DOOR_W, 1.4, DOOR_H + 0.31), (math.cos(a) * 5.75, math.sin(a) * 5.75, (DOOR_H - 0.31) / 2), rot=(0, 0, a + math.pi / 2))
     cut.append(c)
 bpy.context.view_layer.update()
 boolean(hub, cut)
@@ -607,7 +655,7 @@ def arc_solid(name, material, section, a0, a1, steps=40):
         a = a0 + (a1 - a0) * i / steps
         path.append((Vector((0, 0, 0)), Vector((math.cos(a), math.sin(a), 0)), Vector((0, 0, 1))))
     return sweep(name, material, Matrix.Identity(4), section, path)
-GAP = math.radians(9.5)   # half-angle kept clear around each portal (about 0.85 m at the wall)
+GAP = math.radians(13)    # half-angle kept clear around each portal (about 1.2 m at the wall)
 for k in range(4):
     a0, a1 = k * math.pi / 2 + GAP, (k + 1) * math.pi / 2 - GAP
     arc_solid("Wainscot", PANEL, [(HUB_R_IN - 0.05, 0.0), (HUB_R_IN - 0.01, 0.0), (HUB_R_IN - 0.01, 1.15), (HUB_R_IN - 0.05, 1.15)], a0, a1)
@@ -626,23 +674,27 @@ for k in range(6):
     pts = [Vector((math.cos(a) * 3.1, math.sin(a) * 3.1, 5.66)), Vector((math.cos(a) * (inner_radius(7.2) - 0.05), math.sin(a) * (inner_radius(7.2) - 0.05), 7.2))]
     strip("Halo hanger", STEEL, Matrix.Identity(4), pts, 0.03, 0.03)
 cylinder("Oculus glow", WARM, IN_R_TOP - 0.1, 0.04, (0, 0, IN_TOP - 0.02), verts=64)
-DIRS = ["POWER-05", "LAB-08 / EXIT", "MEDICAL-02", "GREENHOUSE-07"]   # +x, +y(game +z), -x, -y
+DIRS = ["UTILITIES-03", "AIRLOCK-05 / EXIT", "STORAGE-02", "GREENHOUSE-04"]   # +x, +y(game +z), -x, -y
 for k in range(4):
     a = k * math.pi / 2
     fr = Matrix.Translation((math.cos(a) * HUB_R_IN, math.sin(a) * HUB_R_IN, 0)) @ Matrix.Rotation(a - math.pi / 2, 4, "Z")
-    portal(fr, 0.0, 1, label=DIRS[k], arrow="")
+    portal(fr, 0.0, 1, width=DOOR_W, height=DOOR_H, label=DIRS[k], arrow="")
 
 # ------------------------------------------------------------------ preview props (not exported)
 piece("PreviewProps")
-box("Bed", PROP, (2.0, 0.85, 0.6), (-9.6, -1.97, 0.3))
-box("Bed pad", PANEL, (1.96, 0.8, 0.12), (-9.6, -1.97, 0.66))
-box("Cabinet", PANEL, (0.85, 0.5, 1.9), (-11.47, -2.2, 0.95))
-box("Counter", PROP, (1.3, 0.65, 0.9), (-7.95, 2.12, 0.45))
-cylinder("Console ring", PROP, 1.2, 0.9, (0, 0, 0.45), verts=48)
-box("Galley", PANEL, (2.4, 0.6, 0.95), (-2.5, -4.3, 0.47), rot=(0, 0, math.radians(-30)))
-for k in range(3):
-    box("Bunk", PROP, (2.0, 0.9, 0.5), (-17, -2.5, 0.25 + k * 0.0), )
-
+# Reception: one round console, the floor left clear.
+cylinder("Console ring", PROP, 0.9, 0.9, (0, 0, 0.45), verts=48)
+# Storage: seed shelves along both walls, tool rack, food lockers, bunk at the far end.
+for side in (-1, 1):
+    for k in range(3):
+        box("Seed shelf", PANEL, (1.6, 0.5, 1.9), (-14.6 + k * 2.3, side * 3.6, 0.95))
+box("Tool rack", PROP, (0.4, 2.4, 1.8), (-15.7, 0, 0.9))
+box("Bunk", PROP, (2.0, 0.9, 0.5), (-9.0, -3.4, 0.25))
+# Utilities: generator block and battery bank on one side, water extractor and tank on the other.
+box("Generator", PROP, (2.6, 1.2, 1.6), (11.5, -3.1, 0.8))
+box("Battery bank", PANEL, (1.6, 0.7, 1.8), (14.6, -3.3, 0.9))
+cylinder("Water tank", PANEL, 0.9, 2.2, (11.5, 2.9, 1.1), verts=32)
+box("Water extractor", PROP, (1.4, 1.0, 1.4), (14.4, 3.0, 0.7))
 # Text and curve to mesh (for FBX).
 bpy.ops.object.select_all(action="DESELECT")
 conv = [o for o in scene.objects if o.type in ("CURVE", "FONT")]

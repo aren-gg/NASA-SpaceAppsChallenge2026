@@ -109,6 +109,8 @@ namespace MarsSurvival.Interaction
         /// tool aiming and the held tool use this, so they work the same in first and third person.
         /// </summary>
         public Transform AimTransform { get { return eye != null ? eye : (viewCamera != null ? viewCamera.transform : null); } }
+        /// <summary>True when the visible mouse pointer aims and clicks (third person, shift lock off, not dragging the view).</summary>
+        public bool PointerAims { get { return !CameraLocked && Cursor.visible && !dragActive && viewCamera != null && !Application.isBatchMode; } }   // headless runs have no pointer
         public bool IsSprinting { get { return sprinting; } }
         /// <summary>The suited body (for the wardrobe preview).</summary>
         public MarsAstronautBody Body { get { return body; } }
@@ -295,8 +297,10 @@ namespace MarsSurvival.Interaction
             if (body != null) body.SetHeadVisible(t > 0.25f && Vector3.Distance(wanted, head) > Units(0.7f));
             if (t <= 0f) return;
 
-            // Third person: aim the eyes at the point under the crosshair.
-            Ray ray = new Ray(cam.position, cam.forward);
+            // Third person: aim the eyes at the point under the crosshair, or under the mouse
+            // pointer while the camera is free (shift lock off), so the pointer is the tool.
+            bool pointer = PointerAims;
+            Ray ray = pointer ? viewCamera.ScreenPointToRay(Input.mousePosition) : new Ray(cam.position, cam.forward);
             float far = Units(40f);
             Vector3 target = ray.GetPoint(far);
             RaycastHit aimHit;
@@ -320,7 +324,7 @@ namespace MarsSurvival.Interaction
             // toward the crosshair when it is in front of the astronaut.
             Vector3 flat = new Vector3(look.x, 0f, look.z);
             bool ahead = Vector3.Angle(flat, transform.forward) < 100f;
-            if (look.sqrMagnitude > Units(0.5f) * Units(0.5f) && Vector3.Dot(look, cam.forward) > 0f && ahead)
+            if (look.sqrMagnitude > Units(0.5f) * Units(0.5f) && Vector3.Dot(look, cam.forward) > 0f && (ahead || pointer))
                 eye.rotation = Quaternion.LookRotation(look, Vector3.up);
         }
 

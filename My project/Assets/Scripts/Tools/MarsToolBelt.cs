@@ -217,6 +217,9 @@ namespace MarsSurvival.Tools
 
         private Transform Aim { get { return MountFor(ViewCamera); } }
 
+        /// <summary>True while the mouse pointer, not the screen centre, aims (shift lock off).</summary>
+        public bool PointerAims { get { return player != null && player.PointerAims; } }
+
         private void HandleInput()
         {
 #if ENABLE_LEGACY_INPUT_MANAGER
@@ -239,7 +242,9 @@ namespace MarsSurvival.Tools
         {
             bool click = false;
 #if ENABLE_LEGACY_INPUT_MANAGER
-            click = MouseCaptured && Input.GetMouseButtonDown(0);
+            bool pointer = player != null && player.PointerAims;
+            click = (MouseCaptured || pointer) && Input.GetMouseButtonDown(0) &&
+                    !(pointer && UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject());
 #endif
             bool usable = Plan != null && !Plan.Blocked;
 

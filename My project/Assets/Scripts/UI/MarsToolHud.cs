@@ -213,7 +213,11 @@ namespace MarsSurvival.UI
             string orangeHex = "#" + ColorUtility.ToHtmlStringRGB(orange);
             float ease = 1f - Mathf.Exp(-15f * dt);
 
-            // Crosshair, progress ring and prompt.
+            // Crosshair, progress ring and prompt; the crosshair rides on the mouse pointer when it aims.
+            Vector2 at = Vector2.zero;
+            if (belt.PointerAims) RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, Input.mousePosition, null, out at);
+            crosshair.rectTransform.anchoredPosition = crosshairRing.rectTransform.anchoredPosition = at;
+            ((RectTransform)progressRing.transform.parent).anchoredPosition = at;
             bool working = belt.Working != null;
             bool usable = plan != null && !plan.Blocked;
             crosshairRing.color = Color.Lerp(crosshairRing.color, usable ? orange : WithAlpha(pink, 0.4f), ease);

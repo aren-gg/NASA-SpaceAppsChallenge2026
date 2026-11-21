@@ -31,7 +31,7 @@ for _s, _S in (("l", "Left"), ("r", "Right")):
 # clip: (take, kind, frame hint). kind "cycle": one gait cycle found near the hint;
 # "hold": a stretch [a, b] looped by blending its end into its start; "pingpong": [a, b] there and back.
 CLIPS = {
-    "Idle":   ("77_02", "hold", (200, 560)),
+    "Idle":   ("82_08", "hold", (100, 700)),
     "Walk":   ("16_15", "cycle", 150),
     "Run":    ("16_35", "cycle", 60),
     "Sprint": ("16_55", "cycle", 70),

@@ -31,13 +31,11 @@ namespace MarsSurvival.Gameplay
     /// <summary>
     /// The physical side of the game, built on top of the outpost: the 24 greenhouse plots
     /// (two beds of 12) that show what each crop is doing, the seed shop terminal, and the
-    /// galley food locker, water dispenser and bunks used with E.
+    /// food locker, water dispenser and bunk used with E.
     /// </summary>
     public sealed class MarsWorldTasks : MonoBehaviour
     {
-        /// <summary>Galley, bunk and greenhouse (outpost-local).</summary>
-        public static readonly Vector3 GalleyPoint = new Vector3(-2.6f, 1.3f, 2.6f);
-        public static readonly Vector3 BunkPoint = new Vector3(-17f, 0.8f, -2.4f);
+        /// <summary>Greenhouse centre (outpost-local).</summary>
         public static readonly Vector3 GreenhousePoint = new Vector3(0f, 1.3f, -12.5f);
         /// <summary>Seed shop terminal, beside the aisle at the greenhouse entrance.</summary>
         public static readonly Vector3 ShopPoint = new Vector3(-2.5f, 0f, -7.85f);
@@ -84,23 +82,24 @@ namespace MarsSurvival.Gameplay
             root = new GameObject("Daily task objects").transform;
             root.SetParent(outpost.transform, false);
 
-            // Greenhouse: 2 columns x 6 rows of plant spots, centred in each raised bed.
+            // Greenhouse: one plot per cell of the printed planters' grid (2 columns x 6 rows per bed,
+            // cells 0.9 x 1.3 m, see garden() in tools/blender/outpost_modules.py); plot 1 by the door.
             for (int bed = 0; bed < 2; bed++)
             {
                 float x0 = bed == 0 ? -3.3f : 1.3f;
                 for (int slot = 0; slot < MissionSettings.SpotsPerBed; slot++)
                 {
                     float x = x0 + 0.55f + (slot % 2) * 0.9f;
-                    float z = -15.55f + (slot / 2) * 1.3f;
+                    float z = -9.05f - (slot / 2) * 1.3f;
                     plants.Add(BuildPlant(bed * MissionSettings.SpotsPerBed + slot, new Vector3(x, BedTop, z)));
                 }
             }
 
             // Things used with E.
-            Usable("Galley food locker", new Vector3(-2.7f, 1.34f, 3.12f), new Vector3(1.4f, 0.82f, 0.55f), MarsTaskTarget.Kind.Food);
-            Usable("Galley water dispenser", new Vector3(-3.05f, 1.2f, 2.35f), new Vector3(0.45f, 0.6f, 0.45f), MarsTaskTarget.Kind.Water);
-            Usable("Bunk", new Vector3(-18.35f, 0.6f, -2.5f), new Vector3(2f, 0.4f, 0.9f), MarsTaskTarget.Kind.Bunk);
-            Usable("Bunk", new Vector3(-15.6f, 0.6f, -2.5f), new Vector3(2f, 0.4f, 0.9f), MarsTaskTarget.Kind.Bunk);
+            // Food and the bunk in storage, drinking water at the extractor in utilities (MarsOutpostBuilder).
+            Usable("Food locker", new Vector3(-14.6f, 0.9f, 3.25f), new Vector3(2f, 1.75f, 0.7f), MarsTaskTarget.Kind.Food);
+            Usable("Water dispenser", new Vector3(14.4f, 0.8f, 3f), new Vector3(1.4f, 1.4f, 1f), MarsTaskTarget.Kind.Water);
+            Usable("Bunk", new Vector3(-8.9f, 0.6f, -3.25f), new Vector3(2f, 0.4f, 0.9f), MarsTaskTarget.Kind.Bunk);
             // The seed shop terminal at the greenhouse door.
             GameObject shop = new GameObject("Seed shop");
             shop.transform.SetParent(root, false);
@@ -207,7 +206,7 @@ namespace MarsSurvival.Gameplay
                 view.fruit.gameObject.SetActive(show && plot.Ripe);
                 // Locked plots are covered with a pale lid; dry soil is light, moist soil dark.
                 bool wet = show && plot.wetUntil > state.elapsedSeconds;
-                view.soil.localScale = unlocked ? new Vector3(0.38f, 0.03f, 0.38f) : new Vector3(0.6f, 0.02f, 0.8f);
+                view.soil.localScale = new Vector3(0.8f, unlocked ? 0.02f : 0.03f, 1.2f);   // fills its grid cell
                 view.soil.GetComponent<Renderer>().sharedMaterial = Material(!unlocked ? MarsPalette.ClaySand : wet ? MarsPalette.DeepPurple : MarsPalette.Mauve);
                 if (!show) continue;
                 float growth = 0.05f + 0.95f * (float)plot.growth;

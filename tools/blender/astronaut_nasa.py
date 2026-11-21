@@ -200,11 +200,11 @@ def strip_helmet_and_shrink_pack(body):
     bmesh.ops.delete(bm, geom=kill, context="FACES")
     loose = [v for v in bm.verts if not v.link_faces]
     bmesh.ops.delete(bm, geom=loose, context="VERTS")
-    for v in bm.verts:
-        if v.co.y > 0.11 and v.co.z > 0.8 and abs(v.co.x) < 0.31:
-            v.co.x *= 0.72
-            v.co.y = 0.11 + (v.co.y - 0.11) * 0.5
-            v.co.z = 1.2 + (v.co.z - 1.2) * 0.68
+    # NASA's pack is loose triangles that hang to the hips and crumple when skinned: drop it, a box replaces it
+    pack = [f for f in bm.faces if f.calc_center_median().z > 0.6 and abs(f.calc_center_median().x) < 0.35
+            and (f.calc_center_median().y > 0.115 or max(v.co.y for v in f.verts) > 0.14)]
+    bmesh.ops.delete(bm, geom=pack, context="FACES")
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
     bm.to_mesh(me); bm.free()
 
 def add_neck_seal_and_helmet(head_parts):
@@ -331,8 +331,6 @@ def rig(body, head_parts, seal, helmet, gear):
     groups = {n: body.vertex_groups.new(name=n) for n in segs}
     for v in body.data.vertices:
         p = v.co; s = 1 if p.x > 0 else -1; L = "l" if s > 0 else "r"
-        if p.y > 0.1 and p.z > 0.8 and abs(p.x) < 0.31:      # the backpack rides rigidly on the upper back
-            groups["spine_03"].add([v.index], 1.0, "REPLACE"); continue
         if s * p.x > 0.27 and p.z > 1.1: allowed = ["clavicle_" + L, "upperarm_" + L, "lowerarm_" + L, "hand_" + L]
         elif p.z < 0.9 and abs(p.x) > 0.03: allowed = ["thigh_" + L, "calf_" + L, "foot_" + L, "ball_" + L]
         elif p.z < 0.95: allowed = ["pelvis", "thigh_" + L]
@@ -378,6 +376,7 @@ def build_astronaut():
     bmesh.ops.scale(bm, vec=Vector((1.0, 1.15, 1.25)), verts=bm.verts)
     bmesh.ops.translate(bm, vec=Vector((0, NECK.y, NECK.z + 0.17)), verts=bm.verts)
     head = [obj("Head form", bm, mat("Comfort Cap", "4A4E57", 0.85))]
+    gear.append(obj("Pack", rbox((0.42, 0.2, 0.56), Vector((0, 0.215, 1.24)), 0.035), mat("Pack", "E4E2DC", 0.7)))
     arm = rig(body, head, seal, helmet, gear)
     return arm
 

@@ -13,7 +13,7 @@ namespace MarsSurvival.Gameplay
     /// Fills the tool hotbar from the outpost: look at a hand tool on its rack and press E to
     /// put it in its hotbar slot (keys 1-3). Q puts the selected tool back and B returns every
     /// tool, both inside the base. The carried set is stored in the mission save. E also uses
-    /// the galley, bunks, ripe plants and the seed shop.
+    /// the food locker, water dispenser, bunk, ripe plants and the seed shop.
     /// </summary>
     public sealed class MarsToolPickup : MonoBehaviour
     {
@@ -27,7 +27,7 @@ namespace MarsSurvival.Gameplay
 
         /// <summary>The tool rack item under the crosshair that E would pick up, or null.</summary>
         public MarsBaseTool Aimed { get; private set; }
-        /// <summary>The galley locker, water dispenser, bunk, shop or ripe plant E would use, or null.</summary>
+        /// <summary>The food locker, water dispenser, bunk, shop or ripe plant E would use, or null.</summary>
         public MarsTaskTarget AimedUse { get; private set; }
         /// <summary>What E does to <see cref="AimedUse"/> ("eat", "sleep until morning"...), or null.</summary>
         public string UseLabel { get; private set; }

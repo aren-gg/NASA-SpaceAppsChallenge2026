@@ -157,7 +157,8 @@ namespace MarsSurvival.Gameplay
         private IEnumerator Doors()
         {
             MarsOutpostDoor[] doors = FindObjectsOfType<MarsOutpostDoor>();
-            Check(doors.Length >= 15, "Sliding doors in every doorway", doors.Length + " doors");
+            // 4 hub doorways, storage, utilities, greenhouse, and the airlock's inner and outer doors.
+            Check(doors.Length == 9, "Sliding doors in every doorway", doors.Length + " doors");
             Vector3 hub = Floor(0, 0);
             for (int i = 0; i < doors.Length; i++)
             {
@@ -310,13 +311,11 @@ namespace MarsSurvival.Gameplay
             }
             // Heights of the printed modules (tools/blender/outpost_modules.py): vaults run along the
             // tunnels, so the eave is sampled across the vault; the hub's skylight glass is solid.
-            float mound = RoofAt(-24f, 0f);
-            Check(mound > 3.0f, "Shelter roof: you stand on its drawn top, not inside it", mound.ToString("0.00") + " m");
             float vault = RoofAt(-9.5f, 0f);
             Check(vault > 3.75f, "Vaulted roof: solid up to its ridge", vault.ToString("0.00") + " m");
             float dome = RoofAt(0f, 0f);
             Check(dome > 5f, "Hub dome: solid up to its top (the skylight too)", dome.ToString("0.00") + " m");
-            float eave = RoofAt(-9.5f, -2.6f);
+            float eave = RoofAt(-9.5f, -3.6f);
             Check(eave < vault - 0.3f && eave > 2.7f, "Vaulted roof: the collider follows the curve down to the eaves", eave.ToString("0.00") + " m");
             float tube = RoofAt(-6f, 0f);
             Check(tube > 2.7f, "Tunnel tube: solid up to its drawn top", tube.ToString("0.00") + " m");
@@ -403,7 +402,7 @@ namespace MarsSurvival.Gameplay
                 s.plots[0].growth.ToString("0.00") + " / " + s.plots[3].growth.ToString("0.00"));
             yield return Frames(2);
             Shot("garden_ripe");
-            Place(Plot(0).transform.position + new Vector3(0, 0, 1.6f), Plot(0).transform.position + Vector3.up * 0.2f); yield return Frames(3);
+            Place(Plot(0).transform.position + new Vector3(1.9f, 0, 0), Plot(0).transform.position + Vector3.up * 0.2f); yield return Frames(3);   // from the aisle
             MarsTaskTarget ripe = mission.Tools.FindUse(player.AimTransform, s, out string pickLabel);
             Check(ripe != null && ripe.kind == MarsTaskTarget.Kind.Plant && pickLabel.StartsWith("pick"), "Looking at a ripe plant offers E to pick it", pickLabel ?? "nothing");
             int basket = s.basket[0];
@@ -412,11 +411,13 @@ namespace MarsSurvival.Gameplay
 
             // Eat one, sell the rest, expand the greenhouse.
             s.astronaut.food = 40;
-            Place(Floor(-1.4f, 1.5f), MarsWorldTasks.World(new Vector3(-2.7f, 1.34f, 3.12f))); yield return Frames(3);
+            Place(Floor(-13f, 1.5f), MarsWorldTasks.World(new Vector3(-14.6f, 0.9f, 3.25f))); yield return Frames(3);
+            MarsTaskTarget locker = mission.Tools.FindUse(player.AimTransform, s, out string lockerLabel);
+            Check(locker != null && locker.kind == MarsTaskTarget.Kind.Food, "Storage: E on the food locker offers to eat", lockerLabel ?? "nothing");
             mission.Execute("eat");
-            Check(s.astronaut.food > 60 && s.basket[0] == basket + 2, "Eating a crop at the galley refills food", mission.Notice);
+            Check(s.astronaut.food > 60 && s.basket[0] == basket + 2, "Eating a crop from the food locker refills food", mission.Notice);
             s.astronaut.water = 40; mission.Execute("drink");
-            Check(s.astronaut.water == 100, "Drinking at the galley refills water", mission.Notice);
+            Check(s.astronaut.water == 100, "Drinking at the water dispenser refills water", mission.Notice);
             credits = s.credits;
             mission.Execute("sell", "lettuce");
             Check(s.basket[0] == 0 && s.credits == credits + (basket + 2) * 15, "Sell lettuce for 15 credits each", mission.Notice);
@@ -430,7 +431,7 @@ namespace MarsSurvival.Gameplay
             Check(s.plots[7].seed != "", "A bought plot can be sown", s.plots[7].seed);
 
             // Sleep runs time to the morning.
-            Place(RoomCentre(MarsOutpostBuilder.Quarters), RoomCentre(MarsOutpostBuilder.Quarters) + Vector3.forward); yield return Frames(3);
+            Place(RoomCentre(MarsOutpostBuilder.Storage), RoomCentre(MarsOutpostBuilder.Storage) + Vector3.forward); yield return Frames(3);
             s.astronaut.food = s.astronaut.water = 100;
             yield return new WaitForSecondsRealtime(1.5f); // let the clock take a live step after the scripted ones
             mission.Sleep();

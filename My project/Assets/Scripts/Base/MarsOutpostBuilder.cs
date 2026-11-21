@@ -13,13 +13,11 @@ namespace MarsSurvival.Base
     /// Plan (outpost-local metres; +Z is the front, where the airlock and ramp are;
     /// y = 0 is the floor):
     ///
-    ///                          Greenhouse
-    ///                              |
-    ///   Storm shelter - Quarters - Medical - HUB - Energy - Life support
-    ///                              |
-    ///                       EVA prep and lab
-    ///                              |
     ///                           Airlock - landing - ramp
+    ///                              |
+    ///            Storage ------ HUB (reception) ------ Utilities
+    ///                              |
+    ///                          Greenhouse
     ///
     /// Each room stands for one or more survival systems in AGENT_IMPLEMENTATION_GUIDE.md.
     /// When the Blender-made modules are present (<see cref="OutpostModules"/>) they are the
@@ -61,20 +59,18 @@ namespace MarsSurvival.Base
 
         public const float WallThickness = 0.25f;
         private const float T = WallThickness;
-        private const float TunnelHalf = 0.9f, TunnelHeight = 2.3f;
+        private const float TunnelHalf = 1.5f, TunnelHeight = 2.3f;
         private const int West = 0, East = 1, Back = 2, Front = 3;
 
         // Interior floor rectangles. Neighbours are 2.5 m apart: two walls and a 2 m tunnel.
         /// <summary>The hub is round: twelve flat wall facets this far from its centre.</summary>
         public const float HubApothem = 5f;
         public static readonly FloorRect Hub = new FloorRect(-HubApothem, -HubApothem, HubApothem, HubApothem);
-        public static readonly FloorRect Medical = new FloorRect(-12f, -2.5f, -7f, 2.5f);
-        public static readonly FloorRect Quarters = new FloorRect(-19.5f, -3f, -14.5f, 3f);
-        public static readonly FloorRect Shelter = new FloorRect(-26f, -2f, -22f, 2f);
-        public static readonly FloorRect Energy = new FloorRect(7f, -2.5f, 12f, 2.5f);
-        public static readonly FloorRect LifeSupport = new FloorRect(14.5f, -2.5f, 20.5f, 2.5f);
+        /// <summary>Seeds, tools, food and the bunk (west wing).</summary>
+        public static readonly FloorRect Storage = new FloorRect(-16f, -4f, -7.5f, 4f);
+        /// <summary>Power and water (east wing).</summary>
+        public static readonly FloorRect Utilities = new FloorRect(7.5f, -4f, 16f, 4f);
         public static readonly FloorRect Greenhouse = new FloorRect(-3.5f, -18f, 3.5f, -7f);
-        public static readonly FloorRect Lab = new FloorRect(-3f, 7f, 3f, 13f);
         public static readonly FloorRect Airlock = new FloorRect(-1.7f, 13.25f, 1.7f, 16.75f);
         public static readonly FloorRect Landing = new FloorRect(-1.9f, 17f, 1.9f, 18.5f);
 
@@ -141,13 +137,9 @@ namespace MarsSurvival.Base
         {
             moduled = OutpostModules.Available;
             BuildHub();
-            BuildMedical();
-            BuildQuarters();
-            BuildShelter();
-            BuildEnergy();
-            BuildLifeSupport();
+            BuildStorage();
+            BuildUtilities();
             BuildGreenhouse();
-            BuildLab();
             BuildAirlock();
             BuildTunnels();
             BuildExterior();
@@ -289,7 +281,7 @@ namespace MarsSurvival.Base
         // Every doorway between modules and tunnels gets a sliding door that opens on approach;
         // an empty frame read as a door the astronaut could walk straight through.
         private static Opening Arch(float centre) { return Door(centre); }
-        private static Opening Door(float centre) { return new Opening { centre = centre, width = 1.3f, top = 2.15f, kind = 1 }; }
+        private static Opening Door(float centre) { return new Opening { centre = centre, width = 2f, top = 2.4f, kind = 1 }; }
         private static Opening Window(float centre, float width = 1.2f)
         {
             return new Opening { centre = centre, width = width, bottom = 1f, top = 1.95f, kind = 2 };
@@ -646,10 +638,9 @@ namespace MarsSurvival.Base
 
         private void BuildHub()
         {
-            Room room = BeginRoom("Command hub and galley", Hub,
-                "Mission control: weather and solar-event alerts, comms, the hardware dashboard. " +
-                "The galley holds food and drinking water (Hunger, Water).",
-                "Comm Radio, Radiation Dosimeter");
+            Room room = BeginRoom("Reception", Hub,
+                "The hub: storage to the west, utilities to the east, the greenhouse behind, the airlock in front.",
+                "");
             room.radius = HubApothem;
             const float h = 2.9f, a = HubApothem;
 
@@ -716,46 +707,6 @@ namespace MarsSurvival.Base
             g.Prism(Mauve, 0f, 0f, 1.15f, 0.8f, 0.88f);
             g.Prism(GlowWarm, 0f, 0f, 0.8f, 0.88f, 0.9f);
             AddCollider(-1.05f, 0f, -1.05f, 1.05f, 0.9f, 1.05f);
-            Tool("comm_radio", 0.92f, 0.88f, 0.3f, 60f);
-            Tool("dosimeter", -0.92f, 0.88f, -0.3f, -120f);
-
-            // Data and comms racks.
-            Block(Charcoal, 2f, -3.4f, 3.4f, -2f, 2f);
-            g.Box(Mauve, 1.98f, 0.4f, -3.3f, 2f, 1.35f, -2.1f);
-            g.Box(GlowOrange, 1.98f, 1.5f, -3.3f, 2f, 1.58f, -2.1f);
-            g.Box(Mauve, 2.1f, 0.4f, -2f, 3.3f, 1.35f, -1.98f);
-            g.Box(GlowOrange, 2.1f, 1.5f, -2f, 3.3f, 1.58f, -1.98f);
-
-            // Hardware dashboard: console with buttons and a screen behind it.
-            Block(Mauve, -3.4f, -3.4f, -2f, -2f, 0.95f);
-            g.Box(Purple, -3.35f, 0.95f, -3.35f, -2.05f, 1f, -2.05f);
-            for (int i = 0; i < 5; i++)
-            {
-                g.Box(i % 2 == 0 ? GlowOrange : GlowWarm, -3.2f + i * 0.22f, 1f, -2.45f, -3.07f + i * 0.22f, 1.04f, -2.3f);
-            }
-            g.Box(Charcoal, -3.4f, 1f, -3.4f, -2f, 1.95f, -3.32f);
-            g.Box(GlowWarm, -3.32f, 1.08f, -3.32f, -2.08f, 1.87f, -3.31f);
-
-            // Galley: counter, food locker, water and two stools.
-            Block(Mauve, -3.4f, 2f, -2f, 3.4f, 0.88f);
-            g.Box(ClaySand, -3.42f, 0.88f, 1.98f, -1.98f, 0.93f, 3.42f);
-            g.Box(Olive, -3.4f, 0.93f, 2.85f, -2f, 1.75f, 3.4f);
-            g.Prism(Mauve, -3.05f, 2.35f, 0.2f, 0.93f, 1.4f);
-            g.Prism(Orange, -3.05f, 2.35f, 0.09f, 1.4f, 1.47f);
-            g.Box(Orange, -2.5f, 0.93f, 2.2f, -2.25f, 1.01f, 2.45f);
-            Stool(-1.45f, 2.6f);
-            Stool(-2.6f, 1.45f);
-
-            // Supply shelving with crates.
-            Block(Purple, 2f, 2f, 3.4f, 3.4f, 1.95f);
-            int[] crate = { Terracotta, Olive, Orange, ClaySand };
-            for (int i = 0; i < 4; i++)
-            {
-                float y = i < 2 ? 0.45f : 1.2f, o = i % 2 * 0.68f;
-                g.Box(crate[i], 1.96f, y, 2.08f + o, 2f, y + 0.55f, 2.68f + o);
-                g.Box(crate[3 - i], 2.08f + o, y, 1.96f, 2.68f + o, y + 0.55f, 2f);
-            }
-
             // Comms mast on the dome (the printed module has its own mast).
             if (!moduled)
             {
@@ -766,213 +717,30 @@ namespace MarsSurvival.Base
             End();
         }
 
-        private void BuildMedical()
+        private void BuildStorage()
         {
-            FloorRect r = Medical;
-            BeginRoom("Medical bay", r,
-                "Health: treatment and recovery, limited medical supplies, and each person's radiation dose record.",
-                "Portable O2 Canister, Radiation Dosimeter");
-            Shell(r, 2.7f, White, DarkRed, 1.1f, new[] { Arch(0f) }, new[] { Arch(0f) }, null,
-                new[] { Window(-9.5f) });
-
-            // Treatment bed along the back wall.
-            Block(Purple, -10.6f, -2.4f, -8.6f, -1.55f, 0.55f);
-            g.Box(PalePink, -10.58f, 0.55f, -2.38f, -8.62f, 0.7f, -1.57f);
-            g.Box(ClaySand, -10.5f, 0.7f, -2.3f, -10f, 0.78f, -1.65f);
-            // Vital-signs monitor at the foot of the bed.
-            Block(Purple, -8.4f, -2.4f, -8f, -2.05f, 1.15f);
-            g.Box(Purple, -8.5f, 1.15f, -2.35f, -7.9f, 1.65f, -2.25f);
-            g.Box(GlowOrange, -8.45f, 1.2f, -2.25f, -7.95f, 1.6f, -2.24f);
-            // Medical cabinet with the cross.
-            Block(PalePink, -11.9f, -2.45f, -11.05f, -1.95f, 1.9f);
-            g.Box(GlowOrange, -11.68f, 1.27f, -1.95f, -11.27f, 1.37f, -1.94f);
-            g.Box(GlowOrange, -11.53f, 1.12f, -1.95f, -11.42f, 1.52f, -1.94f);
-            // Supply counter under the window side of the front wall.
-            Block(Mauve, -8.6f, 1.8f, -7.3f, 2.45f, 0.88f);
-            g.Box(ClaySand, -8.65f, 0.88f, 1.75f, -7.3f, 0.93f, 2.45f);
-            g.Box(Orange, -7.75f, 0.93f, 1.95f, -7.45f, 1.13f, 2.3f);
-            g.Box(PalePink, -7.67f, 1.13f, 2.08f, -7.53f, 1.14f, 2.17f);
-            Tool("oxygen_canister", -8.35f, 0.93f, 2.1f, 30f);
-            Tool("dosimeter", -8f, 0.93f, 2.15f, -10f);
-            Stool(-9.6f, -0.9f);
+            FloorRect r = Storage;
+            BeginRoom("Storage", r, "Seeds, tools and food, and the bunk.", "Work Lamp");
+            Shell(r, 2.7f, White, DarkRed, 1.1f, null, new[] { Arch(0f) }, null, null);
+            // shortcut: plain blocks stand in for furniture until it is modelled.
+            Block(Olive, -15.6f, 2.9f, -13.6f, 3.6f, 1.75f);        // food locker
+            Block(PalePink, -9.9f, -3.7f, -7.9f, -2.8f, 0.5f);       // bunk
+            Block(Purple, -15.9f, -1.2f, -15.5f, 1.2f, 1.8f);        // tool rack
+            g.Box(Purple, -15.5f, 1f, -0.4f, -15.4f, 1.06f, 0.4f);
+            Tool("work_lamp", -15.3f, 1.06f, 0f, 90f);
             End();
         }
 
-        private void BuildQuarters()
+        private void BuildUtilities()
         {
-            FloorRect r = Quarters;
-            BeginRoom("Crew quarters", r,
-                "Tiredness: rest lowers fatigue, and fatigue makes every task take longer.",
-                "Habitat Work Lamp");
-            Shell(r, 2.7f, White, DarkRed, 1.1f, new[] { Arch(0f) }, new[] { Arch(0f) },
-                new[] { Window(-17f) }, new[] { Window(-17.3f, 1f) });
-
-            // Two double bunks against the back wall.
-            for (int i = 0; i < 2; i++)
-            {
-                float x0 = i == 0 ? -19.35f : -16.6f, x1 = x0 + 2f;
-                AddCollider(x0, 0f, -2.95f, x1, 1.9f, -2.05f);
-                for (int level = 0; level < 2; level++)
-                {
-                    float y = level == 0 ? 0.3f : 1.4f;
-                    g.Box(Purple, x0, y, -2.95f, x1, y + 0.12f, -2.05f);
-                    g.Box(PalePink, x0 + 0.03f, y + 0.12f, -2.92f, x1 - 0.03f, y + 0.26f, -2.08f);
-                    g.Box(ClaySand, x0 + 0.1f, y + 0.26f, -2.85f, x0 + 0.55f, y + 0.34f, -2.15f);
-                    g.Box(Mauve, x0 + 0.9f, y + 0.26f, -2.9f, x1 - 0.05f, y + 0.3f, -2.1f);
-                }
-                foreach (float px in new[] { x0, x1 - 0.08f })
-                {
-                    g.Box(Purple, px, 0f, -2.13f, px + 0.08f, 1.9f, -2.05f);
-                    g.Box(Purple, px, 0f, -2.95f, px + 0.08f, 1.9f, -2.87f);
-                }
-            }
-            // Lockers and a desk on the front wall.
-            for (int i = 0; i < 2; i++)
-            {
-                float x = -19.35f + i * 0.72f;
-                Block(Mauve, x, 2.4f, x + 0.68f, 2.95f, 1.9f);
-                g.Box(Purple, x + 0.28f, 0.9f, 2.38f, x + 0.4f, 1.1f, 2.4f);
-            }
-            Block(Purple, -16.7f, 2.3f, -16.6f, 2.95f, 0.72f);
-            Block(Purple, -15f, 2.3f, -14.9f, 2.95f, 0.72f);
-            g.Box(ClaySand, -16.8f, 0.72f, 2.25f, -14.8f, 0.78f, 2.95f);
-            AddCollider(-16.8f, 0.5f, 2.25f, -14.8f, 0.78f, 2.95f);
-            Stool(-15.8f, 1.8f);
-            Tool("work_lamp", -15.2f, 0.78f, 2.6f);
-            g.Box(Orange, -16.5f, 0.78f, 2.5f, -16.15f, 0.82f, 2.8f);
-            End();
-        }
-
-        private void BuildShelter()
-        {
-            FloorRect r = Shelter;
-            BeginRoom("Storm shelter", r,
-                "Radiation: the crew waits out solar particle events here, behind water tanks and piled regolith. " +
-                "Shelter lowers the dose rate; it does not undo dose already received.",
-                "Radiation Dosimeter, Habitat Work Lamp, Comm Radio");
-            const float h = 2.45f;
-            Shell(r, h, Mauve, Terracotta, 0.3f, null, new[] { Door(0f) }, null, null);
-
-            // Water-wall tanks lining the three outside walls.
-            Solid(Mauve, r.x0, 0f, r.z0, r.x1, 2.1f, r.z0 + 0.35f);
-            Solid(Mauve, r.x0, 0f, r.z1 - 0.35f, r.x1, 2.1f, r.z1);
-            Solid(Mauve, r.x0, 0f, r.z0 + 0.35f, r.x0 + 0.35f, 2.1f, r.z1 - 0.35f);
-            for (int i = 0; i < 4; i++)
-            {
-                float x = r.x0 + 0.5f + i * 0.9f;
-                g.Box(PalePink, x, 0.2f, r.z0 + 0.35f, x + 0.06f, 2f, r.z0 + 0.37f);
-                g.Box(PalePink, x, 0.2f, r.z1 - 0.37f, x + 0.06f, 2f, r.z1 - 0.35f);
-            }
-            // Benches, a shelf and an emergency ration crate.
-            Block(Purple, r.x0 + 0.45f, r.z0 + 0.35f, r.x1 - 0.5f, r.z0 + 0.8f, 0.45f);
-            Block(Purple, r.x0 + 0.45f, r.z1 - 0.8f, r.x1 - 0.5f, r.z1 - 0.35f, 0.45f);
-            g.Box(ClaySand, r.x0 + 0.35f, 1.05f, -0.8f, r.x0 + 0.65f, 1.1f, 0.8f);
-            Block(Olive, r.x0 + 0.38f, -0.35f, r.x0 + 0.85f, 0.35f, 0.4f);
-            Tool("dosimeter", r.x0 + 0.5f, 1.1f, -0.55f, 90f);
-            Tool("work_lamp", r.x0 + 0.5f, 1.1f, 0f);
-            Tool("comm_radio", r.x0 + 0.5f, 1.1f, 0.55f, 90f);
-
-            // Regolith piled over the roof and against the three outside walls. The tunnel side is left
-            // clear. The printed module has its own berms instead.
-            if (moduled)
-            {
-                End();
-                return;
-            }
-            FloorRect o = r.Grow(T);
-            float top = h + 0.3f;
-            AlsoSolid(() => {
-            g.Frustum(Terracotta, h + 0.1f, o.Grow(0.3f), h + 1.1f, o.Grow(-0.7f));
-            g.Hexa(Terracotta,
-                new Vector3(o.x0 - 3f, -depth, o.z0 - 3f), new Vector3(o.x0, -depth, o.z0 - 3f),
-                new Vector3(o.x0, -depth, o.z1 + 3f), new Vector3(o.x0 - 3f, -depth, o.z1 + 3f),
-                new Vector3(o.x0 - 0.3f, top, o.z0 - 0.3f), new Vector3(o.x0, top, o.z0 - 0.3f),
-                new Vector3(o.x0, top, o.z1 + 0.3f), new Vector3(o.x0 - 0.3f, top, o.z1 + 0.3f));
-            g.Hexa(Terracotta,
-                new Vector3(o.x0, -depth, o.z0 - 3f), new Vector3(o.x1, -depth, o.z0 - 3f),
-                new Vector3(o.x1, -depth, o.z0), new Vector3(o.x0, -depth, o.z0),
-                new Vector3(o.x0, top, o.z0 - 0.3f), new Vector3(o.x1, top, o.z0 - 0.3f),
-                new Vector3(o.x1, top, o.z0), new Vector3(o.x0, top, o.z0));
-            g.Hexa(Terracotta,
-                new Vector3(o.x0, -depth, o.z1), new Vector3(o.x1, -depth, o.z1),
-                new Vector3(o.x1, -depth, o.z1 + 3f), new Vector3(o.x0, -depth, o.z1 + 3f),
-                new Vector3(o.x0, top, o.z1), new Vector3(o.x1, top, o.z1),
-                new Vector3(o.x1, top, o.z1 + 0.3f), new Vector3(o.x0, top, o.z1 + 0.3f));
-            });
-            // The mound blocks the astronaut roughly where it is taller than a step.
-            AddCollider(o.x0 - 2.2f, -depth, o.z0 - 2.2f, o.x0, top, o.z1 + 2.2f);
-            AddCollider(o.x0, -depth, o.z0 - 2.2f, o.x1, top, o.z0);
-            AddCollider(o.x0, -depth, o.z1, o.x1, top, o.z1 + 2.2f);
-            End();
-        }
-
-        private void BuildEnergy()
-        {
-            FloorRect r = Energy;
-            BeginRoom("Energy room", r,
-                "Energy reserves: battery storage in kWh, charged by the solar array outside and shared out " +
-                "between systems by priority.",
-                "Energy Meter, Field Wrench, Solar Panel Duster");
-            Shell(r, 2.7f, White, DarkRed, 1.1f, new[] { Arch(0f) }, new[] { Arch(0f) }, null, null);
-
-            // Battery cabinets along the back wall.
-            for (int i = 0; i < 4; i++)
-            {
-                float x = 7.25f + i * 1.15f;
-                Block(Purple, x, -2.45f, x + 1.05f, -1.8f, 1.9f);
-                g.Box(Mauve, x + 0.08f, 0.15f, -1.8f, x + 0.97f, 1.35f, -1.78f);
-                g.Box(GlowOrange, x + 0.12f, 1.5f, -1.8f, x + 0.12f + 0.2f * (4 - i), 1.6f, -1.79f);
-                g.Box(PalePink, x + 0.12f, 1.68f, -1.8f, x + 0.5f, 1.74f, -1.79f);
-            }
-            // Power distribution board on the front wall.
-            g.Box(Mauve, 7.4f, 0.9f, 2.42f, 9f, 1.95f, 2.5f);
-            for (int i = 0; i < 6; i++)
-            {
-                g.Box(i < 4 ? GlowOrange : Purple, 7.55f + i * 0.23f, 1.5f, 2.4f, 7.68f + i * 0.23f, 1.75f, 2.42f);
-            }
-            g.Box(GlowWarm, 7.55f, 1.05f, 2.4f, 8.85f, 1.35f, 2.42f);
-            // Workbench.
-            Block(Purple, 9.6f, 1.8f, 11.75f, 2.45f, 0.86f);
-            g.Box(ClaySand, 9.55f, 0.86f, 1.75f, 11.75f, 0.92f, 2.45f);
-            Tool("multimeter", 10f, 0.92f, 2.15f, 180f);
-            Tool("power_wrench", 10.8f, 0.92f, 2.1f, 60f, true);
-            // Duster for the solar panels, leaning in the corner by the west wall.
-            g.Box(Purple, 7f, 1f, 1.15f, 7.08f, 1.06f, 1.75f);
-            Tool("panel_brush", 7.2f, 0f, 1.45f, 90f, false, -8f);
-            End();
-        }
-
-        private void BuildLifeSupport()
-        {
-            FloorRect r = LifeSupport;
-            BeginRoom("Life support", r,
-                "Oxygen, Water and Temperature: habitat oxygen tanks and production, clean water and the " +
-                "wastewater recycler, and heating. All of it draws power.",
-                "Portable O2 Canisters");
-            Shell(r, 2.7f, White, DarkRed, 1.1f, new[] { Arch(0f) }, null, null, new[] { Window(17.5f) }, false, East);
-
-            // Oxygen tanks and water tanks along the back wall.
-            for (int i = 0; i < 3; i++) Tank(PalePink, 15.2f + i * 1.05f, -1.9f, 0.45f, 2f, Orange);
-            Tank(Mauve, 18.75f, -1.8f, 0.55f, 1.8f, Purple);
-            Tank(Mauve, 19.9f, -1.8f, 0.55f, 1.8f, Purple);
-            g.Box(Purple, 15.2f, 2.05f, -1.95f, 19.9f, 2.13f, -1.87f);
-            // Oxygen generator.
-            Block(Orange, 14.7f, 1.5f, 15.7f, 2.4f, 1.1f);
-            g.Box(Purple, 14.8f, 1.1f, 1.6f, 15.6f, 1.2f, 2.3f);
-            g.Prism(Purple, 15.2f, 1.95f, 0.1f, 1.2f, 2.7f);
-            g.Box(GlowOrange, 14.85f, 0.55f, 1.49f, 15.25f, 0.85f, 1.5f);
-            // Water recycler.
-            Block(DustyRose, 19.2f, 0.9f, 20.4f, 2.4f, 1.4f);
-            g.Box(Purple, 19.15f, 0.2f, 1.1f, 19.2f, 1.2f, 2.2f);
-            g.Box(GlowWarm, 19.14f, 0.85f, 1.3f, 19.15f, 1.1f, 2f);
-            g.Prism(Mauve, 19.8f, 1.65f, 0.12f, 1.4f, 2.7f);
-            // Thermal control panel on the east wall.
-            g.Box(Purple, 20.44f, 1.1f, -0.9f, 20.5f, 1.9f, 0.3f);
-            g.Box(GlowOrange, 20.42f, 1.2f, -0.8f, 20.44f, 1.8f, -0.3f);
-            g.Box(GlowWarm, 20.42f, 1.2f, -0.2f, 20.44f, 1.8f, 0.2f);
-            // Rack of portable canisters under the window.
-            Block(Purple, 16.5f, 2f, 18.5f, 2.45f, 0.5f);
-            for (int i = 0; i < 3; i++) Tool("oxygen_canister", 16.9f + i * 0.6f, 0.5f, 2.22f, i * 40f);
+            FloorRect r = Utilities;
+            BeginRoom("Utilities", r, "Power and water: the generator, the batteries and the water extractor.", "");
+            Shell(r, 2.7f, White, DarkRed, 1.1f, new[] { Arch(0f) }, null, null, null);
+            Block(Charcoal, 10.2f, -3.7f, 12.8f, -2.5f, 1.6f);       // generator
+            Block(Purple, 13.8f, -3.7f, 15.4f, -3f, 1.8f);           // battery bank
+            g.Prism(PalePink, 11.5f, 2.9f, 0.9f, 0f, 2.2f);          // water tank
+            AddCollider(10.6f, 0f, 2f, 12.4f, 2.2f, 3.8f);
+            Block(Mauve, 13.7f, 2.5f, 15.1f, 3.5f, 1.4f);            // water extractor and dispenser
             End();
         }
 
@@ -992,16 +760,10 @@ namespace MarsSurvival.Base
             // Two raised crop beds with a centre aisle.
             for (int side = -1; side <= 1; side += 2)
             {
-                float x0 = side < 0 ? -3.3f : 1.3f, x1 = x0 + 2f;
-                Block(Purple, x0 + 0.15f, -16.1f, x1 - 0.15f, -8.6f, 0.55f);
-                g.Box(ClaySand, x0, 0.55f, -16.2f, x1, 0.8f, -8.5f);
-                g.Box(Terracotta, x0 + 0.08f, 0.8f, -16.12f, x1 - 0.08f, 0.83f, -8.58f);
-                AddCollider(x0, 0.5f, -16.2f, x1, 0.83f, -8.5f);
-                g.Box(GlowWarm, x0 + 0.8f, 2.15f, -16f, x0 + 1.2f, 2.2f, -8.7f);
-                g.Box(Purple, x0 + 0.95f, 2.2f, -15.5f, x0 + 1.05f, h, -15.4f);
-                g.Box(Purple, x0 + 0.95f, 2.2f, -9.3f, x0 + 1.05f, h, -9.2f);
-
-                // The plants themselves are live: MarsWorldTasks draws 12 plots per bed from the plot state.
+                // The printed greenhouse draws the gridded planters (2 x 6 cells each); MarsWorldTasks
+                // puts one live plant in each cell.
+                float x0 = side < 0 ? -3.26f : 1.34f;
+                AddCollider(x0, 0f, -16.26f, x0 + 1.92f, 0.83f, -8.34f);
             }
             // Water tank, potting bench and tools at the far end.
             Tank(Mauve, -2.6f, -17.25f, 0.5f, 1.5f, Purple);
@@ -1024,48 +786,6 @@ namespace MarsSurvival.Base
             }
         }
 
-        private void BuildLab()
-        {
-            FloorRect r = Lab;
-            BeginRoom("EVA prep and sample lab", r,
-                "Movement and exploration: suit up and refill suit oxygen before a trip outside, and bring " +
-                "samples back to the bench.",
-                "Rock Hammer, Core Sample Drill, Sample Scoop, Sample Canister Rack, Survey Camera, " +
-                "Survey Markers, Comm Radio, Portable O2 Canister");
-            Shell(r, 2.7f, White, DarkRed, 1.1f, new[] { Window(10f) }, new[] { Window(10f) },
-                new[] { Arch(0f) }, new[] { Door(0f) });
-
-            // Suit lockers and the suit oxygen refill station on the west wall.
-            for (int i = 0; i < 2; i++)
-            {
-                float z = 7.3f + i * 0.95f;
-                Block(PalePink, -2.95f, z, -2.35f, z + 0.85f, 2f);
-                g.Box(Purple, -2.35f, 1.35f, z + 0.2f, -2.33f, 1.75f, z + 0.65f);
-                g.Box(Orange, -2.35f, 0.9f, z + 0.35f, -2.33f, 1.05f, z + 0.5f);
-            }
-            Block(Mauve, -2.95f, 11f, -2.4f, 12.6f, 1.05f);
-            g.Prism(PalePink, -2.68f, 11.4f, 0.2f, 1.05f, 1.75f);
-            g.Box(GlowOrange, -2.4f, 0.6f, 11.9f, -2.39f, 0.85f, 12.4f);
-            Tool("oxygen_canister", -2.65f, 1.05f, 12.2f, 15f);
-            Tool("survey_flag", -2.6f, 0f, 9.7f, 90f);
-            Tool("survey_flag", -2.6f, 0f, 10.4f, 70f);
-
-            // Sample bench along the east wall.
-            Block(Purple, 2.35f, 7.4f, 2.95f, 12.6f, 0.86f);
-            g.Box(ClaySand, 2.3f, 0.86f, 7.35f, 2.95f, 0.92f, 12.65f);
-            Tool("sample_canisters", 2.62f, 0.92f, 7.9f, 90f);
-            Tool("rock_hammer", 2.62f, 0.92f, 8.75f, 80f, true);
-            Tool("core_drill", 2.62f, 0.92f, 9.6f, 90f);
-            Tool("sample_scoop", 2.62f, 0.92f, 10.6f, 100f, true);
-            Tool("survey_camera", 2.62f, 0.92f, 11.4f, -90f);
-            Tool("comm_radio", 2.7f, 0.92f, 12.2f, -70f);
-            // A few rock samples.
-            g.Box(Terracotta, 2.45f, 0.92f, 8.25f, 2.6f, 1.02f, 8.42f);
-            g.Box(Mauve, 2.7f, 0.92f, 10.05f, 2.82f, 1f, 10.2f);
-            g.Box(Terracotta, 2.42f, 0.92f, 11.85f, 2.58f, 1.05f, 12f);
-            End();
-        }
-
         private void BuildAirlock()
         {
             FloorRect r = Airlock;
@@ -1073,9 +793,9 @@ namespace MarsSurvival.Base
                 "The way in and out. The two doors never open together, so the habitat keeps its air. " +
                 "Outside, the suit's own oxygen is all there is.",
                 "");
-            int inner = doors.Count - 1; // the lab's front door, built just before
-            Shell(r, 2.5f, White, DarkRed, 0.7f, null, null, null, new[] { Door(0f) }, true);
-            if (inner >= 0 && doors.Count > inner + 1)
+            int inner = doors.Count;   // the back door (to the hub), then the front door (outside)
+            Shell(r, 2.5f, White, DarkRed, 0.7f, null, null, new[] { Door(0f) }, new[] { Door(0f) });
+            if (doors.Count == inner + 2)
             {
                 doors[inner].partner = doors[doors.Count - 1];
                 doors[doors.Count - 1].partner = doors[inner];
@@ -1100,13 +820,10 @@ namespace MarsSurvival.Base
         private void BuildTunnels()
         {
             float hub = HubApothem + T;
-            Tunnel(true, Medical.x1 + T, -hub);
-            Tunnel(true, Quarters.x1 + T, Medical.x0 - T);
-            Tunnel(true, Shelter.x1 + T, Quarters.x0 - T);
-            Tunnel(true, hub, Energy.x0 - T);
-            Tunnel(true, Energy.x1 + T, LifeSupport.x0 - T);
+            Tunnel(true, Storage.x1 + T, -hub);
+            Tunnel(true, hub, Utilities.x0 - T);
             Tunnel(false, Greenhouse.z1 + T, -hub);
-            Tunnel(false, hub, Lab.z0 - T);
+            Tunnel(false, hub, Airlock.z0 - T);
         }
 
         /// <summary>
@@ -1200,9 +917,8 @@ namespace MarsSurvival.Base
             g.Prism(DarkRed, 17.5f, -5.6f, 0.7f, PadTop + 2.2f, PadTop + 2.5f, 8, 0.4f);
             g.Box(Charcoal, 17.4f, PadTop + 0.4f, -4.6f, 17.6f, PadTop + 0.6f, -2.9f);
             AddCollider(16.4f, PadTop - 0.1f, -6.7f, 18.6f, PadTop + 2.2f, -4.5f);
-            // Pairs of small dark red tanks beside the quarters and the energy room.
+            // A pair of small dark red tanks beside storage.
             SmallTanks(-17.6f, 4.45f, -1f);
-            SmallTanks(9f, -3.95f, 1f);
             End();
         }
 

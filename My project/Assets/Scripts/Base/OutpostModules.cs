@@ -28,8 +28,7 @@ namespace MarsSurvival.Base
 
         private static readonly string[] Pieces =
         {
-            "Hub", "Medical", "Quarters", "Shelter", "Energy", "LifeSupport", "Greenhouse", "Lab", "Airlock",
-            "Tunnel0", "Tunnel1", "Tunnel2", "Tunnel3", "Tunnel4", "Tunnel5", "Tunnel6",
+            "Hub", "Storage", "Utilities", "Greenhouse", "Airlock", "Tunnel0", "Tunnel1", "Tunnel2", "Tunnel3",
         };
 
         /// <summary>
@@ -95,6 +94,7 @@ namespace MarsSurvival.Base
                 case "Shell Light Amber": m = Lit(key, Color.black, 0.6f, 0f, Hex(0xFFB547) * 1.6f); break;
                 case "Int Light Warm": m = Lit(key, Color.black, 0.6f, 0f, Hex(0xFFE9CF) * 1.5f); break;
                 case "Shell Signal Red": m = Lit(key, Hex(0x6E1E22), 0.5f, 0f); break;
+                case "Int Soil": m = Lit(key, Hex(0x3B2A22), 0.05f, 0f); break;
                 default: m = Lit("Shell Printed", Hex(0xD8CFC2), 0.15f, 0f); break;   // printed basalt shell
             }
             owned.Add(m);
