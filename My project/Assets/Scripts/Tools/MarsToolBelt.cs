@@ -689,9 +689,22 @@ namespace MarsSurvival.Tools
             if (body == null || !body.IsBuilt || !body.gameObject.activeInHierarchy) return;
 
             Transform pivot = pivots[Selected];
-            Vector3 grip = pivot.position;
             Vector3 shoulder = body.ShoulderPosition(true);
             float reach = body.ArmReach(true) * 0.97f;
+            if (player != null && player.IsThirdPerson)
+            {
+                // Seen from behind: the upper arm hangs at the side and the elbow is bent 90 degrees, the
+                // forearm and the item held level in front. The item rides in the hand (its use motions kept).
+                Transform b = body.transform;
+                Vector3 elbowAt = shoulder - b.up * (reach * 0.5f) + b.right * 0.04f + b.forward * 0.03f;
+                Vector3 hand = elbowAt + b.forward * (reach * 0.5f);
+                Quaternion facing = Quaternion.LookRotation(b.forward, Vector3.up);
+                pivot.position = hand + facing * (pivot.localPosition - basePosition) * b.lossyScale.y;
+                pivot.rotation = facing * pivot.localRotation;
+                body.ReachArm(true, hand, models[Selected].TransformDirection(Vector3.up), elbowAt - b.forward * 0.2f + b.right * 0.1f);
+                return;
+            }
+            Vector3 grip = pivot.position;
             Vector3 toGrip = grip - shoulder;
             if (toGrip.magnitude > reach)
             {
