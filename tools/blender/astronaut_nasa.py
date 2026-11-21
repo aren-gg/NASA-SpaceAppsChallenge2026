@@ -205,6 +205,16 @@ def strip_helmet_and_shrink_pack(body):
             and (f.calc_center_median().y > 0.115 or max(v.co.y for v in f.verts) > 0.14)]
     bmesh.ops.delete(bm, geom=pack, context="FACES")
     bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+    # That leaves holes in the back of the torso and hips (the game culls back faces, so you saw
+    # through the suit): weld the loose triangles, then close every hole on the back, facing out.
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0005)
+    back = [e for e in bm.edges if e.is_boundary and sum(v.co.y for v in e.verts) / 2 > 0.0
+            and sum(v.co.z for v in e.verts) / 2 < 1.51]
+    made = bmesh.ops.holes_fill(bm, edges=back, sides=0)["faces"]
+    made = bmesh.ops.triangulate(bm, faces=made)["faces"]
+    for f in made:
+        if f.normal.y < 0: f.normal_flip()
+    for f in bm.faces: f.smooth = False   # the loose triangles were flat-shaded; welding must not change the look
     bm.to_mesh(me); bm.free()
 
 def add_neck_seal_and_helmet(head_parts):

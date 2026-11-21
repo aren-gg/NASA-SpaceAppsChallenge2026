@@ -146,14 +146,25 @@ def sample(src, tgt, O, a, b, ground=None, flat=False):
     names = order(tgt)
     rest = {n: tgt.data.bones[n].matrix_local.copy() for n in names}
     mean_z = sum(w["Hips"].translation.z for w in W) / len(W)
+    # Feet: performers' skeletons hold the foot at different rest angles, so a planted foot can come
+    # out tilted up. Turn both feet so the planted foot (the lowest third of the frames) sits at the
+    # suit's own rest angle; the toes then just follow the foot.
+    def pitch(m3): d = m3.col[1]; return math.atan2(d.z, -d.y)
+    planted = sorted(W, key=lambda w: w["LeftFoot"].translation.z)[:max(1, len(W) // 3)]
+    seen = sorted(pitch(yaw @ w["LeftFoot"].to_3x3().normalized() @ O["foot_l"]) for w in planted)
+    foot_fix = Matrix.Rotation(seen[len(seen) // 2] - pitch(rest["foot_l"].to_3x3()), 3, "X")
     out = []
     for i, w in enumerate(W):
         t = i / max(1, len(W) - 1)
         drift = h0.lerp(h1, t)
         P, basis = {}, {}
         for n in names:
-            rot = suit(n, yaw @ w[MAP[n]].to_3x3().normalized() @ O[n], rest[n].to_3x3().normalized())
             bone = tgt.data.bones[n]
+            if n.startswith("ball_"):
+                rot = P[bone.parent.name].to_3x3() @ (rest[bone.parent.name].inverted() @ rest[n]).to_3x3()
+            else:
+                rot = suit(n, yaw @ w[MAP[n]].to_3x3().normalized() @ O[n], rest[n].to_3x3().normalized())
+                if n.startswith("foot_"): rot = foot_fix @ rot
             if bone.parent is None:
                 d = w["Hips"].translation - drift
                 d = yaw @ Vector((d.x, d.y, 0))

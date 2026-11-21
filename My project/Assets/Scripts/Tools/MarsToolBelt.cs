@@ -252,7 +252,7 @@ namespace MarsSurvival.Tools
         /// </summary>
         private Transform MountFor(Camera cam)
         {
-            Transform eyes = player != null ? player.AimTransform : null;
+            Transform eyes = player != null ? player.EyeTransform : null;
             return eyes != null ? eyes : cam.transform;
         }
 
@@ -383,7 +383,7 @@ namespace MarsSurvival.Tools
         private ToolTarget FindTarget()
         {
             ToolTarget target = new ToolTarget();
-            Transform view = Aim;
+            Transform view = player != null && player.AimTransform != null ? player.AimTransform : Aim;   // the pointer while it aims
             Ray ray = new Ray(view.position, view.forward);
             float reach = expedition.Reach;
 
