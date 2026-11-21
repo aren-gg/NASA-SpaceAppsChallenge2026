@@ -1,9 +1,9 @@
 """
 Builds the animation clips for the playable astronauts (Assets/Resources/Astronaut/Astronaut_Clips.fbx).
 
-The playable bodies themselves are the VRoid characters from astronaut_vroid.py; their rigs are
-Humanoid in Unity, so these clips (made on the Quaternius base rig) retarget onto them.
-Run inside Blender: exec(open(".../astronaut_build.py").read()); export_clips()
+The playable bodies are the NASA-suit astronauts from astronaut_nasa.py. This script sets up the
+source clips on the Quaternius base rig; astronaut_retarget.py copies them onto the suit's
+skeleton and exports Astronaut_Clips.fbx (export_clips() here is the older, un-retargeted path).
 
 History: this script first built realistic astronaut bodies on the Quaternius base characters
 (build(); still used here to set up the rig and the hand-made Helmet_On clip).

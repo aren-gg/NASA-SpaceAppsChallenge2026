@@ -7,11 +7,12 @@ using UnityEngine.Rendering;
 namespace MarsSurvival.Interaction
 {
     /// <summary>
-    /// The cute astronauts: VRoid Studio's sample characters (CC0) as the male and female
-    /// astronauts, dressed in a cute anime space suit in Blender (tools/blender/astronaut_vroid.py,
-    /// models in Resources/Astronaut). Both are Humanoid, so the shared clips in
-    /// Astronaut_Clips (Quaternius Universal Animation Library, CC0, plus a hand-made Helmet_On)
-    /// retarget onto them.
+    /// The playable astronauts: NASA's public astronaut model detailed in Blender, with VRoid
+    /// (CC0) anime heads for the male and female astronaut (tools/blender/astronaut_nasa.py, models
+    /// in Resources/Astronaut). The clips in Astronaut_Clips (Quaternius Universal Animation
+    /// Library, CC0, plus a hand-made Helmet_On) are retargeted onto the suit's own skeleton in
+    /// Blender (tools/blender/astronaut_retarget.py), so Unity's Humanoid mapping between the
+    /// clip file and the bodies is between identical skeletons and plays the motion as authored.
     ///
     /// Driven by <see cref="MarsAstronautBody"/>, which keeps its public interface: a playable
     /// graph blends Idle, Walk, Run, Sprint and Fall from the player's move, sprint and air
@@ -52,6 +53,9 @@ namespace MarsSurvival.Interaction
         private bool helmetWorn = true, headVisible = true, first = true;
         private float helmetClock = -1f, helmetLength = 2f;
         private Vector3 headScale = Vector3.one;
+        private const float BlendRate = 12f;
+        private readonly float[] weight = new float[5], target = new float[5];   // idle, walk, run, sprint, fall
+        private bool weightsSet;
 
         public AstronautRig(Transform parent, AstronautLook look)
         {
@@ -180,14 +184,18 @@ namespace MarsSurvival.Interaction
         {
             if (!graph.IsValid()) return;
             float ground = 1f - air;
-            float walk = move * ground * Mathf.Clamp01(1f - sprint * 2f);
-            float run = move * ground * (sprint < 0.5f ? sprint * 2f : 2f - sprint * 2f);
-            float dash = move * ground * Mathf.Clamp01(sprint * 2f - 1f);
-            locomotion.SetInputWeight(0, (1f - move) * ground);
-            locomotion.SetInputWeight(1, walk);
-            locomotion.SetInputWeight(2, run);
-            locomotion.SetInputWeight(3, dash);
-            locomotion.SetInputWeight(4, air);
+            target[0] = (1f - move) * ground;
+            target[1] = move * ground * Mathf.Clamp01(1f - sprint * 2f);
+            target[2] = move * ground * (sprint < 0.5f ? sprint * 2f : 2f - sprint * 2f);
+            target[3] = move * ground * Mathf.Clamp01(sprint * 2f - 1f);
+            target[4] = air;
+            // Each clip eases towards its weight (about a fifth of a second), so take-offs, landings
+            // and walk-to-run changes cross-fade instead of snapping; the sum is kept at one.
+            float ease = weightsSet ? 1f - Mathf.Exp(-BlendRate * dt) : 1f;
+            float total = 0f;
+            for (int i = 0; i < weight.Length; i++) { weight[i] = Mathf.Lerp(weight[i], target[i], ease); total += weight[i]; }
+            weightsSet = true;
+            for (int i = 0; i < weight.Length; i++) locomotion.SetInputWeight(i, total > 1e-4f ? weight[i] / total : (i == 0 ? 1f : 0f));
 
             // The stride clips follow the player's stride phase (one turn = a left and a right step).
             float cycle = Mathf.Repeat(phase / (2f * Mathf.PI), 1f);

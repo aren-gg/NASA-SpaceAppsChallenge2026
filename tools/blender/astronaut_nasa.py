@@ -82,9 +82,11 @@ def tube(name, pts, r, m):
 def build():
     wipe()
     bpy.context.scene.render.use_freestyle = False
+    before = set(bpy.data.objects)
     bpy.ops.import_scene.gltf(filepath=SRC)
-    body = next(o for o in bpy.data.objects if o.type == "MESH")
-    for o in list(bpy.data.objects):
+    new = [o for o in bpy.data.objects if o not in before]
+    body = next(o for o in new if o.type == "MESH")
+    for o in new:
         if o is not body:
             mw = body.matrix_world.copy(); body.parent = None; body.matrix_world = mw
             bpy.data.objects.remove(o, do_unlink=True)
@@ -380,7 +382,13 @@ def rig(body, head_parts, seal, helmet, gear):
     def centre(cond):
         pts = [p for p in P if cond(p)]
         return sum(pts, Vector()) / len(pts)
-    cy = centre(lambda p: abs(p.x) < 0.15 and 1.0 < p.z < 1.4 and p.y < 0.11).y
+    def mid(pts):
+        """Bounding-box centre: the mesh is low-poly and uneven, so a vertex mean drifts."""
+        lo = Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts)))
+        hi = Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts)))
+        return (lo + hi) / 2
+    # The spine runs through the middle of the hips (front of the suit to the start of the pack).
+    cy = mid([p for p in P if 0.1 < abs(p.x) < 0.2 and abs(p.z - 0.88) < 0.02]).y
     J = {"pelvis": Vector((0, cy, 0.97)), "spine_01": Vector((0, cy, 1.07)), "spine_02": Vector((0, cy, 1.19)),
          "spine_03": Vector((0, cy, 1.32)), "neck_01": NECK.copy(), "Head": NECK + Vector((0, 0, 0.07))}
     tails = {"Head": NECK + Vector((0, 0, 0.3))}
@@ -389,7 +397,7 @@ def rig(body, head_parts, seal, helmet, gear):
         tip = max(s * p.x for p in arm)
         def arm_at(x):
             near = [p for p in arm if abs(s * p.x - x) < 0.015]
-            c = sum(near, Vector()) / len(near); c.x = s * x; return c
+            c = mid(near); c.x = s * x; return c
         J["clavicle_" + L] = Vector((s * 0.05, cy, 1.44))
         J["upperarm_" + L] = arm_at(0.3)
         J["lowerarm_" + L] = arm_at(0.53)
@@ -398,8 +406,8 @@ def rig(body, head_parts, seal, helmet, gear):
         leg = [p for p in P if s * p.x > 0.015 and p.z < 0.93]
         def leg_at(z):
             near = [p for p in leg if abs(p.z - z) < 0.015]
-            return sum(near, Vector()) / len(near)
-        J["thigh_" + L] = leg_at(0.88)
+            return mid(near)
+        J["thigh_" + L] = leg_at(0.88); J["thigh_" + L].y = cy     # hip joints sit on the spine's plane
         J["calf_" + L] = leg_at(0.5)
         ank = leg_at(0.13); J["foot_" + L] = ank
         foot = [p for p in leg if p.z < 0.07]

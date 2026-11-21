@@ -14,7 +14,7 @@ namespace MarsSurvival.Base.EditorTools
         private static readonly string[] Looping = { "Idle", "Walk", "Run", "Sprint", "Fall" };
 
         /// <summary>Bumped when these settings change, so Unity re-imports the astronaut files.</summary>
-        public override uint GetVersion() { return 4; }
+        public override uint GetVersion() { return 5; }
 
         private void OnPreprocessModel()
         {
