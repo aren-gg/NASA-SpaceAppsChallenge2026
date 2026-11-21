@@ -193,7 +193,7 @@ namespace MarsSurvival.UI
             stack.childForceExpandWidth = true;
 
             Section(panel, "Body");
-            Row(panel, "Frame", AstronautLook.Frames, l => l.frame, (l, v) => l.frame = v);
+            Row(panel, "Astronaut", AstronautLook.Frames, l => l.frame, (l, v) => l.frame = v);
             Row(panel, "Skin", AstronautLook.SkinNames, l => l.skin, (l, v) => l.skin = v);
             Row(panel, "Hair", AstronautLook.HairStyles, l => l.hairStyle, (l, v) => l.hairStyle = v);
             Row(panel, "Hair colour", AstronautLook.HairColorNames, l => l.hairColor, (l, v) => l.hairColor = v);

@@ -667,7 +667,7 @@ print("built", {k: len(v.all_objects) for k, v in pieces.items()})
 # ------------------------------------------------------------------ export
 # Each piece becomes two meshes: "<piece> solid" (printed shell, end walls, tunnel tube, fins,
 # berms, door frames: Unity gives it a mesh collider) and "<piece> trim" (everything else).
-SOLID_KEYS = (" shell", " end", "Tunnel tube", "Buttress", "Regolith berm", "Portal frame")
+SOLID_KEYS = (" shell", " end", "Tunnel tube", "Buttress", "Regolith berm", "Portal frame", "Oculus glass")
 
 def export_all():
     os.makedirs(EXPORT, exist_ok=True)

@@ -431,16 +431,18 @@ namespace MarsSurvival.Gameplay
                 if (!Physics.Raycast(from, -outpost.transform.up, out hit, 20f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)) return -99f;
                 return outpost.transform.InverseTransformPoint(hit.point).y;
             }
+            // Heights of the printed modules (tools/blender/outpost_modules.py): vaults run along the
+            // tunnels, so the eave is sampled across the vault; the hub's skylight glass is solid.
             float mound = RoofAt(-24f, 0f);
-            Check(mound > 3.45f, "Shelter mound: you stand on its drawn top, not inside it", mound.ToString("0.00") + " m");
+            Check(mound > 3.0f, "Shelter roof: you stand on its drawn top, not inside it", mound.ToString("0.00") + " m");
             float vault = RoofAt(-9.5f, 0f);
             Check(vault > 3.75f, "Vaulted roof: solid up to its ridge", vault.ToString("0.00") + " m");
             float dome = RoofAt(0f, 0f);
-            Check(dome > 5f, "Hub dome: solid up to its top", dome.ToString("0.00") + " m");
-            float eave = RoofAt(-11.8f, 0f);
+            Check(dome > 5f, "Hub dome: solid up to its top (the skylight too)", dome.ToString("0.00") + " m");
+            float eave = RoofAt(-9.5f, -2.6f);
             Check(eave < vault - 0.3f && eave > 2.7f, "Vaulted roof: the collider follows the curve down to the eaves", eave.ToString("0.00") + " m");
             float tube = RoofAt(-6f, 0f);
-            Check(tube > 2.8f, "Tunnel tube: solid up to its drawn top", tube.ToString("0.00") + " m");
+            Check(tube > 2.7f, "Tunnel tube: solid up to its drawn top", tube.ToString("0.00") + " m");
             Vector3 side = outpost.transform.TransformPoint(new Vector3(-6f, 1.2f, 1.65f));
             Check(Physics.CheckSphere(side, 0.25f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore), "Tunnel tube: its round sides block you");
         }

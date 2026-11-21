@@ -1,0 +1,409 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Animations;
+using UnityEngine.Playables;
+using UnityEngine.Rendering;
+
+namespace MarsSurvival.Interaction
+{
+    /// <summary>
+    /// The cute astronauts: VRoid Studio's sample characters (CC0) as the male and female
+    /// astronauts, dressed in a cute anime space suit in Blender (tools/blender/astronaut_vroid.py,
+    /// models in Resources/Astronaut). Both are Humanoid, so the shared clips in
+    /// Astronaut_Clips (Quaternius Universal Animation Library, CC0, plus a hand-made Helmet_On)
+    /// retarget onto them.
+    ///
+    /// Driven by <see cref="MarsAstronautBody"/>, which keeps its public interface: a playable
+    /// graph blends Idle, Walk, Run, Sprint and Fall from the player's move, sprint and air
+    /// blends (the stride clips follow the player's stride phase so the feet keep pace), and
+    /// Helmet_On plays on an upper-body layer when the helmet goes on, the helmet riding between
+    /// the hands until it settles on the head. Faces and hair keep their anime textures with a
+    /// soft toon lift; the suit takes the <see cref="AstronautLook"/> colours.
+    /// </summary>
+    public sealed class AstronautRig
+    {
+        public const string Folder = "Astronaut";
+
+        public static bool Available(int frame) { return Resources.Load<GameObject>(Path(frame)) != null; }
+        private static string Path(int frame)
+        {
+            return Folder + "/Astronaut_" + (AstronautLook.Mod(frame, AstronautLook.Frames.Length) == 1 ? "Girl" : "Boy");
+        }
+
+        public readonly GameObject root;
+        private readonly Transform model;
+        private readonly Animator animator;
+        private PlayableGraph graph;
+        private AnimationMixerPlayable locomotion;
+        private AnimationLayerMixerPlayable layers;
+        private readonly AnimationClipPlayable[] stride = new AnimationClipPlayable[3];   // walk, run, sprint
+        private AnimationClipPlayable helmetOn;
+        private readonly Transform head, upperArmL, upperArmR, lowerArmL, lowerArmR, handL, handR, helmet;
+        private readonly Vector3 helmetRestPosition;
+        private readonly Quaternion helmetRestRotation;
+        /// <summary>The middle of the helmet's meshes in the Helmet node's space (the node itself sits elsewhere).</summary>
+        private readonly Vector3 helmetCentre;
+        private readonly List<Renderer> helmetParts = new List<Renderer>();
+        private readonly List<Object> owned = new List<Object>();
+        private readonly AstronautLook look;
+        private bool helmetWorn = true, headVisible = true, first = true;
+        private float helmetClock = -1f, helmetLength = 2f;
+        private Vector3 headScale = Vector3.one;
+
+        public AstronautRig(Transform parent, AstronautLook look)
+        {
+            this.look = look;
+            root = new GameObject("Astronaut Rig");
+            root.transform.SetParent(parent, false);
+            GameObject prefab = Resources.Load<GameObject>(Path(look.frame));
+            model = Object.Instantiate(prefab, root.transform, false).transform;
+            model.name = prefab.name;
+            animator = model.GetComponent<Animator>() ?? model.gameObject.AddComponent<Animator>();
+            animator.applyRootMotion = false;
+            animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+
+            head = Bone(HumanBodyBones.Head);
+            upperArmL = Bone(HumanBodyBones.LeftUpperArm); upperArmR = Bone(HumanBodyBones.RightUpperArm);
+            lowerArmL = Bone(HumanBodyBones.LeftLowerArm); lowerArmR = Bone(HumanBodyBones.RightLowerArm);
+            handL = Bone(HumanBodyBones.LeftHand); handR = Bone(HumanBodyBones.RightHand);
+            if (head != null) headScale = head.localScale;
+
+            // Humanoid animation already faces the body along the Animator's +Z (Unity normalises the
+            // avatar's orientation), so the model is left as imported; turning it by the bind pose's
+            // toes as well made the astronaut walk backwards.
+            Transform foot = Bone(HumanBodyBones.LeftFoot), toes = Bone(HumanBodyBones.LeftToes);
+            if (!animator.isHuman && foot != null && toes != null)
+            {
+                Vector3 forward = Vector3.ProjectOnPlane(toes.position - foot.position, Vector3.up);
+                if (forward.sqrMagnitude > 1e-6f)
+                    model.rotation = Quaternion.FromToRotation(forward.normalized, root.transform.forward) * model.rotation;
+            }
+
+            foreach (Transform t in model.GetComponentsInChildren<Transform>(true))
+                if (t.name == "Helmet") { helmet = t; break; }
+            if (helmet != null)
+            {
+                helmetRestPosition = helmet.localPosition;
+                helmetRestRotation = helmet.localRotation;
+                helmetParts.AddRange(helmet.GetComponentsInChildren<Renderer>(true));
+                if (helmetParts.Count > 0)
+                {
+                    Bounds b = helmetParts[0].bounds;
+                    foreach (Renderer r in helmetParts) b.Encapsulate(r.bounds);
+                    helmetCentre = helmet.InverseTransformPoint(b.center);
+                }
+            }
+            Recolour();
+            BuildGraph();
+        }
+
+        private Transform Bone(HumanBodyBones b)
+        {
+            return animator != null && animator.isHuman ? animator.GetBoneTransform(b) : null;
+        }
+
+        // ------------------------------------------------------------------ animation
+
+        private static AnimationClip Clip(AnimationClip[] clips, string name)
+        {
+            foreach (AnimationClip c in clips)
+                if (c.name == name || c.name.EndsWith("|" + name)) return c;
+            return null;
+        }
+
+        private void BuildGraph()
+        {
+            // Only humanoid clips retarget onto these bodies; a generic import of the clip file would
+            // drive the model's root node and lay it flat, so it is ignored (the body stands still).
+            AnimationClip[] clips = System.Array.FindAll(Resources.LoadAll<AnimationClip>(Folder + "/Astronaut_Clips"), c => c.humanMotion);
+            if (clips.Length == 0 || !animator.isHuman)
+            {
+                Debug.LogWarning("Astronaut: no humanoid clips in Resources/" + Folder + "/Astronaut_Clips (re-import it as Humanoid); the astronaut stands still.");
+                return;
+            }
+            graph = PlayableGraph.Create("Astronaut");
+            graph.SetTimeUpdateMode(DirectorUpdateMode.Manual);
+            var output = AnimationPlayableOutput.Create(graph, "Body", animator);
+
+            locomotion = AnimationMixerPlayable.Create(graph, 5);
+            Add(locomotion, 0, Clip(clips, "Idle"));
+            stride[0] = Add(locomotion, 1, Clip(clips, "Walk"));
+            stride[1] = Add(locomotion, 2, Clip(clips, "Run"));
+            stride[2] = Add(locomotion, 3, Clip(clips, "Sprint"));
+            Add(locomotion, 4, Clip(clips, "Fall"));
+            locomotion.SetInputWeight(0, 1f);
+
+            layers = AnimationLayerMixerPlayable.Create(graph, 2);
+            graph.Connect(locomotion, 0, layers, 0);
+            layers.SetInputWeight(0, 1f);
+            AnimationClip put = Clip(clips, "Helmet_On");
+            if (put != null)
+            {
+                helmetOn = AnimationClipPlayable.Create(graph, put);
+                helmetOn.SetSpeed(0);
+                helmetLength = put.length;
+                graph.Connect(helmetOn, 0, layers, 1);
+                layers.SetLayerMaskFromAvatarMask(1, UpperBodyMask());
+            }
+            layers.SetInputWeight(1, 0f);
+            output.SetSourcePlayable(layers);
+            graph.Play();
+        }
+
+        private AnimationClipPlayable Add(AnimationMixerPlayable mixer, int input, AnimationClip clip)
+        {
+            AnimationClipPlayable p = clip != null ? AnimationClipPlayable.Create(graph, clip) : AnimationClipPlayable.Create(graph, new AnimationClip());
+            graph.Connect(p, 0, mixer, input);
+            mixer.SetInputWeight(input, 0f);
+            return p;
+        }
+
+        /// <summary>Spine, arms and head: the helmet clip leaves the legs walking.</summary>
+        private AvatarMask UpperBodyMask()
+        {
+            var mask = new AvatarMask();
+            owned.Add(mask);
+            for (AvatarMaskBodyPart part = 0; part < AvatarMaskBodyPart.LastBodyPart; part++)
+            {
+                bool upper = part == AvatarMaskBodyPart.Body || part == AvatarMaskBodyPart.Head ||
+                             part == AvatarMaskBodyPart.LeftArm || part == AvatarMaskBodyPart.RightArm ||
+                             part == AvatarMaskBodyPart.LeftFingers || part == AvatarMaskBodyPart.RightFingers;
+                mask.SetHumanoidBodyPartActive(part, upper);
+            }
+            return mask;
+        }
+
+        public void Animate(float phase, float move, float sprint, float air, float vertical, float time, float dt)
+        {
+            if (!graph.IsValid()) return;
+            float ground = 1f - air;
+            float walk = move * ground * Mathf.Clamp01(1f - sprint * 2f);
+            float run = move * ground * (sprint < 0.5f ? sprint * 2f : 2f - sprint * 2f);
+            float dash = move * ground * Mathf.Clamp01(sprint * 2f - 1f);
+            locomotion.SetInputWeight(0, (1f - move) * ground);
+            locomotion.SetInputWeight(1, walk);
+            locomotion.SetInputWeight(2, run);
+            locomotion.SetInputWeight(3, dash);
+            locomotion.SetInputWeight(4, air);
+
+            // The stride clips follow the player's stride phase (one turn = a left and a right step).
+            float cycle = Mathf.Repeat(phase / (2f * Mathf.PI), 1f);
+            foreach (AnimationClipPlayable p in stride)
+                if (p.IsValid() && p.GetAnimationClip() != null) { p.SetSpeed(0); p.SetTime(cycle * p.GetAnimationClip().length); }
+
+            float carry = 0f;
+            if (helmetClock >= 0f)
+            {
+                helmetClock += dt;
+                float w = Mathf.Clamp01(helmetClock / 0.15f) * Mathf.Clamp01((helmetLength - helmetClock) / 0.3f);
+                layers.SetInputWeight(1, w);
+                helmetOn.SetTime(Mathf.Min(helmetClock, helmetLength));
+                // The hands carry the helmet until about three quarters through, then it seats on the head.
+                carry = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(helmetLength * 0.6f, helmetLength * 0.78f, helmetClock));
+                if (helmetClock >= helmetLength) { helmetClock = -1f; layers.SetInputWeight(1, 0f); carry = 0f; }
+            }
+            graph.Evaluate(dt);
+            PlaceHelmet(carry);
+            ApplyHead();
+        }
+
+        private void PlaceHelmet(float carry)
+        {
+            if (helmet == null) return;
+            helmet.localPosition = helmetRestPosition;
+            helmet.localRotation = helmetRestRotation;
+            if (carry <= 0f || handL == null || handR == null) return;
+            Vector3 between = (handL.position + handR.position) * 0.5f;
+            helmet.position += (between - helmet.TransformPoint(helmetCentre)) * carry;
+        }
+
+        // ------------------------------------------------------------------ helmet and head
+
+        public void SetHelmet(bool on)
+        {
+            if (on == helmetWorn && !first) return;
+            bool animate = on && !first && helmetOn.IsValid();
+            helmetWorn = on;
+            first = false;
+            foreach (Renderer r in helmetParts) if (r != null) r.enabled = on;
+            helmetClock = animate ? 0f : -1f;
+        }
+
+        /// <summary>First person hides the head (and the helmet with it) by shrinking the head bone.</summary>
+        public void SetHeadVisible(bool visible) { headVisible = visible; ApplyHead(); }
+
+        private void ApplyHead()
+        {
+            if (head != null) head.localScale = headVisible ? headScale : headScale * 0.001f;
+        }
+
+        // ------------------------------------------------------------------ holding things
+
+        public Vector3 ShoulderPosition(bool right) { return (right ? upperArmR : upperArmL).position; }
+
+        public float ArmReach(bool right)
+        {
+            Transform u = right ? upperArmR : upperArmL, l = right ? lowerArmR : lowerArmL, h = right ? handR : handL;
+            return Vector3.Distance(u.position, l.position) + Vector3.Distance(l.position, h.position) + 0.07f * root.transform.lossyScale.y;
+        }
+
+        /// <summary>Two-bone IK on the skinned arm so the glove sits on <paramref name="grip"/>.</summary>
+        public void ReachArm(bool right, Vector3 grip, Vector3 handleUp, Vector3 elbowHint)
+        {
+            Transform upper = right ? upperArmR : upperArmL, fore = right ? lowerArmR : lowerArmL, hand = right ? handR : handL;
+            if (upper == null || fore == null || hand == null) return;
+            Vector3 shoulder = upper.position;
+            float palm = 0.07f * root.transform.lossyScale.y;
+            float a = Vector3.Distance(shoulder, fore.position), b = Vector3.Distance(fore.position, hand.position) + palm;
+            Vector3 toGrip = grip - shoulder;
+            float distance = toGrip.magnitude;
+            if (distance < 1e-5f) return;
+            Vector3 dir = toGrip / distance;
+            distance = Mathf.Clamp(distance, Mathf.Abs(a - b) + 1e-4f, (a + b) * 0.9999f);
+            float along = (a * a - b * b + distance * distance) / (2f * distance);
+            float outward = Mathf.Sqrt(Mathf.Max(0f, a * a - along * along));
+            Vector3 hint = elbowHint - shoulder;
+            Vector3 bend = hint - dir * Vector3.Dot(hint, dir);
+            if (bend.sqrMagnitude < 1e-8f) bend = Vector3.down - dir * Vector3.Dot(Vector3.down, dir);
+            Vector3 elbow = shoulder + dir * along + bend.normalized * outward;
+            Vector3 target = shoulder + dir * distance;
+
+            upper.rotation = Quaternion.FromToRotation(fore.position - shoulder, elbow - shoulder) * upper.rotation;
+            Vector3 palmPoint = hand.position + (hand.position - fore.position).normalized * palm;
+            fore.rotation = Quaternion.FromToRotation(palmPoint - fore.position, target - fore.position) * fore.rotation;
+        }
+
+        // ------------------------------------------------------------------ colours
+
+        private void Recolour()
+        {
+            var made = new Dictionary<Material, Material>();
+            var bySlot = new Dictionary<string, Material>();
+            foreach (Renderer r in model.GetComponentsInChildren<Renderer>(true))
+            {
+                Material[] slots = r.sharedMaterials;
+                for (int i = 0; i < slots.Length; i++)
+                {
+                    Material src = slots[i];
+                    if (src == null) continue;
+                    Material m;
+                    if (made.TryGetValue(src, out m)) { slots[i] = m; continue; }
+                    string key = Strip(src.name);
+                    m = Suit(key);
+                    if (m != null)
+                    {
+                        Material shared;
+                        if (bySlot.TryGetValue(key, out shared)) { Object.Destroy(m); m = shared; }
+                        else { bySlot[key] = m; owned.Add(m); }
+                    }
+                    else { m = Anime(src, key); owned.Add(m); }
+                    made[src] = m;
+                    slots[i] = m;
+                }
+                r.sharedMaterials = slots;
+                r.shadowCastingMode = ShadowCastingMode.On;
+                if (r is SkinnedMeshRenderer s) s.updateWhenOffscreen = true;
+            }
+        }
+
+        private static string Strip(string name)
+        {
+            name = name.Replace(" (Instance)", "");
+            int dot = name.LastIndexOf('.');
+            return dot > 0 && dot >= name.Length - 4 ? name.Substring(0, dot) : name;
+        }
+
+        /// <summary>The gear's colour slots (soft pastel, VRoid style); null for the character's own materials.</summary>
+        private Material Suit(string slot)
+        {
+            Color mint = new Color32(0x7F, 0xD8, 0xC8, 255);
+            switch (slot)
+            {
+                // The suit body bends at the hips and knees; a thin outline keeps the ink from poking through the folds.
+                case "Suit": return TwoSided(Toon(slot, Color.Lerp(Color.white, look.Suit, 0.85f), null, 0.0008f));
+                case "Joint": return TwoSided(Toon(slot, new Color32(0xC9, 0xC3, 0xD6, 255), null, 0.0008f));
+                case "Accent": return Toon(slot, look.Accent, null);
+                case "Trim": return Toon(slot, mint, null);
+                case "Glove": case "Boot": case "Pack": return Toon(slot, new Color32(0xF5, 0xF2, 0xF7, 255), null);
+                case "Visor":
+                {
+                    // A clear bubble with a hint of tint, so the face shows inside the helmet.
+                    Material v = Lit(slot, Color.Lerp(new Color(0.8f, 0.92f, 1f), look.Visor, 0.25f), 0.95f, 0f);
+                    MarsAstronautBody.MakeSeeThrough(v, look.ClearVisor ? 0.06f : 0.12f);
+                    return v;
+                }
+                case "Screen": return Toon(slot, new Color(0.25f, 0.85f, 1f), null, 0f, new Color(0.15f, 0.55f, 0.7f));
+                case "Lamp": case "Light Cyan": return Toon(slot, new Color(0.45f, 0.92f, 1f), null, 0f, new Color(0.25f, 0.7f, 0.85f));
+                case "Light Amber": return Toon(slot, new Color(1f, 0.72f, 0.3f), null, 0f, new Color(0.7f, 0.4f, 0.1f));
+                default: return null;
+            }
+        }
+
+        /// <summary>
+        /// One of the VRoid character's own materials (face, eyes, hair, the suit-coloured clothing):
+        /// its anime texture under the toon shader. Lashes, brows and hair tips are cut out; the clothing
+        /// takes the wardrobe's suit colour.
+        /// </summary>
+        private Material Anime(Material src, string key)
+        {
+            // The Blender export names each of these materials after its texture in Resources/Astronaut/Textures.
+            Texture tex = Resources.Load<Texture2D>(Folder + "/Textures/" + key);
+            if (tex == null) tex = src.HasProperty("_BaseMap") ? src.GetTexture("_BaseMap") : src.mainTexture;
+            bool face = key.Contains("_FACE") || key.Contains("_EYE") || key.Contains("Face_00");
+            bool cloth = key.Contains("CLOTH");
+            Color tint = cloth && !key.Contains("Shoes") ? Color.Lerp(Color.white, look.Suit, 0.85f) : Color.white;
+            // The painted suit body bends at the hips and knees: a thin outline keeps ink out of the folds.
+            float outline = face ? 0f : key.Contains("Suit_CLOTH") ? 0.0008f : 0.0022f;
+            Material m = Toon("Astronaut " + key, tint, tex, outline);
+            bool cut = !(key.Contains("Face_00") || cloth);
+            if (cut && m.HasProperty("_AlphaClip")) { m.SetFloat("_AlphaClip", 1f); m.EnableKeyword("_ALPHATEST_ON"); m.renderQueue = (int)RenderQueue.AlphaTest; }
+            if (m.HasProperty("_Cull")) m.SetFloat("_Cull", (float)CullMode.Off);
+            if (key.Contains("EyeExtra")) m.SetColor("_BaseColor", new Color(1f, 1f, 1f, 0f));   // VRoid's spare eye layer
+            if (face && m.HasProperty("_ShadeColor")) m.SetColor("_ShadeColor", new Color(0.93f, 0.86f, 0.88f));
+            return m;
+        }
+
+        /// <summary>Draws both faces: where the suit folds at the hips its back faces show as suit, not as dark ink.</summary>
+        private static Material TwoSided(Material m)
+        {
+            if (m.HasProperty("_Cull")) m.SetFloat("_Cull", (float)CullMode.Off);
+            return m;
+        }
+
+        private static Shader toon;
+
+        /// <summary>The toon shader (Resources/Shaders/MarsivityToon), or URP Lit if it is missing.</summary>
+        private Material Toon(string name, Color color, Texture texture, float outline = 0.0025f, Color? emission = null)
+        {
+            if (toon == null) toon = Resources.Load<Shader>("Shaders/MarsivityToon") ?? Shader.Find("Marsivity/Toon");
+            if (toon == null || !toon.isSupported) return Lit(name, color, 0.1f, 0f, emission);
+            var m = new Material(toon) { name = "Astronaut " + name };
+            m.SetColor("_BaseColor", color);
+            if (texture != null) m.SetTexture("_BaseMap", texture);
+            m.SetFloat("_OutlineWidth", outline);
+            if (emission.HasValue) m.SetColor("_EmissionColor", emission.Value);
+            return m;
+        }
+
+        private static Material Lit(string name, Color color, float smoothness = 0.15f, float metallic = 0f, Color? emission = null)
+        {
+            Material m = MarsSurvival.World.MarsPalette.CreateMatteMaterial("Astronaut " + name, color);
+            if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", smoothness);
+            if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", metallic);
+            if (emission.HasValue && m.HasProperty("_EmissionColor"))
+            {
+                m.EnableKeyword("_EMISSION");
+                m.SetColor("_EmissionColor", emission.Value);
+            }
+            return m;
+        }
+
+        public void Destroy()
+        {
+            if (graph.IsValid()) graph.Destroy();
+            foreach (Object o in owned) if (o != null) Object.Destroy(o);
+            owned.Clear();
+            if (root != null) Object.Destroy(root);
+        }
+    }
+}

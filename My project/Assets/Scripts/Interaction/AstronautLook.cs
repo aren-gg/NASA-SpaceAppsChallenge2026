@@ -14,8 +14,8 @@ namespace MarsSurvival.Interaction
     {
         // ------------------------------------------------------------------ option lists
 
-        /// <summary>Body frames. Both are the same height (the camera and reach depend on it); they differ in build.</summary>
-        public static readonly string[] Frames = { "A: broad shoulders", "B: narrow waist" };
+        /// <summary>The playable astronauts, chosen on the start screen (the skinned bodies in Resources/Astronaut).</summary>
+        public static readonly string[] Frames = { "Male", "Female" };
 
         public static readonly string[] SkinNames = { "Porcelain", "Light", "Tan", "Olive", "Brown", "Deep" };
         public static readonly Color[] SkinColors =
@@ -24,7 +24,8 @@ namespace MarsSurvival.Interaction
             new Color(0.71f, 0.53f, 0.38f), new Color(0.52f, 0.36f, 0.25f), new Color(0.33f, 0.22f, 0.16f),
         };
 
-        public static readonly string[] HairStyles = { "Short crop", "Buzz", "Side part", "Bob", "Ponytail", "High bun", "Long", "Curly" };
+        /// <summary>Same order as the hair meshes in <see cref="AstronautRig"/>.</summary>
+        public static readonly string[] HairStyles = { "Side part", "Buzz", "Pixie", "Buns", "Long" };
 
         public static readonly string[] HairColorNames = { "Black", "Dark brown", "Brown", "Auburn", "Blonde", "Silver", "Rose", "Teal" };
         public static readonly Color[] HairColors =
@@ -84,6 +85,23 @@ namespace MarsSurvival.Interaction
         public static int Mod(int value, int count) { return ((value % count) + count) % count; }
 
         public AstronautLook Clone() { return (AstronautLook)MemberwiseClone(); }
+
+        /// <summary>
+        /// Picks the astronaut on the start screen: the male or the female astronaut
+        /// (VRoid characters with black hair and brown eyes). The wardrobe can change the rest.
+        /// </summary>
+        public static void Choose(int frame)
+        {
+            AstronautLook look = Current.Clone();
+            if (Mod(look.frame, Frames.Length) != Mod(frame, Frames.Length) || !PlayerPrefs.HasKey(Key))
+            {
+                look.hairStyle = Mod(frame, Frames.Length) == 1 ? 4 : 0;
+                look.hairColor = 0;
+                look.skin = 1;
+            }
+            look.frame = frame;
+            Apply(look);
+        }
 
         // ------------------------------------------------------------------ saving
 

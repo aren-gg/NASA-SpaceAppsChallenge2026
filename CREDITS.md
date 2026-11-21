@@ -21,6 +21,11 @@ Made for the NASA Space Apps Challenge 2026.
   Used for: Recorded solar flare levels replayed sol by sol to drive solar particle events.  
   Source: <https://ccmc.gsfc.nasa.gov/tools/DONKI/>
 
+- **MSL Gale Merged DEM 1 m (v3), from HiRISE stereo**  
+  MSL_Gale_DEM_Mosaic_1m_v3. USGS Astrogeology Science Center mosaic of MRO HiRISE stereo DTMs. NASA/JPL/University of Arizona, USGS.  
+  Used for: The 4 km patch of 1 m ground around the outpost at Bradbury Landing.  
+  Source: <https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m>
+
 - **HRSC and MOLA Blended Digital Elevation Model, 200 m (v2)**  
   Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2. Fergason, Hare and Laura, USGS Astrogeology Science Center (2018). Blends MGS MOLA altimetry with Mars Express HRSC stereo (ESA, DLR, FU Berlin).  
   Used for: The Gale Crater terrain you walk and drive on (1,025 x 1,025 samples at 200 m).  
@@ -62,6 +67,23 @@ Made for the NASA Space Apps Challenge 2026.
   Hecht, M. et al. (2021). Space Science Reviews 217, 9. doi:10.1007/s11214-020-00782-8.  
   Used for: Background on making oxygen on Mars. The game's oxygen plant is a simpler water-electrolysis model.  
   Source: <https://doi.org/10.1007/s11214-020-00782-8>
+
+## Characters and animation
+
+- **VRoid Studio sample models (HairSample_Male, HairSample_Female)**  
+  pixiv Inc. Released by VRoid under CC0 1.0 (via OpenGameArt).  
+  Used for: The faces and hair of the male and female astronauts. The space suits are original.  
+  Source: <https://opengameart.org/content/vroid-studio-cc0-models>
+
+- **Universal Animation Library [Standard]**  
+  Quaternius. CC0 1.0.  
+  Used for: The astronauts' idle, walk, run, sprint, jump and fall animations.  
+  Source: <https://quaternius.itch.io/universal-animation-library>
+
+- **Universal Base Characters [Standard]**  
+  Quaternius. CC0 1.0.  
+  Used for: The rig the animations and the helmet-on animation were made on.  
+  Source: <https://quaternius.itch.io/universal-base-characters>
 
 ## Software and fonts
 

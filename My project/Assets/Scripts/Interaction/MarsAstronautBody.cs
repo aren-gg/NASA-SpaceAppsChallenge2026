@@ -44,6 +44,8 @@ namespace MarsSurvival.Interaction
         private Transform thighL, thighR, shinL, shinR;
         private Transform upperArmL, upperArmR, forearmL, forearmR;
         private bool built;
+        /// <summary>The skinned astronaut, when its models are present; null for the procedural blocky body.</summary>
+        private AstronautRig rig;
         private AstronautLook look;
 
         // Renderers that only cast shadows in first person, and the groups the helmet toggles.
@@ -61,6 +63,7 @@ namespace MarsSurvival.Interaction
         public void SetHeadVisible(bool visible)
         {
             headVisible = visible;
+            if (rig != null) { rig.SetHeadVisible(visible); return; }
             ShadowCastingMode mode = visible ? ShadowCastingMode.On : ShadowCastingMode.ShadowsOnly;
             foreach (MeshRenderer r in upper)
             {
@@ -72,6 +75,7 @@ namespace MarsSurvival.Interaction
         public void SetHelmet(bool on)
         {
             helmetOn = on;
+            if (rig != null) { rig.SetHelmet(on); return; }
             bool clear = look != null && look.ClearVisor;
             if (helmetPart != null) helmetPart.SetActive(on);
             if (headPart != null) headPart.SetActive(!on || clear);
@@ -94,6 +98,14 @@ namespace MarsSurvival.Interaction
             look = (newLook ?? new AstronautLook()).Clone();
             Clear();
             built = true;
+            // The skinned astronaut (male or female, from Blender) when its models are in Resources.
+            if (AstronautRig.Available(look.frame))
+            {
+                rig = new AstronautRig(transform, look);
+                rig.SetHelmet(helmetOn);
+                rig.SetHeadVisible(headVisible);
+                return;
+            }
             CreateMaterials();
             bool frameB = AstronautLook.Mod(look.frame, AstronautLook.Frames.Length) == 1;
 
@@ -123,6 +135,7 @@ namespace MarsSurvival.Interaction
 
         private void Clear()
         {
+            if (rig != null) { rig.Destroy(); rig = null; }
             upper.Clear();
             for (int i = transform.childCount - 1; i >= 0; i--)
             {
@@ -406,6 +419,7 @@ namespace MarsSurvival.Interaction
 
         private void OnDestroy()
         {
+            if (rig != null) { rig.Destroy(); rig = null; }
             foreach (Object o in owned)
             {
                 if (o != null) Destroy(o);
@@ -452,7 +466,7 @@ namespace MarsSurvival.Interaction
         }
 
         /// <summary>Turns a URP Lit (or built-in Standard) material into an alpha-blended glass.</summary>
-        private static void MakeSeeThrough(Material m, float alpha)
+        internal static void MakeSeeThrough(Material m, float alpha)
         {
             Color c = m.color; c.a = alpha; m.color = c;
             if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
@@ -474,12 +488,14 @@ namespace MarsSurvival.Interaction
         /// <summary>World position of a shoulder joint.</summary>
         public Vector3 ShoulderPosition(bool right)
         {
+            if (rig != null) return rig.ShoulderPosition(right);
             return (right ? upperArmR : upperArmL).position;
         }
 
         /// <summary>Shoulder-to-glove distance with the arm straight, in world units.</summary>
         public float ArmReach(bool right)
         {
+            if (rig != null) return rig.ArmReach(right);
             return (UpperArmLength + GripDistance) * (right ? upperArmR : upperArmL).lossyScale.y;
         }
 
@@ -492,6 +508,7 @@ namespace MarsSurvival.Interaction
         public void ReachArm(bool right, Vector3 grip, Vector3 handleUp, Vector3 elbowHint)
         {
             if (!built) return;
+            if (rig != null) { rig.ReachArm(right, grip, handleUp, elbowHint); return; }
             Transform upper = right ? upperArmR : upperArmL;
             Transform fore = right ? forearmR : forearmL;
             float scale = upper.lossyScale.y;
@@ -545,6 +562,7 @@ namespace MarsSurvival.Interaction
         public void Animate(float phase, float move, float sprint, float air, float vertical, float time)
         {
             if (!built) return;
+            if (rig != null) { rig.Animate(phase, move, sprint, air, vertical, time, Time.deltaTime); return; }
             float breathe = Mathf.Sin(time * 1.6f);
 
             float rise = Mathf.Clamp01(vertical), fall = Mathf.Clamp01(-vertical);

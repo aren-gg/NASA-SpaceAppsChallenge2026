@@ -24,3 +24,6 @@ __pycache__/
 
 /GuiBuilds/
 /GuiResults/*.log
+
+# Blender auto-backups
+*.blend1
