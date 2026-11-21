@@ -1,8 +1,10 @@
 """
 Real motion capture for the astronaut: CMU Graphics Lab Motion Capture Database
 (mocap.cs.cmu.edu; "free for use in research and commercial projects"), BVH conversion by
-Bruce Hahne (github.com/meshula/cmu-mocap). Every clip is one person (subject 16) except the
-idle, so the gait reads as one body.
+Bruce Hahne (github.com/meshula/cmu-mocap): a "stiff walk" (subject 74), a jog, run and jump
+(subject 16) and standing still (subject 82). Every clip then goes through a suit filter (arms held
+out and stiff, back upright), so it reads as an astronaut in a pressurised suit rather than a
+person in street clothes.
 
 Each take is imported, cut to one clean cycle (left and right step for the walk, run and
 sprint), turned to face -Y, put in place (the forward travel removed, the hip bob kept), copied
@@ -32,14 +34,35 @@ for _s, _S in (("l", "Left"), ("r", "Right")):
 # "hold": a stretch [a, b] looped by blending its end into its start; "pingpong": [a, b] there and back.
 CLIPS = {
     "Idle":   ("82_08", "hold", (100, 700)),
-    "Walk":   ("16_15", "cycle", 150),
+    "Walk":   ("74_01", "cycle", 200),   # "stiff walk": short, deliberate steps with a side-to-side sway, as in a suit
     "Run":    ("16_35", "cycle", 60),
     "Sprint": ("16_55", "cycle", 70),
     "Fall":   ("16_01", "air", None),
 }
 STEP = 4                      # 120 fps -> 30 fps
 KERNEL = [1, 2, 3, 2, 1]      # light smoothing at 120 fps (removes marker jitter, keeps the motion)
-ARM_OUT = 0.12                # upper arms swing a little wider to clear the bulky suit (radians)
+# Suit filter: a pressurised EVA suit holds the arms out from the body with the elbows bent and
+# lets them swing only a little; the hard upper torso keeps the back upright and barely twists.
+SUIT_ARM_KEEP = 0.35          # share of the performer's own arm swing kept
+SUIT_UPRIGHT = 0.5            # how far the spine and neck are pulled back toward upright
+SUIT_ARM = {"upperarm": Vector((0.36, -0.12, -0.92)), "lowerarm": Vector((0.2, -0.6, -0.77))}   # left side; -Y is forward
+SPINE = ("spine_01", "spine_02", "spine_03", "neck_01")
+
+
+def suit(name, rot, rest_rot):
+    """The performer's bone rotation as worn in a pressurised suit (see SUIT_*)."""
+    if name in SPINE:
+        q, r = rot.to_quaternion(), rest_rot.to_quaternion()
+        if q.dot(r) < 0: r.negate()
+        return q.slerp(r, SUIT_UPRIGHT).to_matrix()
+    part = name.split("_")[0]
+    if part in SUIT_ARM:
+        side = 1 if name.endswith("_l") else -1
+        held = SUIT_ARM[part].copy(); held.x *= side
+        d = rot.col[1].normalized()
+        want = held.normalized().lerp(d, SUIT_ARM_KEEP).normalized()
+        return d.rotation_difference(want).to_matrix() @ rot
+    return rot
 
 
 def order(arm):
@@ -129,9 +152,7 @@ def sample(src, tgt, O, a, b, ground=None, flat=False):
         drift = h0.lerp(h1, t)
         P, basis = {}, {}
         for n in names:
-            rot = yaw @ w[MAP[n]].to_3x3().normalized() @ O[n]
-            if n.startswith("upperarm_"):
-                rot = Matrix.Rotation(-ARM_OUT * (1 if n.endswith("_l") else -1), 3, "Y") @ rot
+            rot = suit(n, yaw @ w[MAP[n]].to_3x3().normalized() @ O[n], rest[n].to_3x3().normalized())
             bone = tgt.data.bones[n]
             if bone.parent is None:
                 d = w["Hips"].translation - drift
