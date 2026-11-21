@@ -1,17 +1,16 @@
 # P1 DATA — V1
 Implement the user-supplied P1 contract: offline Python preparation → bundled JSON → Unity Data repository.
 
-- Build order: fetch/normalize RAD, REMS, DONKI → merge 668 sols; crop estimates → JSON; DTOs → repository → EditMode integration tests.
+- Build order: fetch/normalize RAD, REMS, DONKI → merge 668 sols; DTOs → repository → EditMode integration tests.
 - Schedule is a JSON array, sols 0–667, Ls [0,360), Celsius [-150,50], tau [0,10], GCR [0,2000] uGy/day, flare integer [0,3], boolean alert, nonempty source.
 - REMS pressure (Pa) and UV remain in intermediate rows. Tau is an explicitly approximate UV attenuation proxy; categorical UV uses a documented mapping. Missing UV makes the merged row synthetic.
 - Fixed seed 668; Ls advances linearly for gameplay. Dust increases at Ls 180–360; synthetic flares occur in multi-sol clusters.
 - Source rows align by sol or UTC date against a fixed epoch (2024-01-01), 88775.244 seconds/sol. Never stretch a short feed to pretend it covers a year. Any missing component marks the merged row synthetic.
 - Default build is fully offline. Optional --online fetches have bounded timeout and raw cache; no API key stored. Missing/malformed data falls back per sol. No runtime remote requests.
-- Crops: per plant/harvest; PAR saturation in umol/m²/s, water L/day, CO2 ppm, photoperiod Earth hours; Earth days to harvest. NASA Veggie crop identities; provisional CEA values all need verification.
-- Unity: coroutine Load(basePath optional), Schedule/Crops properties, Newtonsoft required members and range validation. Local StreamingAssets only via UnityWebRequest (file/jar paths). Missing/invalid files independently reset to deterministic defaults and emit warnings.
+- Unity: DataRepository.LoadScheduleJson with Newtonsoft and range validation; MissionDataSources reads StreamingAssets. Missing/invalid files reset to deterministic defaults and emit warnings.
 - Tunables: Python config.json and pure-C# GameConstants; no Sim UnityEngine dependencies. One C# class/file, Data asmdef.
 - Tests: Python unittest for deterministic, partial, malformed and unavailable sources; Unity EditMode for bundled files, validation and missing-file warning/defaults.
-- Commands: python3 -m unittest discover -s Tools/tests; python3 Tools/build_schedule.py; python3 Tools/build_crops.py; Unity -batchmode -nographics -projectPath <project> -runTests -testPlatform EditMode -testResults <xml> -logFile <log>.
+- Commands: python3 -m unittest discover -s Tools/tests; python3 Tools/build_schedule.py.
 - Boundaries: preserve unrelated user changes; no commits, Library tracking, runtime networking, sim integration, UI or scene changes.
 
 Sources and limitations:

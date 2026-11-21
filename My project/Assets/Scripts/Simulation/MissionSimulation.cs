@@ -1,457 +1,162 @@
 using System;
-using System.Collections.Generic;
 using System.Globalization;
 
 namespace MarsSurvival.Simulation
 {
-    // Tuned teaching model; source-derived environmental inputs arrive through EnvironmentSample.
-    public sealed partial class MissionSimulation
+    /// <summary>
+    /// The whole game rule set: three vitals (oxygen, food, water), a greenhouse of plant spots,
+    /// a seed shop and credits. Buy seeds, sow them, water them, pick the crops, then eat or sell them;
+    /// spend credits on more plots. The astronaut is lost when any vital reaches zero.
+    /// </summary>
+    public sealed class MissionSimulation
     {
         public MissionState State { get; private set; }
-        public MissionSettings Settings { get; private set; }
-        public PowerSnapshot Power { get; private set; } = new PowerSnapshot();
         public EnvironmentSample Environment;
-        public List<string> Warnings { get; private set; } = new List<string>();
-        public bool DecisionRequired { get { return Warnings.Count > 0; } }
-        public bool NeedsDecision { get { return DecisionRequired; } }
-        public string DecisionReason { get { return Warnings.Count > 0 ? Warnings[0] : ""; } }
         public string LastResult { get; private set; } = "";
-        public double DurationSeconds { get { return MissionSettings.Duration(State.length); } }
-        public double WorkEfficiency { get { return Clamp(1 - State.astronaut.fatigue / 160, 0.35, 1) * (State.astronaut.satiety < 20 ? 0.7 : 1) * (0.7 + 0.3 * State.astronaut.fitness / 100); } }
-        public double BatteryCapacity { get { return (Settings.batteryCapacityKwh + State.equipment.extraBatteries * 90) * (Installed("E1") ? 1.5 : 1); } }
-        public double SuitHoursRemaining { get { return State.resources.suitOxygenGrams / (Settings.oxygenGramsPerSol / (MissionSettings.SolSeconds / 3600)); } }
-        /// <summary>Hunger, water, rest, oxygen, fitness and health, tracked by the MarsTrainer survival model.</summary>
-        public SurvivalNeeds Needs { get { return needs ?? (needs = new SurvivalNeeds(State.astronaut)); } }
-        private SurvivalNeeds needs;
-        private double KcalPerPortion { get { return SurvivalNeeds.KcalPerPortion * (Installed("H1") ? 1.15 : 1); } }
+        public bool IsRunning { get { return State.phase == MissionPhase.Running; } }
+        public bool Asleep { get { return State.sleepUntil > State.elapsedSeconds; } }
+        public int ExpansionPrice { get { return 25 * State.unlockedPlots; } }
+        public bool CanExpand { get { return State.unlockedPlots < MissionSettings.MaxPlots; } }
 
-        public MissionSimulation(MissionSettings settings, MissionState state)
+        public MissionSimulation(MissionState state)
         {
-            if (settings == null) throw new ArgumentNullException("settings");
-            if (state == null) throw new ArgumentNullException("state");
-            Settings = settings;
-            State = state;
-            EnsureCollections();
-            Power.batteryCapacityKwh = BatteryCapacity;
+            State = state ?? throw new ArgumentNullException("state");
+            while (State.plots.Count < MissionSettings.MaxPlots) State.plots.Add(new PlotState());
+            if (State.seeds == null || State.seeds.Length != SeedKind.All.Length) State.seeds = new int[SeedKind.All.Length];
+            if (State.basket == null || State.basket.Length != SeedKind.All.Length) State.basket = new int[SeedKind.All.Length];
         }
 
-        public static MissionState NewMission(MissionLength length, int seed)
+        public static MissionState NewMission(int seed)
         {
-            MissionState state = new MissionState { length = length, seed = seed, phase = MissionPhase.Running };
-            state.crops.Add(new CropState { bed = 0 });
-            state.crops.Add(new CropState { bed = 1, crop = "staple" });
-            double sols = MissionSettings.Duration(length) / MissionSettings.SolSeconds;
-            state.resources.cleanWaterLiters = 300 + sols * 4;
-            state.resources.nutrients = 60 + sols;
-            state.resources.food = 50;
-            state.resources.parts = 80;
-            // Wake up hungry and thirsty on sol 1, so breakfast in the galley is the first job.
-            state.astronaut.satiety = 60;
-            state.astronaut.hydration = 55;
-            state.history.Add("Mission started. Solar panels generate electricity; the three knobs decide how it is spent.");
+            var state = new MissionState { seed = seed, phase = MissionPhase.Running };
+            state.seeds[0] = 3; // a first packet of lettuce, so the loop starts at once
+            state.basket[0] = 2; // and two lettuces to eat while it grows
             return state;
         }
 
-        public bool Installed(string id) { return State.installed.Contains(id); }
-        public SiteState FindSite(string id) { return State.sites.Find(s => s.id == id); }
-        public CropState FindCrop(string target)
-        {
-            int index;
-            string part = (target ?? "0").Split(':')[0];
-            return int.TryParse(part, out index) ? State.crops.Find(c => c.bed == index) : null;
-        }
+        public PlotState Plot(int index) { return index >= 0 && index < State.plots.Count ? State.plots[index] : null; }
+        public bool Unlocked(int index) { return index >= 0 && index < State.unlockedPlots; }
 
-        public bool SetPowerRequest(PowerChannel channel, double value)
-        {
-            if (!Active || !Finite(value) || (int)channel < 0 || (int)channel > 2) return false;
-            State.knobs[(int)channel] = Clamp(value, 0, 1);
-            return true;
-        }
-
-        public bool Research(string id, out string reason)
-        {
-            ResearchNode node = ResearchCatalog.Find(id);
-            if (!Active) return Fail("The mission is not running.", out reason);
-            if (node == null) return Fail("Unknown research.", out reason);
-            if (State.researched.Contains(node.id)) return Fail("Already researched.", out reason);
-            foreach (string prerequisite in node.prerequisites)
-                if (!State.researched.Contains(prerequisite)) return Fail("Research " + prerequisite + " first.", out reason);
-            if (State.resources.researchPoints < node.points) return Fail("Not enough research points.", out reason);
-            State.resources.researchPoints -= node.points;
-            State.researched.Add(node.id);
-            Log("Researched " + node.title + ". Install the equipment to activate it.");
-            reason = LastResult;
-            return true;
-        }
-
+        /// <summary>Runs one action; returns false with the reason in <paramref name="reason"/> when it cannot.</summary>
         public bool Command(string action, string target, PlayerContext ctx, out string reason)
         {
-            reason = "";
-            if (!Active) return Fail("The mission is not running.", out reason);
-            string command = (action ?? "").ToLowerInvariant();
-            bool indoor = IsIndoors(ctx);
-            switch (command)
+            if (!IsRunning) return Fail("The mission is not running.", out reason);
+            // Targets: a plot index ("5"), a seed id ("lettuce"), "seed:plot" for sowing, or "plots".
+            string[] parts = (target ?? "").Split(':');
+            int spot; if (!int.TryParse(parts[parts.Length - 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out spot)) spot = -1;
+            PlotState plot = Plot(spot);
+            int kind = Array.FindIndex(SeedKind.All, s => s.id == parts[0]);
+            switch (action)
             {
                 case "eat":
-                    if (!AtGalley(ctx)) return Fail("Food is stored in the galley (command hub). Go there and use the food locker.", out reason);
-                    if (State.astronaut.satiety > 95) return Fail("You do not need another meal yet.", out reason);
-                    if (State.resources.food < 1) return Fail("No food portions remain.", out reason);
-                    double portions = State.resources.food;
-                    double eaten = Needs.Eat(State.astronaut, ref portions, KcalPerPortion);
-                    if (eaten <= 0) return Fail("You do not need another meal yet.", out reason);
-                    State.resources.food = portions;
-                    reason = string.Format(CultureInfo.InvariantCulture, "Ate {0:0} kcal ({1:0.0} portions).", eaten * KcalPerPortion, eaten);
-                    if (Morning) State.day.ateMorning = true; else State.day.ateEvening = true;
+                {
+                    if (State.astronaut.food > 95) return Fail("You are not hungry.", out reason);
+                    int best = -1;
+                    for (int i = 0; i < SeedKind.All.Length; i++) if (State.basket[i] > 0 && (best < 0 || SeedKind.All[i].sellPrice < SeedKind.All[best].sellPrice)) best = i;
+                    if (best < 0) return Fail("Nothing to eat. Harvest a crop first.", out reason);
+                    State.basket[best]--;
+                    State.astronaut.food = Math.Min(100, State.astronaut.food + SeedKind.All[best].food);
+                    reason = "Ate a " + SeedKind.All[best].name.ToLowerInvariant() + ".";
                     break;
+                }
                 case "drink":
-                    if (State.astronaut.hydration > 95) return Fail("Hydration is already sufficient.", out reason);
-                    if (State.resources.cleanWaterLiters < SurvivalNeeds.DrinkLitres) return Fail("No clean water is available.", out reason);
-                    if (!AtGalley(ctx)) return Fail("Drinking water comes from the dispenser in the galley (command hub).", out reason);
-                    double water = State.resources.cleanWaterLiters;
-                    double drunk = Needs.Drink(State.astronaut, ref water);
-                    if (drunk <= 0) return Fail("Hydration is already sufficient.", out reason);
-                    State.resources.cleanWaterLiters = water;
-                    State.resources.wasteWaterLiters += drunk * 0.8;
-                    State.totalWaterLostLiters += drunk * 0.2;
-                    reason = string.Format(CultureInfo.InvariantCulture, "Drank {0:0.00} L of water.", drunk);
-                    if (Morning) State.day.drankMorning = true; else State.day.drankEvening = true;
-                    break;
-                case "refill":
-                    if (!indoor) return Fail("Suit refill requires a habitat connection.", out reason);
-                    double transfer = Math.Min(Settings.suitCapacityGrams - State.resources.suitOxygenGrams, State.resources.oxygenGrams);
-                    if (transfer <= 0) return Fail("Suit is full or habitat oxygen is empty.", out reason);
-                    State.resources.suitOxygenGrams += transfer;
-                    State.resources.oxygenGrams -= transfer;
-                    reason = "Refilled suit from habitat oxygen.";
-                    break;
-                case "canister_fill":
-                    if (!indoor) return Fail("Refill the oxygen canister inside the habitat.", out reason);
-                    double fill = Math.Min(Settings.canisterCapacityGrams - State.resources.canisterOxygenGrams, State.resources.oxygenGrams);
-                    if (fill <= 0) return Fail("The canister is full or habitat oxygen is empty.", out reason);
-                    State.resources.canisterOxygenGrams += fill;
-                    State.resources.oxygenGrams -= fill;
-                    reason = string.Format(CultureInfo.InvariantCulture, "Filled the oxygen canister with {0:0} g of habitat oxygen.", fill);
-                    break;
-                case "canister_use":
-                    double dose = Math.Min(Settings.canisterDoseGrams, Math.Min(State.resources.canisterOxygenGrams,
-                        Settings.suitCapacityGrams - State.resources.suitOxygenGrams));
-                    if (State.resources.canisterOxygenGrams <= 0) return Fail("The oxygen canister is empty.", out reason);
-                    if (dose <= 0) return Fail("Suit oxygen is already full.", out reason);
-                    State.resources.canisterOxygenGrams -= dose;
-                    State.resources.suitOxygenGrams += dose;
-                    reason = string.Format(CultureInfo.InvariantCulture, "Topped up the suit with {0:0} g of oxygen from the canister.", dose);
-                    break;
-                case "water_crop":
-                    if (!WaterCrop(target, ctx, out reason)) return false;
-                    break;
-                case "plant_slot":
-                    if (!PlantSlot(target, ctx, out reason)) return false;
-                    break;
-                case "pick":
-                    if (!PickSlot(target, ctx, out reason)) return false;
-                    break;
-                case "dust_panel":
-                    if (!DustPanel(target, ctx, out reason)) return false;
+                    if (State.astronaut.water > 95) return Fail("You are not thirsty.", out reason);
+                    State.astronaut.water = 100;
+                    reason = "Drank water.";
                     break;
                 case "sleep":
-                    if (!StartSleep(ctx, out reason)) return false;
+                    if (ctx.zone == PlayerZone.Outdoors) return Fail("Sleep inside the habitat.", out reason);
+                    State.sleepUntil = State.elapsedSeconds + SecondsUntilMorning();
+                    reason = "Sleeping until 07:00.";
                     break;
-                case "airlock_exit":
-                    if (!indoor) return Fail("Use the habitat airlock to begin EVA.", out reason);
-                    if (State.resources.suitOxygenGrams < 100 || State.resources.fieldKwh < 0.1) return Fail("Refill suit oxygen and field battery before EVA.", out reason);
-                    if (State.resources.batteryKwh < 0.02 || State.resources.oxygenGrams < 10) return Fail("Airlock needs 0.02 kWh and 10 g of habitat oxygen.", out reason);
-                    State.resources.batteryKwh -= 0.02;
-                    State.resources.oxygenGrams -= 10;
-                    State.totalConsumedKwh += 0.02;
-                    reason = "Airlock cycled; suit supplies now support the EVA.";
+                case "plant":
+                {
+                    if (plot == null || !Unlocked(spot)) return Fail("This spot is locked. Buy more plots at the seed shop.", out reason);
+                    if (plot.seed != "") return Fail("Something is already growing here.", out reason);
+                    int pick = kind >= 0 ? kind : Array.FindIndex(State.seeds, n => n > 0);
+                    if (pick < 0 || State.seeds[pick] <= 0) return Fail("No seeds. Buy some at the seed shop.", out reason);
+                    State.seeds[pick]--;
+                    plot.seed = SeedKind.All[pick].id; plot.growth = 0; plot.wetUntil = 0;
+                    reason = "Sowed " + SeedKind.All[pick].name.ToLowerInvariant() + ". Water it to make it grow.";
                     break;
-                case "routine": State.routineEnabled = false; reason = "There is no automatic routine: eat and drink at the galley and sleep in a bunk."; break;
-                case "greenhouse": State.greenhouseEnabled = Toggle(State.greenhouseEnabled, target); reason = "Greenhouse power " + (State.greenhouseEnabled ? "enabled." : "disabled."); break;
-                case "charge_rover": State.chargeRover = Toggle(State.chargeRover, target); reason = "Rover charging " + (State.chargeRover ? "requested." : "disabled."); break;
-                case "charge_field": State.chargeField = Toggle(State.chargeField, target); reason = "Field battery charging " + (State.chargeField ? "requested." : "disabled."); break;
-                case "radio":
-                    RadioMode mode;
-                    if (!Enum.TryParse<RadioMode>(target, true, out mode)) return Fail("Choose Off, Listen or Transmit.", out reason);
-                    State.radioMode = mode;
-                    reason = "Radio " + mode.ToString().ToLowerInvariant() + ".";
+                }
+                case "water":
+                    if (plot == null || plot.seed == "") return Fail("Nothing is sown here.", out reason);
+                    if (plot.Ripe) return Fail("Ripe. Pick it with E.", out reason);
+                    plot.wetUntil = State.elapsedSeconds + MissionSettings.SolSeconds;
+                    reason = "Watered. It stays moist for one sol.";
                     break;
-                case "report":
-                    string fingerprint = ReportFingerprint();
-                    if (State.reports.Exists(r => r.id == fingerprint)) return Fail("This status report is already queued or acknowledged.", out reason);
-                    if (State.reports.Count >= 64) State.reports.RemoveAll(r => r.acknowledged);
-                    if (State.reports.Count >= 64) return Fail("Transmit queued reports before creating more.", out reason);
-                    State.reports.Add(new ReportState { id = fingerprint, createdSeconds = State.elapsedSeconds,
-                        summary = string.Format(CultureInfo.InvariantCulture, "Sol {0:0.0}: health {1:0}, battery {2:0.0} kWh; {3} analyzed samples, {4} marker photos; {5} repairs. {6}",
-                            State.elapsedSeconds / MissionSettings.SolSeconds + 1, State.astronaut.health, State.resources.batteryKwh,
-                            State.sites.FindAll(s => s.analyzed).Count, State.sites.FindAll(s => s.photographed).Count, State.repairsCompleted, Environment.label ?? "") });
-                    State.reportsCreated++;
-                    reason = "Report queued for Houston. Select Transmit when a link is available.";
+                case "pick":
+                {
+                    if (plot == null || !plot.Ripe) return Fail("Not ripe yet.", out reason);
+                    int index = Array.FindIndex(SeedKind.All, s => s.id == plot.seed);
+                    State.basket[index]++;
+                    plot.seed = ""; plot.growth = 0; plot.wetUntil = 0;
+                    reason = "Picked a " + SeedKind.All[index].name.ToLowerInvariant() + ".";
                     break;
-                case "survey":
-                case "measure":
-                    SiteState site = FindSite(target);
-                    if (site == null || ctx.nearbySiteId != site.id) return Fail("Stand beside the selected science site.", out reason);
-                    if ((command == "survey" && site.surveyed) || (command == "measure" && site.measured)) return Fail("This observation is already recorded.", out reason);
-                    if (State.task.kind != TaskKind.None) return Fail("Finish the current task first.", out reason);
-                    if (!SpendFieldEnergy(0.01, ctx.driving)) return Fail("The connected field battery is empty.", out reason);
-                    if (command == "survey") site.surveyed = true; else site.measured = true;
-                    site.discovered = true;
-                    State.resources.researchPoints += 4;
-                    reason = command == "survey" ? "Terrain survey recorded (+4 research). Heights are derived from the DEM." : "Environmental reading recorded (+4 research). See source labels for model assumptions.";
+                }
+                case "buy":
+                    if (target == "plots")
+                    {
+                        if (!CanExpand) return Fail("The greenhouse is fully planted out.", out reason);
+                        if (State.credits < ExpansionPrice) return Fail("Not enough credits.", out reason);
+                        State.credits -= ExpansionPrice;
+                        State.unlockedPlots = Math.Min(MissionSettings.MaxPlots, State.unlockedPlots + MissionSettings.PlotsPerExpansion);
+                        reason = "Greenhouse expanded to " + State.unlockedPlots + " plots.";
+                        break;
+                    }
+                    if (kind < 0) return Fail("Unknown seed.", out reason);
+                    if (State.credits < SeedKind.All[kind].price) return Fail("Not enough credits.", out reason);
+                    State.credits -= SeedKind.All[kind].price;
+                    State.seeds[kind]++;
+                    reason = "Bought " + SeedKind.All[kind].name.ToLowerInvariant() + " seeds.";
                     break;
-                case "cancel": CancelTask(); reason = LastResult; return true;
+                case "sell":
+                    if (kind < 0 || State.basket[kind] <= 0) return Fail("Nothing of that to sell.", out reason);
+                    int earned = State.basket[kind] * SeedKind.All[kind].sellPrice;
+                    reason = "Sold " + State.basket[kind] + " " + SeedKind.All[kind].name.ToLowerInvariant() + " for " + earned + " credits.";
+                    State.credits += earned;
+                    State.basket[kind] = 0;
+                    break;
                 default: return Fail("Unknown action.", out reason);
             }
             LastResult = reason;
             return true;
         }
 
-        public bool StartTask(TaskKind kind, string targetId, PlayerContext ctx, out string reason)
+        public double SecondsUntilMorning()
         {
-            TaskState task;
-            if (!BuildTask(kind, targetId, ctx, out task, out reason)) return false;
-            State.resources.parts -= task.reservedParts;
-            State.resources.seeds -= task.reservedSeeds;
-            State.resources.medicine -= task.reservedMedicine;
-            State.task = task;
-            if (kind == TaskKind.Transmit) State.radioMode = RadioMode.Transmit;
-            reason = "Started " + kind + ".";
-            LastResult = reason;
-            return true;
+            double hour = Environment.localHour;
+            double wait = MissionSettings.MorningHour - hour;
+            if (wait <= 0.25) wait += 24;
+            return wait * MissionSettings.HourSeconds;
         }
 
-        public TaskQuote GetTaskQuote(TaskKind kind, string targetId, PlayerContext ctx)
+        public void Step(double seconds, EnvironmentSample environment, PlayerContext ctx)
         {
-            string previousResult = LastResult, reason;
-            TaskState task;
-            bool available = BuildTask(kind, targetId, ctx, out task, out reason);
-            LastResult = previousResult;
-            TaskQuote quote = new TaskQuote { available = available, reason = reason ?? "" };
-            if (task == null) return quote;
-            quote.durationSeconds = task.durationSeconds / (kind == TaskKind.Rest || kind == TaskKind.Transmit ? 1 : WorkEfficiency);
-            quote.powerKw = kind == TaskKind.Transmit ? 0.18 : task.powerKw;
-            quote.estimatedKwh = quote.powerKw * quote.durationSeconds / 3600;
-            quote.parts = task.reservedParts; quote.seeds = task.reservedSeeds; quote.medicine = task.reservedMedicine;
-            quote.fieldPower = task.fieldPower;
-            quote.energySource = task.fieldPower ? task.roverPower ? "Rover battery" : "Field battery" : "Habitat grid";
-            return quote;
+            if (!IsRunning || double.IsNaN(seconds) || seconds <= 0) return;
+            Environment = environment;
+            double sols = seconds / MissionSettings.SolSeconds, hours = seconds / MissionSettings.HourSeconds;
+            AstronautState a = State.astronaut;
+            double rest = Asleep ? 0.5 : 1;
+            a.food = Math.Max(0, a.food - MissionSettings.FoodPerSol * sols * rest);
+            a.water = Math.Max(0, a.water - MissionSettings.WaterPerSol * sols * rest);
+            a.oxygen = ctx.zone == PlayerZone.Outdoors
+                ? Math.Max(0, a.oxygen - MissionSettings.OxygenPerHourOutside * hours * (ctx.sprinting ? 1.5 : 1))
+                : Math.Min(100, a.oxygen + MissionSettings.OxygenRefillPerHour * hours);
+            foreach (PlotState plot in State.plots)
+            {
+                if (plot.seed == "" || plot.Ripe) continue;
+                // Growth only counts while the soil is moist.
+                double wet = Math.Max(0, Math.Min(seconds, plot.wetUntil - State.elapsedSeconds));
+                plot.growth = Math.Min(1, plot.growth + wet / MissionSettings.SolSeconds / SeedKind.Find(plot.seed).sols);
+            }
+            State.elapsedSeconds += seconds;
+            if (!Asleep) State.sleepUntil = 0;
+            string cause = a.oxygen <= 0 ? "You ran out of oxygen outside." : a.food <= 0 ? "You starved." : a.water <= 0 ? "You died of thirst." : null;
+            if (cause != null) { State.phase = MissionPhase.Lost; State.endingReason = cause; LastResult = cause; }
         }
 
-        private bool BuildTask(TaskKind kind, string targetId, PlayerContext ctx, out TaskState task, out string reason)
-        {
-            reason = "";
-            task = null;
-            if (!Active) return Fail("The mission is not running.", out reason);
-            if (State.task.kind != TaskKind.None) return Fail("Finish or cancel the current task first.", out reason);
-            if (ctx.moving || ctx.driving) return Fail("Stop moving before starting a task.", out reason);
-            bool indoor = IsIndoors(ctx);
-            task = new TaskState { kind = kind, targetId = targetId ?? "", fieldPower = !indoor,
-                roverPower = ctx.driving, station = ctx.station ?? "", durationSeconds = 60, powerKw = 0.25 };
-            SiteState site = FindSite(targetId);
-            CropState crop = FindCrop(targetId);
-            switch (kind)
-            {
-                case TaskKind.Rest:
-                    if (!indoor) return Fail("Rest inside the habitat.", out reason);
-                    task.durationSeconds = task.targetId == "sleep" ? SecondsUntilMorning() : 6 * 3600; task.powerKw = 0; break;
-                case TaskKind.Exercise:
-                    if (!indoor) return Fail("Use the exercise equipment inside the habitat.", out reason);
-                    task.durationSeconds = 1800; task.powerKw = 0.08; break;
-                case TaskKind.Treat:
-                    if (!indoor) return Fail("Medical treatment requires the habitat medical station.", out reason);
-                    if (State.astronaut.health >= 99) return Fail("Medical treatment is not needed.", out reason);
-                    if (State.resources.medicine < 1) return Fail("No medical supplies remain.", out reason);
-                    task.reservedMedicine = 1; task.durationSeconds = 120; task.powerKw = 0.6; break;
-                case TaskKind.Plant:
-                    if (!indoor || crop == null) return Fail("Choose a greenhouse bed inside the habitat.", out reason);
-                    if (crop.planted) return Fail("This bed is already planted.", out reason);
-                    string[] pieces = task.targetId.Split(':');
-                    task.cropId = pieces.Length > 1 ? pieces[1].ToLowerInvariant() : crop.crop;
-                    if (task.cropId != "leafy" && task.cropId != "staple") return Fail("Choose leafy or staple crops.", out reason);
-                    if (State.resources.seeds < 1) return Fail("No seeds remain.", out reason);
-                    task.reservedSeeds = 1; task.durationSeconds = 30; task.powerKw = 0.15; break;
-                case TaskKind.Harvest:
-                    if (!indoor || crop == null || !crop.ready) return Fail("Choose a ready greenhouse crop.", out reason);
-                    if (State.resources.food >= Settings.foodCapacity) return Fail("Food storage is full.", out reason);
-                    task.durationSeconds = 30; task.powerKw = 0.15; break;
-                case TaskKind.RepairBase:
-                    if (!indoor) return Fail("Base repairs require access inside the habitat.", out reason);
-                    if (!State.faultActive && State.equipment.baseCondition >= 0.995) return Fail("The base does not need repair.", out reason);
-                    task.reservedParts = 2; task.durationSeconds = 120; task.powerKw = 0.5; break;
-                case TaskKind.RepairRover:
-                    if (ctx.distanceFromBase > 80 && !string.Equals(ctx.station, "rover", StringComparison.OrdinalIgnoreCase)) return Fail("Stand beside the rover to repair it.", out reason);
-                    if (State.equipment.roverCondition >= 0.995) return Fail("The rover does not need repair.", out reason);
-                    task.reservedParts = 2; task.durationSeconds = 120; task.powerKw = 0.5; break;
-                case TaskKind.SampleSoil:
-                case TaskKind.PlaceMarker:
-                case TaskKind.Photograph:
-                    if (site == null || ctx.nearbySiteId != site.id) return Fail("Stand beside the selected science site.", out reason);
-                    if (kind == TaskKind.SampleSoil && site.sampled) return Fail("This sample is already collected.", out reason);
-                    if (kind == TaskKind.PlaceMarker && site.markerPlaced) return Fail("This site already has a marker.", out reason);
-                    if (kind == TaskKind.Photograph && site.photographed) return Fail("This marker is already documented.", out reason);
-                    if (kind == TaskKind.Photograph && (!site.markerPlaced || !ctx.photoFramingValid || string.IsNullOrEmpty(ctx.photoEvidencePath))) return Fail("Frame the survey marker and target, then capture the photo.", out reason);
-                    task.durationSeconds = kind == TaskKind.SampleSoil ? 30 : kind == TaskKind.PlaceMarker ? 12 : 5;
-                    task.powerKw = kind == TaskKind.SampleSoil ? 0.4 : 0.08;
-                    task.evidencePath = ctx.photoEvidencePath ?? "";
-                    break;
-                case TaskKind.Analyze:
-                    if (!indoor) return Fail("Analyze samples at the habitat laboratory.", out reason);
-                    if (site == null || !site.sampled || site.analyzed) return Fail("Choose an unanalyzed soil sample.", out reason);
-                    task.durationSeconds = 60; task.powerKw = 0.5; break;
-                case TaskKind.DustPanels:
-                    if (ctx.distanceFromBase > 100) return Fail("Return to the outpost solar array.", out reason);
-                    if (State.equipment.panelDust < 0.005) return Fail("The panels are already clean.", out reason);
-                    task.durationSeconds = 60; task.powerKw = 0.3; break;
-                case TaskKind.Install:
-                    if (!indoor) return Fail("Install equipment from the habitat energy/work station.", out reason);
-                    ResearchNode node = ResearchCatalog.Find(task.targetId);
-                    if (task.targetId == "panel")
-                    {
-                        if (!Installed("S1") || State.equipment.extraPanels >= 2) return Fail("Install Array expansion first; two additional panel slots are available.", out reason);
-                        task.reservedParts = 8; task.durationSeconds = 180;
-                    }
-                    else if (task.targetId == "battery")
-                    {
-                        if (!Installed("E0") || State.equipment.extraBatteries >= 2) return Fail("Install Battery modules first; two additional battery slots are available.", out reason);
-                        task.reservedParts = 6; task.durationSeconds = 180;
-                    }
-                    else
-                    {
-                        if (node == null || !State.researched.Contains(node.id)) return Fail("Research this equipment first.", out reason);
-                        if (Installed(node.id)) return Fail("This upgrade is already installed.", out reason);
-                        task.targetId = node.id; task.reservedParts = node.parts; task.durationSeconds = node.installationSeconds;
-                    }
-                    task.powerKw = 0.6; break;
-                case TaskKind.Transmit:
-                    if (!State.reports.Exists(r => !r.acknowledged)) return Fail("Compose a report first.", out reason);
-                    task.targetId = State.reports.Find(r => !r.acknowledged).id;
-                    task.durationSeconds = 120; task.powerKw = 0; break;
-                default: return Fail("Choose an available task.", out reason);
-            }
-            if (State.resources.parts < task.reservedParts) return Fail("Not enough parts.", out reason);
-            if (task.fieldPower && (task.roverPower ? State.resources.roverKwh : State.resources.fieldKwh) <= 0 && task.powerKw > 0) return Fail("Charge the field equipment before starting.", out reason);
-            reason = "Ready.";
-            return true;
-        }
-
-        public void CancelTask()
-        {
-            if (!Active) return;
-            TaskState task = State.task;
-            if (task.kind == TaskKind.None) { LastResult = "No task is active."; return; }
-            // Materials remain reserved until completion. Work energy is never refunded.
-            State.resources.parts += task.reservedParts;
-            State.resources.seeds += task.reservedSeeds;
-            State.resources.medicine += task.reservedMedicine;
-            State.task = new TaskState();
-            Log("Cancelled " + task.kind + "; unused supplies returned, spent energy retained.");
-        }
-
-        public void Step(double seconds, EnvironmentSample environment, PlayerContext context)
-        {
-            if (!Active || !Finite(seconds) || seconds <= 0) return;
-            Environment = Sanitize(environment);
-            double remaining = Math.Min(seconds, DurationSeconds - State.elapsedSeconds);
-            bool distanceApplied = false;
-            while (remaining > 0.0000001 && Active)
-            {
-                double dt = Math.Min(Math.Max(0.1, Settings.fixedStepSeconds), remaining);
-                if (State.task.kind != TaskKind.None && State.task.kind != TaskKind.Transmit)
-                    dt = Math.Min(dt, Math.Max(0.001, (State.task.durationSeconds - State.task.progressSeconds) / Math.Max(0.1, TaskEfficiency())));
-                PlayerContext ctx = context;
-                if (distanceApplied) ctx.roverDistanceKm = 0;
-                Tick(dt, ctx);
-                distanceApplied = true;
-                remaining -= dt;
-            }
-            RefreshWarnings(context);
-        }
-
-        private void Tick(double seconds, PlayerContext context)
-        {
-            double hours = seconds / 3600, sols = seconds / MissionSettings.SolSeconds;
-            // The routine only acts while time is fast-forwarded, never just because the astronaut stands still.
-            TickDay(context);
-            ApplyPower(seconds, context);
-            TickLifeSupport(seconds, context);
-            TickCrops(seconds);
-            TickAstronaut(seconds, context);
-            if (State.astronaut.health > 0)
-            {
-                TickRadio(seconds, context);
-                TickTask(seconds, context);
-            }
-            double wearFactor = Installed("P3") ? 0.5 : 1;
-            State.equipment.baseCondition = Clamp(State.equipment.baseCondition - sols * (0.00025 + Environment.dust * 0.001 + (State.faultActive ? 0.03 : 0)) * wearFactor, 0, 1);
-            State.equipment.panelCondition = Clamp(State.equipment.panelCondition - sols * 0.0001 * wearFactor, 0.25, 1);
-            AddPanelDust(sols * (0.0006 + Environment.dust * 0.015));
-            if (context.roverDistanceKm > 0)
-            {
-                double km = Math.Max(0, context.roverDistanceKm);
-                double driveUse = Math.Min(State.resources.roverKwh, km * 0.5 * (1 + (1 - State.equipment.roverCondition) * 0.5));
-                State.resources.roverKwh -= driveUse;
-                State.totalConsumedKwh += driveUse;
-                State.equipment.roverCondition = Clamp(State.equipment.roverCondition - km * 0.0008, 0, 1);
-                State.roverOdometer += km;
-            }
-            State.elapsedSeconds = Math.Min(DurationSeconds, State.elapsedSeconds + seconds);
-            ClampState();
-            if (State.astronaut.health <= 0)
-            {
-                State.phase = MissionPhase.Lost;
-                State.endingReason = string.IsNullOrEmpty(State.astronaut.lastDamageCause) ? "The astronaut's health reached zero." : State.astronaut.lastDamageCause;
-                Log("Mission ended: " + State.endingReason);
-            }
-            else if (State.elapsedSeconds >= DurationSeconds - 0.000001)
-            {
-                State.elapsedSeconds = DurationSeconds;
-                State.phase = MissionPhase.Won;
-                State.endingReason = "You kept the astronaut alive for the selected Martian mission.";
-                Log(State.endingReason);
-            }
-        }
-
-        private bool Active { get { return State.phase == MissionPhase.Running; } }
-        private static bool IsIndoors(PlayerContext ctx) { return ctx.zone != PlayerZone.Outdoors && !ctx.driving; }
-        private static bool Toggle(bool current, string value) { return string.IsNullOrEmpty(value) ? !current : value == "on" || value == "true"; }
-        private static bool Finite(double value) { return !double.IsNaN(value) && !double.IsInfinity(value); }
-        private static double Clamp(double value, double min, double max) { return Math.Max(min, Math.Min(max, value)); }
         private bool Fail(string text, out string reason) { reason = text; LastResult = text; return false; }
-        private void Log(string text)
-        {
-            LastResult = text;
-            State.history.Add("Sol " + (State.elapsedSeconds / MissionSettings.SolSeconds + 1).ToString("0.0", CultureInfo.InvariantCulture) + ": " + text);
-            if (State.history.Count > 100) State.history.RemoveRange(0, State.history.Count - 100);
-        }
-
-        private void EnsureCollections()
-        {
-            if (State.knobs == null || State.knobs.Length != 3) State.knobs = new[] { 0.42, 0.45, 0.05 };
-            if (State.crops == null) State.crops = new List<CropState>();
-            if (State.sites == null) State.sites = new List<SiteState>();
-            if (State.researched == null) State.researched = new List<string>();
-            if (State.installed == null) State.installed = new List<string>();
-            if (State.reports == null) State.reports = new List<ReportState>();
-            if (State.history == null) State.history = new List<string>();
-            if (State.task == null) State.task = new TaskState();
-            if (State.day == null) State.day = new DayState();
-            if (State.panelDustEach == null || State.panelDustEach.Length != PanelCount)
-            {
-                State.panelDustEach = new double[PanelCount];
-                for (int i = 0; i < PanelCount; i++) State.panelDustEach[i] = State.equipment.panelDust;
-            }
-            State.routineEnabled = false;
-        }
-
-        private EnvironmentSample Sanitize(EnvironmentSample value)
-        {
-            value.solarFraction = Finite(value.solarFraction) ? Clamp(value.solarFraction, 0, 2) : 0;
-            value.radiationMicrograyPerHour = Finite(value.radiationMicrograyPerHour) ? Math.Max(0, value.radiationMicrograyPerHour) : 0;
-            value.temperatureC = Finite(value.temperatureC) ? Clamp(value.temperatureC, -150, 80) : -65;
-            value.dust = Finite(value.dust) ? Clamp(value.dust, 0, 1) : 0;
-            value.solarEvent = Finite(value.solarEvent) ? Clamp(value.solarEvent, 0, 1) : 0;
-            value.signal = Finite(value.signal) ? Clamp(value.signal, 0, 1) : 0;
-            return value;
-        }
     }
 }

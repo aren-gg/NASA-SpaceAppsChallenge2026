@@ -537,17 +537,13 @@ namespace MarsSurvival.UI
                 { "Mouse", "Look around" },
                 { "Shift", "Run" },
                 { "Space", "Jump (gravity is low on Mars!)" },
-                { "1 – 9, 0", "Pick a tool from the hotbar" },
+                { "1 – 3", "Shovel, sprayer, work lamp" },
                 { "Left click", "Use the tool" },
-                { "R", "The tool's extra action" },
-                { "E", "Pick up a tool / board the rover" },
-                { "F / G", "Eat / drink" },
-                { "Tab", "Outpost console: power, tasks" },
-                { "H", "Help: how to do your daily tasks" },
-                { "P", "Pause or resume the mission" },
+                { "R", "Shovel: choose the seed" },
+                { "E", "Pick up a tool, shop, pick, eat, drink, sleep" },
+                { "P", "Pause or resume" },
                 { "Esc", "Menu: pause, controls, sound" },
-                { "F5 / F9", "Save / load mission" },
-                { "F3", "Terrain data" },
+                { "F5 / F9", "Save / load" },
             };
             for (int i = 0; i < rows.GetLength(0); i++)
             {

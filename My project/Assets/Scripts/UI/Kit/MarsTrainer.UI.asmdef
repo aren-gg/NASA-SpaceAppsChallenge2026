@@ -3,10 +3,6 @@
     "rootNamespace": "MarsTrainer.UI",
     "references": [
         "MarsTrainer.Sim",
-        "MarsTrainer.Data",
-        "MarsTrainer.Core",
-        "MarsTrainer.Sim.Research",
-        "MarsTrainer.Data.Research",
         "Unity.ugui",
         "Unity.TextMeshPro"
     ],

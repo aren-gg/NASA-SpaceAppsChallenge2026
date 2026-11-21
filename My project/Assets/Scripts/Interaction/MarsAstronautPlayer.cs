@@ -81,8 +81,6 @@ namespace MarsSurvival.Interaction
         public float sprintStride = 3.6f;
 
         public bool IsGrounded { get { return grounded; } }
-        /// <summary>True while the astronaut is aboard a vehicle and the vehicle owns the camera.</summary>
-        public bool IsDriving { get { return driving; } }
         public Camera ViewCamera { get { return viewCamera; } }
         /// <summary>True once the astronaut has been set down on the ground at the start.</summary>
         public bool IsReady { get { return placed && neck != null; } }
@@ -94,14 +92,13 @@ namespace MarsSurvival.Interaction
         /// </summary>
         public bool CameraLocked
         {
-            // In the rover there is no first person: only shift lock captures the cursor.
-            get { return (!driving && cameraDistanceGoal < 0.5f) || MarsTrainer.UI.CameraPrefs.ShiftLockActive; }
+            get { return cameraDistanceGoal < 0.5f || MarsTrainer.UI.CameraPrefs.ShiftLockActive; }
         }
 
         /// <summary>
         /// This frame's mouse turn in degrees (x right, y up), already scaled by the camera
         /// sensitivity setting; zero while the mouse is not turning the view. The astronaut
-        /// applies it to its own view; the rover reads it for its chase camera.
+        /// applies it to its own view.
         /// </summary>
         public Vector2 LookDelta { get; private set; }
 
@@ -137,7 +134,7 @@ namespace MarsSurvival.Interaction
         private MarsTerrainFlyCamera flyCamera;
         private Vector3 velocity;          // metres per second, world axes
         private float yaw, pitch;
-        private bool grounded, sprinting, placed, flying, driving;
+        private bool grounded, sprinting, placed, flying;
         private float jumpBuffer;
         private float phase, moveBlend, sprintBlend, airBlend;
         private float landDip, cameraDip;
@@ -543,7 +540,7 @@ namespace MarsSurvival.Interaction
             float forwardInput = 0f, sideInput = 0f;
             bool sprintHeld = false;
 #if ENABLE_LEGACY_INPUT_MANAGER
-            if (!driving && Debug.isDebugBuild && mission == null && Input.GetKeyDown(KeyCode.F2) && flyCamera != null) SetFlying(!flying);
+            if (Debug.isDebugBuild && mission == null && Input.GetKeyDown(KeyCode.F2) && flyCamera != null) SetFlying(!flying);
             if (flying) return;
 
             // Shift lock toggle (Ctrl, since Shift sprints). Allowed only when the Shift Lock
@@ -577,9 +574,6 @@ namespace MarsSurvival.Interaction
                 float sensitivity = lookSensitivity * MarsTrainer.UI.CameraPrefs.Sensitivity;
                 LookDelta = new Vector2(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y")) * sensitivity;
             }
-            // In the rover the same cursor handling applies, but the rover turns its own chase
-            // camera with LookDelta and uses the scroll wheel for its own zoom.
-            if (driving) return;
             yaw += LookDelta.x;
             pitch = Mathf.Clamp(pitch - LookDelta.y, -80f, 80f);
             if (!cursorReleased) Zoom(Input.mouseScrollDelta.y);
@@ -590,7 +584,6 @@ namespace MarsSurvival.Interaction
             sprintHeld = Input.GetKey(KeyCode.LeftShift);
             if (Input.GetKeyDown(KeyCode.Space)) jumpBuffer = 0.15f;
 #endif
-            if (driving) return;
             if (SimulatedMove.HasValue) { sideInput = SimulatedMove.Value.x; forwardInput = SimulatedMove.Value.y; }
             float dt = Time.deltaTime;
             // The head pitches about the neck, so looking down also moves the eyes forward.
@@ -759,13 +752,9 @@ namespace MarsSurvival.Interaction
             neck.localPosition = new Vector3(bobX, NeckHeight + bobY - cameraDip, 0f);
         }
 
-        /// <summary>
-        /// Boards a vehicle: the astronaut is hidden and stops responding to input, and the
-        /// camera is released for the vehicle to place. Returns false if that is not possible now.
-        /// </summary>
+        /// <summary>Puts the astronaut at a position and heading (mission start or load).</summary>
         public void RestoreMissionPose(Vector3 position, float heading)
         {
-            if (driving) LeaveVehicle(position, heading);
             transform.position = position;
             yaw = bodyYaw = heading; pitch = 0; velocity = Vector3.zero; grounded = true;
             transform.rotation = Quaternion.Euler(0f, bodyYaw, 0f);
@@ -790,37 +779,6 @@ namespace MarsSurvival.Interaction
                 if (eye != null) eye.localRotation = Quaternion.identity;
             }
             PlaceCamera(0f);
-        }
-
-        public bool BoardVehicle()
-        {
-            if (!IsReady || driving) return false;
-            if (flying) SetFlying(false);
-            driving = true;
-            velocity = Vector3.zero;
-            body.gameObject.SetActive(false);
-            if (capsule != null) capsule.enabled = false;
-            viewCamera.transform.SetParent(null, true);
-            return true;
-        }
-
-        /// <summary>Steps out of a vehicle at a world position, facing a heading in degrees.</summary>
-        public void LeaveVehicle(Vector3 position, float heading)
-        {
-            if (!driving) return;
-            driving = false;
-            position.y = GroundY(position);
-            transform.position = position;
-            yaw = bodyYaw = heading;
-            transform.rotation = Quaternion.Euler(0f, bodyYaw, 0f);
-            pitch = 0f;
-            velocity = Vector3.zero;
-            grounded = true;
-            body.gameObject.SetActive(true);
-            if (capsule != null) capsule.enabled = true;
-            MountCamera();
-            viewCamera.fieldOfView = fieldOfView;
-            LockCursor(true);
         }
 
         /// <summary>F2: hand the camera to the free inspection camera, or take it back.</summary>

@@ -11,12 +11,10 @@ namespace MarsSurvival.UI
 {
     /// <summary>
     /// On-screen display for the tools, built in code with uGUI and the MarsTrainer UI font:
-    /// a numbered hotbar of the 10 tools (a slot fills when its tool is picked up from its
-    /// outpost rack), a crosshair with a progress ring (the tool's motion, then the mission
-    /// task it started) and "CLICK to ..." prompts, a card describing what you look at or the
-    /// site you stand at, the held tool's readout, floating "+research" pop-ups, waypoints,
-    /// a low-oxygen warning glow and a camera viewfinder. Vitals, warnings and the next step
-    /// are on the mission HUD. Only shown while walking as the astronaut on a mission.
+    /// a numbered hotbar (a slot fills when its tool is picked up from its outpost rack), a
+    /// crosshair with a progress ring and "Click to ..." prompts, a card describing what you
+    /// look at, the held tool's readout, floating pop-ups, waypoints and a low-oxygen glow.
+    /// Vitals and messages are on the mission HUD. Only shown while walking on a mission.
     /// </summary>
     public sealed class MarsToolHud : MonoBehaviour
     {
@@ -49,11 +47,6 @@ namespace MarsSurvival.UI
         private readonly List<TMP_Text> popups = new List<TMP_Text>();
         private Image flash;
         private RawImage warning;
-        // Mini-game widget: a bar with a green zone and a needle, and a heat bar for drilling.
-        private RectTransform gameRoot;
-        private Image gameTrack, gameZone, gameFill, gameNeedle, heatTrack, heatFill, heatRed;
-        private TMP_Text gameCount;
-        private RectTransform viewfinder;
 
         private void Start()
         {
@@ -93,16 +86,6 @@ namespace MarsSurvival.UI
             warning.texture = VignetteTexture();
             warning.color = WithAlpha(MarsTrainer.UI.UiTheme.Danger, 0f);
             warning.raycastTarget = false;
-
-            // Camera viewfinder: four corner brackets.
-            viewfinder = NewRect("Viewfinder", canvasRect, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(760f, 460f));
-            for (int i = 0; i < 4; i++)
-            {
-                Vector2 corner = new Vector2(i % 2 == 0 ? -1f : 1f, i < 2 ? 1f : -1f);
-                Vector2 at = new Vector2(corner.x * 380f, corner.y * 230f);
-                Panel(viewfinder, "Across", round, new Vector2(0.5f, 0.5f), at - new Vector2(corner.x * 30f, 0f), new Vector2(64f, 6f), WithAlpha(pink, 0.8f)).pixelsPerUnitMultiplier = 8f;
-                Panel(viewfinder, "Down", round, new Vector2(0.5f, 0.5f), at - new Vector2(0f, corner.y * 30f), new Vector2(6f, 64f), WithAlpha(pink, 0.8f)).pixelsPerUnitMultiplier = 8f;
-            }
 
             // Waypoints.
             for (int i = 0; i < WaypointCount; i++)
@@ -208,24 +191,6 @@ namespace MarsSurvival.UI
                 popups.Add(popup);
             }
 
-            // Mini-game bars under the prompt.
-            gameRoot = NewRect("Mini-game", canvasRect, new Vector2(0.5f, 0.5f), new Vector2(0f, -140f), new Vector2(440f, 70f));
-            Image gamePlate = Panel(gameRoot, "Plate", round, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(470f, 80f), WithAlpha(purple, 0.75f));
-            gamePlate.pixelsPerUnitMultiplier = 2f;
-            gameTrack = Panel(gameRoot, "Track", round, new Vector2(0.5f, 0.5f), new Vector2(-20f, 12f), new Vector2(380f, 22f), WithAlpha(pink, 0.25f));
-            gameTrack.pixelsPerUnitMultiplier = 4f;
-            gameZone = Panel(gameTrack.rectTransform, "Zone", null, Vector2.zero, Vector2.zero, Vector2.zero, new Color(0.55f, 0.85f, 0.8f, 0.9f));
-            gameFill = Panel(gameTrack.rectTransform, "Fill", null, Vector2.zero, Vector2.zero, Vector2.zero, WithAlpha(orange, 0.9f));
-            gameNeedle = Panel(gameTrack.rectTransform, "Needle", null, Vector2.zero, Vector2.zero, Vector2.zero, Color.white);
-            gameCount = Label(gameRoot, "", 20, pink, FontStyle.Bold, TextAnchor.MiddleLeft);
-            Place(gameCount.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(205f, 12f), new Vector2(60f, 30f));
-            heatTrack = Panel(gameRoot, "Heat", round, new Vector2(0.5f, 0.5f), new Vector2(-20f, -18f), new Vector2(380f, 12f), WithAlpha(pink, 0.2f));
-            heatTrack.pixelsPerUnitMultiplier = 6f;
-            heatRed = Panel(heatTrack.rectTransform, "Red", null, Vector2.zero, Vector2.zero, Vector2.zero, new Color(1f, 0.45f, 0.4f, 0.55f));
-            heatFill = Panel(heatTrack.rectTransform, "Fill", null, Vector2.zero, Vector2.zero, Vector2.zero, orange);
-            Span(heatRed.rectTransform, 0.85f, 1f, 0f, 1f);
-            gameRoot.gameObject.SetActive(false);
-
             flash = Panel(canvasRect, "Camera Flash", null, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero, new Color(1f, 1f, 1f, 0f));
             Stretch(flash.rectTransform);
         }
@@ -248,35 +213,22 @@ namespace MarsSurvival.UI
             string orangeHex = "#" + ColorUtility.ToHtmlStringRGB(orange);
             float ease = 1f - Mathf.Exp(-15f * dt);
 
-            // Crosshair, progress ring and prompt. After the tool's motion, the ring follows the
-            // mission task the click started (it runs while the astronaut stands still).
-            MissionState state = MarsExpedition.State;
-            bool taskRunning = state != null && state.task.kind != TaskKind.None;
-            float taskProgress = taskRunning ? (float)(state.task.progressSeconds / System.Math.Max(1.0, state.task.durationSeconds)) : 0f;
+            // Crosshair, progress ring and prompt.
             bool working = belt.Working != null;
             bool usable = plan != null && !plan.Blocked;
             crosshairRing.color = Color.Lerp(crosshairRing.color, usable ? orange : WithAlpha(pink, 0.4f), ease);
             float ringScale = working ? 0f : usable ? 1f + 0.08f * Mathf.Sin(now * 6f) : 0.8f;
             crosshairRing.rectTransform.localScale = Vector3.one * Mathf.Lerp(crosshairRing.rectTransform.localScale.x, ringScale, ease);
-            progressRing.transform.parent.gameObject.SetActive(working || taskRunning);
-            progressRing.fillAmount = working ? Mathf.MoveTowards(progressRing.fillAmount, belt.Progress, dt * 3f)
-                                    : taskRunning ? Mathf.MoveTowards(progressRing.fillAmount, taskProgress, dt * 3f) : 0f;
+            progressRing.transform.parent.gameObject.SetActive(working);
+            progressRing.fillAmount = working ? Mathf.MoveTowards(progressRing.fillAmount, belt.Progress, dt * 3f) : 0f;
             progressRing.color = belt.AimLost ? WithAlpha(pink, 0.6f) : orange;
             float pop = Mathf.Clamp01(1f - (now - belt.CompletedAt) / 0.3f);
             crosshair.rectTransform.localScale = Vector3.one * (1f + pop * 1.5f);
             crosshair.color = pop > 0f ? orange : pink;
 
-            MiniGame game = belt.Game;
-            UpdateGame(game, now);
             MarsToolPickup pickup = MarsMissionController.Instance == null ? null : MarsMissionController.Instance.Tools;
             string use = pickup == null ? null : pickup.UseLabel;
-            if (game != null)
-            {
-                prompt.text = belt.AimLost ? "Keep aiming at it!" : game.Status + "   <color=" + orangeHex + ">X</color> to stop";
-                bool missed = now - game.MissedAt < 0.5f;
-                prompt.color = missed || game.Jammed ? new Color(1f, 0.5f, 0.45f) : now - game.HitAt < 0.4f ? new Color(0.6f, 0.95f, 0.85f) : pink;
-            }
-            else if (!working && use != null && (plan == null || plan.Blocked))
+            if (!working && use != null && (plan == null || plan.Blocked))
             {
                 prompt.text = "<color=" + orangeHex + ">E</color>  to " + use;
                 prompt.color = pink;
@@ -285,13 +237,6 @@ namespace MarsSurvival.UI
             {
                 prompt.text = belt.AimLost ? "Keep aiming at it!" : Capitalize(belt.Working.Label) + "...";
                 prompt.color = belt.AimLost ? WithAlpha(pink, 0.6f + 0.4f * Mathf.Abs(Mathf.Sin(now * 8f))) : orange;
-            }
-            else if (taskRunning)
-            {
-                bool moving = MarsExpedition.Mission != null && (MarsExpedition.Mission.Context.moving || MarsExpedition.Mission.Context.driving);
-                prompt.text = Capitalize(MarsTool.TaskName(state.task.kind)) + "  " + Mathf.RoundToInt(taskProgress * 100f) + "%" +
-                              (moving ? "  (paused while you move)" : "  (stand still)") + "   X to stop";
-                prompt.color = moving ? WithAlpha(pink, 0.7f) : orange;
             }
             else if (plan == null)
             {
@@ -345,7 +290,7 @@ namespace MarsSurvival.UI
             toolHint.color = WithAlpha(pink, 0.9f * Mathf.Clamp01(1f - (now - belt.SwitchedAt - 5f) / 1f));
 
             // Low-oxygen glow while outside on suit air.
-            float oxygen = expedition.SuitOxygen;
+            float oxygen = MarsExpedition.State == null ? 100f : (float)MarsExpedition.State.astronaut.oxygen;
             float danger = expedition.Outdoors ? Mathf.Clamp01((25f - oxygen) / 25f) : 0f;
             warning.color = WithAlpha(warning.color, danger * (0.45f + 0.25f * Mathf.Sin(now * 5f)));
 
@@ -359,9 +304,6 @@ namespace MarsSurvival.UI
                 readoutCard.sizeDelta = new Vector2(420f, 60f + readoutBody.preferredHeight);
             }
 
-            viewfinder.gameObject.SetActive(tool.Pose == ToolPose.Camera);
-            float frame = Mathf.Lerp(viewfinder.localScale.x, belt.Zoomed ? 1.15f : 1f, ease);
-            viewfinder.localScale = new Vector3(frame, frame, 1f);
 
             UpdateWaypoints();
             UpdatePopups(now);
@@ -433,41 +375,6 @@ namespace MarsSurvival.UI
                 used++;
             }
             for (int i = used; i < PopupCount; i++) popups[i].gameObject.SetActive(false);
-        }
-
-        private void UpdateGame(MiniGame game, float now)
-        {
-            gameRoot.gameObject.SetActive(game != null);
-            if (game == null) return;
-            bool heat = game.View == MiniGameView.Heat;
-            bool zone = game.View != MiniGameView.Heat;
-            bool needle = game.View == MiniGameView.Dial || game.View == MiniGameView.Scan || game.View == MiniGameView.Soak;
-            heatTrack.gameObject.SetActive(heat);
-            gameZone.gameObject.SetActive(zone);
-            gameNeedle.gameObject.SetActive(needle);
-            gameFill.gameObject.SetActive(heat || game.View == MiniGameView.Soak);
-            Span(gameZone.rectTransform, game.ZoneStart, game.ZoneEnd, 0f, 1f);
-            float shake = Mathf.Clamp01(1f - (now - game.MissedAt) / 0.35f);
-            gameRoot.anchoredPosition = new Vector2(Mathf.Sin(now * 70f) * 8f * shake, -140f);
-            if (game.View == MiniGameView.Soak)
-            {
-                float level = game.Fill / SoakGame.Max;
-                Span(gameFill.rectTransform, 0f, level, 0.2f, 0.8f);
-                Span(gameNeedle.rectTransform, level - 0.006f, level + 0.006f, -0.35f, 1.35f);
-                gameCount.text = Mathf.RoundToInt(game.Fill * 100f) + "%";
-            }
-            else if (heat)
-            {
-                Span(gameFill.rectTransform, 0f, game.Fill, 0f, 1f);
-                Span(heatFill.rectTransform, 0f, Mathf.Clamp01(game.Heat), 0f, 1f);
-                heatFill.color = Color.Lerp(MarsTrainer.UI.UiTheme.Accent, new Color(1f, 0.35f, 0.3f), Mathf.Clamp01((game.Heat - 0.5f) * 2f));
-                gameCount.text = game.Jammed ? "JAM" : Mathf.RoundToInt(game.Fill * 100f) + "%";
-            }
-            else
-            {
-                Span(gameNeedle.rectTransform, game.Needle - 0.007f, game.Needle + 0.007f, -0.35f, 1.35f);
-                gameCount.text = game.Count + "/" + game.Total;
-            }
         }
 
         /// <summary>Stretches a child across a fraction of its parent.</summary>

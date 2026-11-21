@@ -980,7 +980,7 @@ namespace MarsSurvival.Base
         {
             FloorRect r = Greenhouse;
             BeginRoom("Greenhouse", r,
-                "Farming: crops grown under lights top up the food store (Hunger). They need water, power and tending.",
+                "Greenhouse: buy seeds at the shop terminal, then sow, water and pick crops to eat or sell.",
                 "Regolith Shovel, Hydroponic Sprayer");
             const float h = 2.7f;
             Opening[] west = { Window(-9.5f, 1.6f), Window(-12.5f, 1.6f), Window(-15.5f, 1.6f) };
@@ -1001,7 +1001,7 @@ namespace MarsSurvival.Base
                 g.Box(Purple, x0 + 0.95f, 2.2f, -15.5f, x0 + 1.05f, h, -15.4f);
                 g.Box(Purple, x0 + 0.95f, 2.2f, -9.3f, x0 + 1.05f, h, -9.2f);
 
-                // The plants themselves are live: MarsWorldTasks draws 12 plant spots per bed from the crop state.
+                // The plants themselves are live: MarsWorldTasks draws 12 plots per bed from the plot state.
             }
             // Water tank, potting bench and tools at the far end.
             Tank(Mauve, -2.6f, -17.25f, 0.5f, 1.5f, Purple);

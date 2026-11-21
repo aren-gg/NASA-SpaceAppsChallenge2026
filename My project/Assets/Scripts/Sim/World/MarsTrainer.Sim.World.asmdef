@@ -1,8 +1,0 @@
-{
-  "name": "MarsTrainer.Sim.World",
-  "rootNamespace": "MarsTrainer.Sim.World",
-  "references": [
-    "MarsTrainer.Sim"
-  ],
-  "noEngineReferences": true
-}

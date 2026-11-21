@@ -10,20 +10,15 @@ namespace MarsSurvival.Simulation
     /// <list type="bullet">
     /// <item>mars_year_schedule.json: 668 sols of daily temperature range (Curiosity REMS / InSight), dust opacity,
     /// GCR dose (Curiosity RAD) and flare level (NASA DONKI), used by <see cref="MissionEnvironment"/>.</item>
-    /// <item>crop_parameters.json: KSC Veggie / CEA crop estimates, used for the leafy greenhouse bed's water use.</item>
     /// </list>
-    /// The dose budget itself (NASA-STD-3001 Vol. 1 career limit) lives in the MarsTrainer GameConstants.
     /// Missing or invalid files fall back to the repository defaults with a warning; nothing is fetched at runtime.
     /// </summary>
     public static class MissionDataSources
     {
         public const string ScheduleFile = "mars_year_schedule.json";
-        public const string CropFile = "crop_parameters.json";
-        /// <summary>Plants in one leafy greenhouse bed (gameplay layout, not a NASA figure).</summary>
-        public const int LeafyPlantsPerBed = 8;
 
         private static DataRepository repository;
-        private static bool scheduleFromFile, cropsFromFile;
+        private static bool scheduleFromFile;
 
         public static DataRepository Repository
         {
@@ -60,42 +55,10 @@ namespace MarsSurvival.Simulation
             return days;
         }
 
-        /// <summary>Litres per sol for one leafy bed from the Veggie crop estimates (per-plant L per Earth day).</summary>
-        public static double LeafyBedWaterLitersPerSol()
-        {
-            var crops = Repository.Crops;
-            if (crops == null || crops.Count == 0) return 1;
-            double perPlant = 0;
-            foreach (CropDto crop in crops) perPlant += crop.waterLPerDay;
-            perPlant /= crops.Count;
-            return perPlant * LeafyPlantsPerBed * MissionSettings.SolSeconds / 86400.0;
-        }
-
-        public static string CropSourceLabel
-        {
-            get
-            {
-                var crops = Repository.Crops;
-                if (crops == null || crops.Count == 0) return "No crop data";
-                string names = "";
-                foreach (CropDto crop in crops) names += (names.Length > 0 ? ", " : "") + crop.name;
-                return "KSC Veggie / CEA estimates (" + names + ")" + (cropsFromFile ? "" : " - defaults");
-            }
-        }
-
-        /// <summary>Mission settings with the data-derived values applied.</summary>
-        public static MissionSettings CreateSettings()
-        {
-            var settings = new MissionSettings();
-            settings.leafyWaterLitersPerSol = LeafyBedWaterLitersPerSol();
-            return settings;
-        }
-
         public static void Load()
         {
             repository = new DataRepository(message => Debug.LogWarning("Mission data: " + message));
             scheduleFromFile = Read(ScheduleFile, repository.LoadScheduleJson);
-            cropsFromFile = Read(CropFile, repository.LoadCropsJson);
         }
 
         // Desktop builds and the editor can read StreamingAssets directly; the repository validates the rows.

@@ -7,7 +7,6 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import build_schedule
-import build_crops
 import fetch_rad
 import fetch_rems
 import fetch_donki
@@ -88,17 +87,6 @@ class DataTests(unittest.TestCase):
     def test_donki_malformed_events_are_ignored(self):
         rows = fetch_donki.parse([None, {'beginTime': 12, 'classType': 'X1'}], [None])
         self.assertTrue(all(r['flareLevel'] == 0 for r in rows))
-
-    def test_crop_contract(self):
-        crops = build_crops.build()
-        self.assertGreaterEqual(len(crops), 3)
-        self.assertEqual(len({r['id'] for r in crops}), len(crops))
-        for crop in crops:
-            self.assertTrue(crop['needsVerification'])
-            self.assertGreater(crop['daysToHarvest'], 0)
-            self.assertTrue(0 < crop['lightHours'] <= 24)
-            self.assertGreater(crop['kcalPerHarvest'], 0)
-
 
 if __name__ == '__main__':
     unittest.main()

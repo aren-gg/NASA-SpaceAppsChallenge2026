@@ -8,10 +8,10 @@ using UnityEngine.Rendering;
 namespace MarsSurvival.Tools
 {
     /// <summary>
-    /// The astronaut's 10 tools. Shows the selected tool in the right hand, works out
+    /// The astronaut's hand tools. Shows the selected tool in the right hand, works out
     /// what the crosshair is aimed at, and runs the tool's action.
     ///
-    /// Controls (while walking with the mouse captured): keys 1-9 and 0 pick a tool (the
+    /// Controls (while walking with the mouse captured): number keys pick a tool (the
     /// wheel zooms the camera instead), left click uses it, R is the tool's second action.
     /// One click starts an action; it carries on by itself while you keep aiming at the
     /// same thing (short glances away are forgiven), so nothing needs to be held down.
@@ -35,8 +35,6 @@ namespace MarsSurvival.Tools
         public float Progress { get; private set; }
         /// <summary>True while the aim has drifted off the thing being worked on.</summary>
         public bool AimLost { get { return Working != null && lostFor > 0f; } }
-        /// <summary>The mini-game being played for <see cref="Working"/>, or null.</summary>
-        public MiniGame Game { get; private set; }
         public string Readout { get; private set; }
         public string SecondaryLabel { get; private set; }
         public float RefusedAt { get; private set; } = -10f;
@@ -152,10 +150,10 @@ namespace MarsSurvival.Tools
             Camera cam = Camera.main;
 
             // Tools work only while walking as the astronaut on a running mission (not on the home screen,
-            // in the F2 fly camera, in the console or pause menu, or while driving the rover).
+            // in the F2 fly camera, in the shop or pause menu).
             var mission = MarsMissionController.Instance;
             bool walking = !MarsHomeScreen.IsOpen && player != null && cam != null && cam.transform.IsChildOf(player.transform) &&
-                           mission != null && mission.IsRunning && !mission.InputBlocked && !player.IsDriving;
+                           mission != null && mission.IsRunning && !mission.InputBlocked;
             if (walking != Active || cam != ViewCamera) SetActive(walking, cam);
             if (!Active) return;
 
@@ -239,20 +237,11 @@ namespace MarsSurvival.Tools
 
         private void UpdateWork()
         {
-            bool click = false, held = false, released = false;
+            bool click = false;
 #if ENABLE_LEGACY_INPUT_MANAGER
             click = MouseCaptured && Input.GetMouseButtonDown(0);
-            held = MouseCaptured && Input.GetMouseButton(0);
-            released = Input.GetMouseButtonUp(0);
-            if (Game != null && Input.GetKeyDown(KeyCode.X)) { StopWork(); return; }
 #endif
             bool usable = Plan != null && !Plan.Blocked;
-
-            if (Game != null)
-            {
-                UpdateGame(click, held, released, usable);
-                return;
-            }
 
             if (Working == null)
             {
@@ -266,16 +255,6 @@ namespace MarsSurvival.Tools
                 if (Plan.Seconds <= 0f)
                 {
                     Finish(Plan);
-                    return;
-                }
-                if (Plan.Game != null)
-                {
-                    // The click that starts a mini-game does not count as its first press.
-                    Working = Plan;
-                    Game = Plan.Game;
-                    Progress = 0f;
-                    lostFor = 0f;
-                    MarsSfx.Play(MarsSfx.Sound.Start, 0.7f);
                     return;
                 }
                 Working = Plan;
@@ -344,32 +323,8 @@ namespace MarsSurvival.Tools
             if (plan.Seconds > 0f) MarsSfx.Play(MarsSfx.Sound.Success, 0.6f);
         }
 
-        /// <summary>Feeds the mouse to the mini-game; it ends when won, or when the player looks away for a while.</summary>
-        private void UpdateGame(bool click, bool held, bool released, bool usable)
-        {
-            if (usable && object.Equals(Plan.Key, Working.Key)) lostFor = 0f;
-            else
-            {
-                lostFor += Time.deltaTime;
-                if (lostFor > aimGraceSeconds * 3f) { StopWork(); return; }
-            }
-            Game.Tick(Time.deltaTime, click, held, released);
-            Progress = Mathf.Clamp01(Game.Progress);
-            bool busy = held || Game.View == MiniGameView.Dial || Game.View == MiniGameView.Scan;
-            workTime += busy ? Time.deltaTime : 0f;
-            MarsSfx.SetLoop(held && !Game.Jammed ? Current.LoopSound : MarsSfx.Loop.None);
-            if (Game.Done)
-            {
-                ToolAction done = Working;
-                StopWork();
-                Finish(done);
-            }
-            else if (Game.Failed) StopWork();
-        }
-
         private void StopWork()
         {
-            Game = null;
             Working = null;
             Progress = 0f;
             workTime = 0f;
@@ -434,10 +389,6 @@ namespace MarsSurvival.Tools
             }
 
             AimAtPlant(ray, reach, target);
-
-            // The outpost mission knows which science site the astronaut is standing beside.
-            var mission = MarsMissionController.Instance;
-            target.SiteId = mission == null ? "" : mission.Context.nearbySiteId ?? "";
             return target;
         }
 

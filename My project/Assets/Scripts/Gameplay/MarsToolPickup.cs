@@ -10,10 +10,10 @@ using UnityEngine;
 namespace MarsSurvival.Gameplay
 {
     /// <summary>
-    /// Fills the tool hotbar from the outpost: look at one of the 10 hand tools on its rack and
-    /// press E to put it in its hotbar slot (keys 1-9, 0). Q puts the selected tool back and
-    /// B returns every tool, both inside the base. The carried set is stored in the mission
-    /// save. Also says which tool each daily task needs.
+    /// Fills the tool hotbar from the outpost: look at a hand tool on its rack and press E to
+    /// put it in its hotbar slot (keys 1-3). Q puts the selected tool back and B returns every
+    /// tool, both inside the base. The carried set is stored in the mission save. E also uses
+    /// the galley, bunks, ripe plants and the seed shop.
     /// </summary>
     public sealed class MarsToolPickup : MonoBehaviour
     {
@@ -27,48 +27,25 @@ namespace MarsSurvival.Gameplay
 
         /// <summary>The tool rack item under the crosshair that E would pick up, or null.</summary>
         public MarsBaseTool Aimed { get; private set; }
-        /// <summary>The galley locker, water dispenser, bunk, bed, bike or ripe plant E would use, or null.</summary>
+        /// <summary>The galley locker, water dispenser, bunk, shop or ripe plant E would use, or null.</summary>
         public MarsTaskTarget AimedUse { get; private set; }
         /// <summary>What E does to <see cref="AimedUse"/> ("eat", "sleep until morning"...), or null.</summary>
         public string UseLabel { get; private set; }
 
         // ------------------------------------------------------------------ requirements
 
-        /// <summary>Hand tools (hotbar ids) a mission task needs.</summary>
-        public static string[] ToolsFor(TaskKind kind)
-        {
-            switch (kind)
-            {
-                case TaskKind.Plant: return new[] { "regolith_shovel" };
-                case TaskKind.RepairBase:
-                case TaskKind.RepairRover:
-                case TaskKind.Install: return new[] { "power_wrench" };
-                case TaskKind.DustPanels: return new[] { "panel_brush" };
-                case TaskKind.SampleSoil:
-                case TaskKind.Analyze: return new[] { "core_drill" };
-                case TaskKind.PlaceMarker: return new[] { "rock_hammer" };
-                case TaskKind.Photograph: return new[] { "survey_camera" };
-                case TaskKind.Transmit: return new[] { "comm_radio" };
-                default: return new string[0];
-            }
-        }
-
-        public static string[] ToolsFor(string command, string target)
+        /// <summary>Hand tools (hotbar ids) a mission command needs.</summary>
+        public static string[] ToolsFor(string command)
         {
             switch (command)
             {
-                case "survey": return new[] { "rock_hammer" };
-                case "canister_fill":
-                case "canister_use": return new[] { "oxygen_canister" };
-                case "water_crop": return new[] { "hydro_sprayer" };
-                case "plant_slot": return new[] { "regolith_shovel" };
-                case "dust_panel": return new[] { "panel_brush" };
-                case "radio": return target == "off" ? new string[0] : new[] { "comm_radio" };
+                case "water": return new[] { "hydro_sprayer" };
+                case "plant": return new[] { "regolith_shovel" };
                 default: return new string[0];
             }
         }
 
-        /// <summary>True for the 10 hand tools that live in the hotbar (the other rack items are fixed equipment).</summary>
+        /// <summary>True for the hand tools that live in the hotbar (the other rack items are fixed equipment).</summary>
         public static bool IsHandTool(string toolId) { return Array.IndexOf(MarsTool.Order, toolId) >= 0; }
 
         public bool Has(string toolId)
@@ -136,7 +113,7 @@ namespace MarsSurvival.Gameplay
             UseLabel = null;
             var mission = MarsMissionController.Instance;
             if (player == null) player = FindObjectOfType<MarsAstronautPlayer>();
-            if (state == null || mission.InputBlocked || MarsHomeScreen.IsOpen || player == null || !player.IsReady || player.IsDriving || player.ViewCamera == null) return;
+            if (state == null || mission.InputBlocked || MarsHomeScreen.IsOpen || player == null || !player.IsReady || player.ViewCamera == null) return;
 
             Aimed = FindAimed(player.AimTransform);
             string label = null;
@@ -162,7 +139,9 @@ namespace MarsSurvival.Gameplay
             foreach (MarsTaskTarget t in MarsTaskTarget.Usables)
             {
                 if (t == null) continue;
-                Vector3 to = t.transform.position - eye.position;
+                // Aim at the body of the thing (its collider), not its pivot on the floor.
+                Collider body = t.GetComponent<Collider>();
+                Vector3 to = (body != null ? body.bounds.center : t.transform.position) - eye.position;
                 if (to.magnitude > useReachMeters) continue;
                 string what = UseLabelFor(t, state);
                 if (what == null) continue;
@@ -176,14 +155,14 @@ namespace MarsSurvival.Gameplay
         {
             switch (t.kind)
             {
-                case MarsTaskTarget.Kind.Food: return "eat a meal";
+                case MarsTaskTarget.Kind.Food: return "eat a crop";
                 case MarsTaskTarget.Kind.Water: return "drink water";
                 case MarsTaskTarget.Kind.Bunk: return "sleep until 07:00";
-                case MarsTaskTarget.Kind.MedicalBed: return "get medical treatment";
-                case MarsTaskTarget.Kind.Bike: return "exercise (30 min)";
+                case MarsTaskTarget.Kind.Shop: return "open the seed shop";
                 case MarsTaskTarget.Kind.Plant:
-                    CropState crop = state.crops.Find(c => c.bed == t.bed);
-                    return crop != null && crop.ready && (crop.pickedMask & (1 << t.slot)) == 0 ? "pick this ripe plant" : null;
+                    var sim = MarsMissionController.Instance.Simulation;
+                    PlotState plot = sim.Plot(t.index);
+                    return plot != null && plot.Ripe ? "pick this " + SeedKind.Find(plot.seed).name.ToLowerInvariant() : null;
                 default: return null;
             }
         }
@@ -195,11 +174,10 @@ namespace MarsSurvival.Gameplay
                 case MarsTaskTarget.Kind.Food: mission.Execute("eat"); break;
                 case MarsTaskTarget.Kind.Water: mission.Execute("drink"); break;
                 case MarsTaskTarget.Kind.Bunk: mission.Sleep(); break;
-                case MarsTaskTarget.Kind.MedicalBed: mission.FinishTask(TaskKind.Treat); break;
-                case MarsTaskTarget.Kind.Bike: mission.FinishTask(TaskKind.Exercise); break;
+                case MarsTaskTarget.Kind.Shop: mission.SetShopOpen(true); break;
                 case MarsTaskTarget.Kind.Plant:
-                    mission.Execute("pick", t.bed + ":" + t.slot);
-                    if (MarsExpedition.Instance != null) MarsExpedition.Instance.Pop("+ food", t.transform.position + Vector3.up * 0.5f);
+                    mission.Execute("pick", t.index.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    if (MarsExpedition.Instance != null) MarsExpedition.Instance.Pop("+1 crop", t.transform.position + Vector3.up * 0.5f);
                     MarsSfx.Play(MarsSfx.Sound.Select);
                     break;
             }
@@ -287,16 +265,9 @@ namespace MarsSurvival.Gameplay
         {
             switch (id)
             {
-                case "rock_hammer": return "Survey a science site and hammer in its marker.";
-                case "core_drill": return "Drill a core at a site; analyze it at the lab bench.";
-                case "survey_camera": return "Photograph a site's survey marker. R zooms.";
-                case "comm_radio": return "Queue and transmit Houston reports. R finds the nearest site.";
-                case "oxygen_canister": return "Top up your suit on EVA; refill it inside.";
                 case "work_lamp": return "Click to switch the light on or off.";
-                case "panel_brush": return "Dust the solar array outside the energy room.";
-                case "power_wrench": return "Fix the sparking fault and the rover; install upgrades in the energy room.";
-                case "regolith_shovel": return "Sow an empty bed spot by spot. R picks the crop.";
-                case "hydro_sprayer": return "Water each growing bed once a day: hold, let go in the green.";
+                case "regolith_shovel": return "Sow seeds in empty plots. R picks the seed.";
+                case "hydro_sprayer": return "Water growing plots; they grow while the soil is moist.";
                 default: return "Fixed outpost equipment.";
             }
         }

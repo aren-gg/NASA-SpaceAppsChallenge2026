@@ -1,5 +1,0 @@
-{
-  "name": "MarsTrainer.Data.Research",
-  "rootNamespace": "MarsTrainer.Data.Research",
-  "references": ["MarsTrainer.Sim", "MarsTrainer.Sim.Research"]
-}

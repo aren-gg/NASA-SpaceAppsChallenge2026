@@ -27,28 +27,5 @@ namespace MarsTrainer.Data
             }
             return rows;
         }
-
-        internal static CropDto[] Crops()
-        {
-            return new[]
-            {
-                Crop("romaine", "Outredgeous red romaine", GameConstants.RomaineHarvestDays,
-                    GameConstants.RomaineKcal, GameConstants.LeafyPar, GameConstants.LeafyWater),
-                Crop("mizuna", "Mizuna mustard", GameConstants.LeafyHarvestDays,
-                    GameConstants.MizunaKcal, GameConstants.MizunaPar, GameConstants.MizunaWater),
-                Crop("tokyo_bekana", "Tokyo Bekana cabbage", GameConstants.LeafyHarvestDays,
-                    GameConstants.CabbageKcal, GameConstants.LeafyPar, GameConstants.LeafyWater)
-            };
-        }
-
-        private static CropDto Crop(string id, string name, int days, float kcal, float par, float water)
-        {
-            return new CropDto
-            {
-                id = id, name = name, daysToHarvest = days, kcalPerHarvest = kcal, parSat = par,
-                waterLPerDay = water, co2Ppm = GameConstants.CropCo2Ppm,
-                lightHours = GameConstants.CropLightHours, needsVerification = true
-            };
-        }
     }
 }

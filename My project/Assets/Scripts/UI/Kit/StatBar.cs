@@ -5,45 +5,9 @@ using UnityEngine.UI;
 
 namespace MarsTrainer.UI
 {
-    public sealed class StatBar : MonoBehaviour
+    /// <summary>Shared uGUI building helpers (frames, text, buttons) for the kit screens.</summary>
+    public static class StatBar
     {
-        [SerializeField] private TMP_Text caption;
-        [SerializeField] private SegmentGauge fill;
-        [SerializeField] private bool compact;
-        [SerializeField] private ResourceSymbol symbol;
-        public void Show(string label, double value, double maximum = GameConstants.StatMaximum)
-        {
-            float fraction = maximum > 0 ? Mathf.Clamp01((float)(value / maximum)) : 0;
-            caption.text = compact ? (label == "Air" ? "Oxygen" : label) + "  " + value.ToString("0") + "%"
-                : label + "  " + value.ToString("0") + " / " + maximum.ToString("0");
-            fill.Fraction = fraction;
-            fill.Hazard = fraction <= GameConstants.StatEmergencyThreshold / GameConstants.StatMaximum;
-            fill.color = ColorOf(fraction <= GameConstants.StatEmergencyThreshold / GameConstants.StatMaximum
-                ? GameConstants.UiCritical : fraction <= GameConstants.StatCriticalThreshold / GameConstants.StatMaximum
-                ? GameConstants.UiWarn : ResourceGlyph.ColorFor(symbol));
-        }
-
-        public static StatBar Create(Transform parent, string label, bool compact = false)
-        {
-            var owner = Frame(parent, label, 0, 0, 1, 1);
-            Height(owner, compact ? GameConstants.UiHudVitalHeight : GameConstants.UiButton);
-            if (compact) { var plate=owner.gameObject.AddComponent<FacetedImage>(); plate.color=ColorOf(GameConstants.UiSurface); plate.raycastTarget=false; }
-            var bar = owner.gameObject.AddComponent<StatBar>(); bar.compact = compact; bar.symbol = ResourceGlyph.ForLabel(label);
-            bar.caption = Text(owner, label, GameConstants.UiBody, GameConstants.UiLine);
-            bar.fill = SegmentGauge.Create(owner, 0, 0, 1, 0.16f, ColorOf(GameConstants.UiSafe));
-            var track = bar.fill.rectTransform;
-
-            if (compact)
-            {
-                ResourceGlyph.Create(owner,bar.symbol,GameConstants.UiBadgeDiameter);
-                bar.caption.rectTransform.anchorMin = new Vector2(.17f,.30f);
-                bar.caption.rectTransform.anchorMax = new Vector2(.97f,.98f);
-                bar.caption.rectTransform.offsetMin = bar.caption.rectTransform.offsetMax = Vector2.zero;
-                track.anchorMin = new Vector2(.18f,.14f); track.anchorMax = new Vector2(.96f,.26f);
-            }
-            return bar;
-        }
-
         /// <summary>
         /// Button states for the dark theme. UGUI multiplies these with the button colour, so
         /// hover brightens the slot clearly and press flashes it Mars orange.

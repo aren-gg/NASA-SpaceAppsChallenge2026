@@ -92,7 +92,7 @@ namespace MarsSurvival.Base
                 return;
             }
             var astronaut = FindObjectOfType<MarsSurvival.Interaction.MarsAstronautPlayer>();
-            Viewer = astronaut != null && !astronaut.IsDriving ? astronaut.transform : null;
+            Viewer = astronaut != null ? astronaut.transform : null;
             CurrentRoom = null;
             if (Viewer == null) return;
             Vector3 local = transform.InverseTransformPoint(Viewer.position);
