@@ -43,8 +43,10 @@ namespace MarsSurvival.Vehicles
         [Tooltip("Slowing with no throttle, m/s2 at rest; it grows with speed.")]
         public float rollingResistance = 0.25f;
         [Tooltip("Sideways tyre grip in m/s2. Sets the tightest turn at speed.")]
-        public float lateralGrip = 4.5f;
-        public float maxSteerDegrees = 45f;
+        public float lateralGrip = 6f;
+        public float maxSteerDegrees = 50f;
+        /// <summary>The rear wheels steer the other way by this share of the front angle, so it turns tighter.</summary>
+        public float rearSteer = 0.5f;
         [Tooltip("Mars surface gravity, for slopes.")]
         public float gravity = 3.71f;
 
@@ -337,9 +339,9 @@ namespace MarsSurvival.Vehicles
 
             // Steering: the wheels turn less at speed, and the turn rate is capped by tyre grip.
             float fraction = Mathf.Clamp01(Mathf.Abs(speed) / top);
-            float steerLimit = Mathf.Lerp(maxSteerDegrees, 12f, Mathf.Sqrt(fraction));
+            float steerLimit = Mathf.Lerp(maxSteerDegrees, 15f, Mathf.Sqrt(fraction));
             steer = Mathf.MoveTowards(steer, steerInput * steerLimit, 120f * dt);
-            float turnRate = speed / MarsRoverModel.WheelBase * Mathf.Tan(steer * Mathf.Deg2Rad); // rad/s
+            float turnRate = speed / MarsRoverModel.WheelBase * (Mathf.Tan(steer * Mathf.Deg2Rad) + Mathf.Tan(steer * rearSteer * Mathf.Deg2Rad)); // rad/s, four-wheel steer
             float gripRate = lateralGrip / Mathf.Max(1.5f, Mathf.Abs(speed));
             turnRate = Mathf.Clamp(turnRate, -gripRate, gripRate);
             float newHeading = heading + turnRate * Mathf.Rad2Deg * dt;
@@ -382,7 +384,7 @@ namespace MarsSurvival.Vehicles
             transform.SetPositionAndRotation(position,
                 Quaternion.Euler(0f, heading, 0f) * Quaternion.Euler(pitch, 0f, roll));
 
-            // Wheels: spin with distance, steer at the front, follow the ground a little.
+            // Wheels: spin with distance, steer (rears the other way), follow the ground a little.
             spin += Mathf.Sign(speed) * travelled / MarsRoverModel.WheelRadius * Mathf.Rad2Deg;
             for (int i = 0; i < 4; i++)
             {
@@ -390,7 +392,7 @@ namespace MarsSurvival.Vehicles
                 float planeY = transform.TransformPoint(new Vector3(rest.x, 0f, rest.z)).y;
                 rest.y += Mathf.Clamp((ground[i] - planeY) / Units, -0.3f, 0.3f);
                 parts.wheelPivots[i].localPosition = rest / S;
-                parts.wheelPivots[i].localRotation = Quaternion.Euler(0f, i < 2 ? steer : 0f, 0f);
+                parts.wheelPivots[i].localRotation = Quaternion.Euler(0f, i < 2 ? steer : -steer * rearSteer, 0f);
                 parts.wheelSpin[i].localRotation = Quaternion.Euler(spin, 0f, 0f);
             }
 

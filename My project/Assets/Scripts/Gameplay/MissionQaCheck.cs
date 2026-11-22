@@ -507,8 +507,17 @@ namespace MarsSurvival.Gameplay
             Shot("terrain_tracks");
             Place(Ground(outpost.transform.TransformPoint(new Vector3(33f, 0f, 6f))), MarsWorldTasks.World(MarsWorldTasks.GarageDoorPoint + Vector3.up * 1.5f)); yield return Frames(3);
             Shot("hangar_tracks");
-            rover.RestoreMissionPose(MarsWorldTasks.World(MarsOutpostBuilder.RoverParking + Vector3.up * 0.05f), outpost.transform.eulerAngles.y + MarsOutpostBuilder.RoverParkingYaw, 0);
             MarsWorldTasks.Instance.ToggleGarage();
+            yield return new WaitForSecondsRealtime(2f);
+            Check(Physics.CheckSphere(doorMid, 0.3f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore), "E closes the garage door again");
+            // Driving up to the closed door opens it by itself.
+            rover.RestoreMissionPose(Ground(outpost.transform.TransformPoint(new Vector3(31f, 0f, 0f))), outpost.transform.eulerAngles.y - 90f, 0);
+            rover.RestoreDriving();
+            yield return new WaitForSecondsRealtime(2f);
+            Check(rover.IsDriven && !Physics.CheckSphere(doorMid, 0.3f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore), "The garage door opens by itself as the rover drives up", rover.IsDriven ? "driving" : "not driving");
+            rover.RestoreMissionPose(MarsWorldTasks.World(MarsOutpostBuilder.RoverParking + Vector3.up * 0.05f), outpost.transform.eulerAngles.y + MarsOutpostBuilder.RoverParkingYaw, 0);
+            yield return new WaitForSecondsRealtime(2f);
+            Check(Physics.CheckSphere(doorMid, 0.3f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore), "It closes again once the rover is parked and left");
             credits = s.credits;
             mission.Execute("sell", "lettuce");
             Check(s.basket[0] == 0 && s.credits == credits + (basket + 2) * 15, "Sell lettuce for 15 credits each", mission.Notice);

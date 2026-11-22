@@ -51,6 +51,8 @@ namespace MarsSurvival.Gameplay
         public static readonly Vector3 GarageDoorPoint = new Vector3(21.19f, 0f, 0f);
         private const float GarageDoorHeight = 3.6f, GarageDoorWidth = 5f;
         private Transform garageDoor;
+        private MarsSurvival.Vehicles.MarsRover rover;
+        private const float SenseRange = 16f;   // metres from the door: about a second's warning at top speed
         private float garageOpen;
         /// <summary>True while the garage door is open (or opening).</summary>
         public bool GarageOpen { get; private set; }
@@ -99,8 +101,12 @@ namespace MarsSurvival.Gameplay
             MissionState state = mission == null || mission.Simulation == null ? null : mission.Simulation.State;
             if (state == null) return;
             UpdatePlants(mission.Simulation);
-            // Roll the garage door up into its lintel, or down to the floor (about 2 s).
-            garageOpen = Mathf.MoveTowards(garageOpen, GarageOpen ? 1f : 0f, Time.deltaTime * 0.5f);
+            // Roll the garage door up into its lintel, or down to the floor (about 1.3 s). It also opens by
+            // itself while someone drives the rover within SenseRange of it, and closes once they are gone.
+            if (rover == null) rover = FindObjectOfType<MarsSurvival.Vehicles.MarsRover>();
+            bool roverNear = rover != null && rover.IsDriven
+                && (outpost.transform.InverseTransformPoint(rover.transform.position) - GarageDoorPoint).sqrMagnitude < SenseRange * SenseRange;
+            garageOpen = Mathf.MoveTowards(garageOpen, GarageOpen || roverNear ? 1f : 0f, Time.deltaTime * 0.75f);
             if (garageDoor != null)
             {
                 float h = Mathf.Max(0.02f, GarageDoorHeight * (1f - garageOpen));

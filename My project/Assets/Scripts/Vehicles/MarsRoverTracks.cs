@@ -18,6 +18,7 @@ namespace MarsSurvival.Vehicles
         private Transform[] wheels;
         private Transform rover;
         private MarsSurvival.World.MarsTerrain terrain;
+        private MarsSurvival.Base.MarsOutpost outpost;
         private Vector3?[] last;
         private Mesh mesh;
         private Material material;
@@ -62,7 +63,7 @@ namespace MarsSurvival.Vehicles
             bool changed = false;
             for (int w = 0; w < wheels.Length; w++)
             {
-                if (!OnGround(wheels[w], out Vector3 point, out Vector3 normal)) { last[w] = null; continue; }
+                if (!OnGround(wheels[w], out Vector3 point, out Vector3 normal) || Indoors(point)) { last[w] = null; continue; }
                 if (last[w] == null) { last[w] = point; continue; }
                 Vector3 from = last[w].Value;
                 if ((point - from).sqrMagnitude < Step * Step) continue;
@@ -84,6 +85,15 @@ namespace MarsSurvival.Vehicles
                 }
                 mesh.colors = colors;
             }
+        }
+
+        /// <summary>On the hangar's deck (or its door sill), where tyres leave no marks.</summary>
+        private bool Indoors(Vector3 point)
+        {
+            if (outpost == null) outpost = FindObjectOfType<MarsSurvival.Base.MarsOutpost>();
+            if (outpost == null) return false;
+            Vector3 local = outpost.transform.InverseTransformPoint(point);
+            return MarsSurvival.Base.MarsOutpostBuilder.Utilities.Grow(0.6f).Contains(local.x, local.z);
         }
 
         /// <summary>The ground under a wheel (not the rover itself), if the tyre is touching it.</summary>
