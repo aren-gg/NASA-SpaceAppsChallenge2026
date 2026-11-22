@@ -4,7 +4,9 @@ using UnityEngine;
 namespace MarsSurvival.World
 {
     /// <summary>
-    /// Scatters chunky flat-shaded icosphere rocks over one rock tile.
+    /// Scatters flat-shaded rocks over one rock tile: the five Blender rock shapes
+    /// (Resources/Garden/MarsRocks, tools/blender/garden_assets.py mars_rocks) when present, else
+    /// chunky icospheres.
     ///
     /// This is procedural decoration, not NASA data: the 200 m elevation grid
     /// cannot resolve individual rocks. Placement is deterministic for a given
@@ -30,6 +32,30 @@ namespace MarsSurvival.World
         private static readonly List<Vector3> Normals = new List<Vector3>(640);
         private static readonly List<int> Indices = new List<int>(640);
         private static readonly Vector3[] Shaped = new Vector3[12];
+
+        /// <summary>The Blender rock shapes as triangle soups (about 1 m across, origin at the base), or null.</summary>
+        private static Vector3[][] shapes;
+        private static bool shapesLoaded;
+
+        private static Vector3[][] Shapes()
+        {
+            if (shapesLoaded) return shapes;
+            shapesLoaded = true;
+            GameObject prefab = Resources.Load<GameObject>("Garden/MarsRocks");
+            if (prefab == null) return null;
+            var list = new List<Vector3[]>();
+            foreach (MeshFilter f in prefab.GetComponentsInChildren<MeshFilter>())
+            {
+                Mesh m = f.sharedMesh;
+                if (m == null || !m.isReadable) continue;
+                Vector3[] v = m.vertices; int[] t = m.triangles;
+                var soup = new Vector3[t.Length];
+                for (int i = 0; i < t.Length; i++) soup[i] = Quaternion.Euler(0f, 180f, 0f) * v[t[i]];   // same turn as MarsWorldTasks.Model
+                list.Add(soup);
+            }
+            shapes = list.Count > 0 ? list.ToArray() : null;
+            return shapes;
+        }
 
         private static Vector3[] BuildIcoVertices()
         {
@@ -85,6 +111,11 @@ namespace MarsSurvival.World
         /// <param name="chunkIndex">Seed for this tile; the same value gives the same rocks.</param>
         /// <param name="clearings">Optional circles kept free of rocks: terrain-local X, Z and radius (Unity units).</param>
         /// <returns>A mesh in tile-local space (origin at the tile corner, Y = terrain-local Y).</returns>
+        private static Vector3 Turn(Vector3 p, float cos, float sin, float scale, float squash)
+        {
+            return new Vector3((p.x * cos - p.z * sin) * scale, p.y * scale * (0.6f + squash * 0.5f), (p.x * sin + p.z * cos) * scale);
+        }
+
         public static Mesh Build(MarsHeightmap map, MarsTerrainConfig config, Vector2 chunkCorner,
             float chunkSizeX, float chunkSizeZ, int chunkIndex, out int rockCount, List<Vector3> clearings = null,
             MarsTerrainInset inset = null)
@@ -138,6 +169,28 @@ namespace MarsSurvival.World
                         (p.x * sin + p.z * cos) * radius);
                 }
 
+                Vector3[][] models = Shapes();
+                if (models != null)
+                {
+                    // A Blender shape, about 1 m across: scaled to this rock's size, turned, and sunk a little.
+                    Vector3[] soup = models[(int)(sizeT * 7919f) % models.Length];
+                    float scale = radius * 2f;
+                    Vector3 basePos = new Vector3(px, groundY - radius * 0.15f, pz);
+                    for (int i = 0; i < soup.Length; i += 3)
+                    {
+                        Vector3 a = basePos + Turn(soup[i], cos, sin, scale, squash);
+                        Vector3 b = basePos + Turn(soup[i + 1], cos, sin, scale, squash);
+                        Vector3 c = basePos + Turn(soup[i + 2], cos, sin, scale, squash);
+                        Vector3 normal = Vector3.Cross(b - a, c - a).normalized;
+                        int first = Positions.Count;
+                        Positions.Add(a); Positions.Add(b); Positions.Add(c);
+                        Normals.Add(normal); Normals.Add(normal); Normals.Add(normal);
+                        Indices.Add(first); Indices.Add(first + 1); Indices.Add(first + 2);
+                    }
+                    rockCount++;
+                    continue;
+                }
+
                 for (int face = 0; face < FacesPerRock; face++)
                 {
                     Vector3 a = Shaped[IcoFaces[face * 3]];
@@ -168,6 +221,7 @@ namespace MarsSurvival.World
 
             Mesh mesh = new Mesh();
             mesh.name = "MarsRocks " + chunkIndex;
+            if (Positions.Count > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
             mesh.SetVertices(Positions);
             mesh.SetNormals(Normals);
             mesh.SetTriangles(Indices, 0, true);

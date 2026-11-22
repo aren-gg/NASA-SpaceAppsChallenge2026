@@ -660,6 +660,39 @@ def rover_wheel():
     return root
 
 
+def mars_rocks():
+    """Five Mars rocks for the terrain scatter (MarsRockBuilder copies their shapes): faceted, wind-cut
+    basalt in rust and dark tones, flat-bottomed so they sit in the dust. Each is a child, about 1 m across,
+    origin at its base: Rock boulder, Rock slab, Rock ventifact, Rock pile, Rock pebble."""
+    import random
+    from mathutils import noise
+    rnd = random.Random(4)
+    root = empty("MarsRocks")
+    RUST, DARK, DUST = mat("Mat", "8A4A36", 0.95), mat("Mat", "5A3226", 0.95), mat("Mat", "B5765A", 0.95)
+    def rock(name, scale, cuts, m, seed, x):
+        bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=3, radius=0.5)
+        for v in bm.verts:   # lumpy: low-frequency noise pushes the surface in and out
+            v.co *= 1 + 0.35 * noise.noise(v.co * 2.6 + Vector((seed, seed * 0.7, 0)))
+        for _ in range(cuts):   # wind- and frost-cut facets: slice off caps at random angles
+            n = Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-0.2, 1))).normalized()
+            res = bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=n * rnd.uniform(0.34, 0.46), plane_no=n, clear_outer=True)
+            edges = [e for e in res["geom_cut"] if isinstance(e, bmesh.types.BMEdge)]
+            if edges: bmesh.ops.edgeloop_fill(bm, edges=edges)
+        res = bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=(0, 0, -0.18), plane_no=(0, 0, -1), clear_outer=True)
+        edges = [e for e in res["geom_cut"] if isinstance(e, bmesh.types.BMEdge)]
+        if edges: bmesh.ops.edgeloop_fill(bm, edges=edges)
+        bmesh.ops.translate(bm, vec=Vector((0, 0, 0.18)), verts=bm.verts)
+        bmesh.ops.scale(bm, vec=Vector(scale), verts=bm.verts)
+        o = obj(name, bm, m, root, smooth=False); o.location.x = x
+        return o
+    rock("Rock boulder", (1.0, 0.85, 0.8), 6, RUST, 1, 0)
+    rock("Rock slab", (1.3, 0.9, 0.35), 4, DARK, 2, 1.6)
+    rock("Rock ventifact", (0.7, 0.55, 1.1), 9, DARK, 3, 3.0)
+    rock("Rock pile", (0.9, 0.9, 0.55), 5, RUST, 4, 4.3)
+    rock("Rock pebble", (0.45, 0.4, 0.3), 3, DUST, 5, 5.3)
+    return root
+
+
 # ------------------------------------------------------------------ export and icons
 def flatten(root):
     """Joins each child group's meshes into one mesh named after the group, directly under the root.
