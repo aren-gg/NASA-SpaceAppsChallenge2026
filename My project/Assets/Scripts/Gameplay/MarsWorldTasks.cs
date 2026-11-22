@@ -43,11 +43,13 @@ namespace MarsSurvival.Gameplay
         public static readonly Vector3 ShopPoint = new Vector3(-10.6f, 0f, 3.2f);
         /// <summary>Crop and kiosk models (tools/blender/garden_assets.py), and their shop icons.</summary>
         public const string GardenFolder = "Garden";
+        /// <summary>The seed kiosk and water pump are drawn this much larger than modelled.</summary>
+        private const float StationScale = 1.3f;
         /// <summary>Water pump against the resources wing's south wall (the seed kiosk faces it).</summary>
         public static readonly Vector3 PumpPoint = new Vector3(-12.5f, 0f, -3.2f);
-        /// <summary>The garage's roll-up door, in the east wing's outer end wall (3.6 m wide, 2.8 m tall).</summary>
-        public static readonly Vector3 GarageDoorPoint = new Vector3(16.19f, 0f, 0f);
-        private const float GarageDoorHeight = 2.8f;
+        /// <summary>The hangar's roll-up door, in the east wing's outer end wall (5 m wide, 3.6 m tall).</summary>
+        public static readonly Vector3 GarageDoorPoint = new Vector3(21.19f, 0f, 0f);
+        private const float GarageDoorHeight = 3.6f, GarageDoorWidth = 5f;
         private Transform garageDoor;
         private float garageOpen;
         /// <summary>True while the garage door is open (or opening).</summary>
@@ -101,7 +103,7 @@ namespace MarsSurvival.Gameplay
             if (garageDoor != null)
             {
                 float h = Mathf.Max(0.02f, GarageDoorHeight * (1f - garageOpen));
-                garageDoor.localScale = new Vector3(0.12f, h, 3.6f);
+                garageDoor.localScale = new Vector3(0.12f, h, GarageDoorWidth);
                 garageDoor.localPosition = GarageDoorPoint + new Vector3(0f, GarageDoorHeight - h / 2f, 0f);
             }
         }
@@ -128,16 +130,25 @@ namespace MarsSurvival.Gameplay
 
             // Things used with E.
             // The garage's roll-up door: E opens and closes it; open, the rover can drive out.
-            garageDoor = Cube("Garage door", root, GarageDoorPoint + new Vector3(0f, GarageDoorHeight / 2f, 0f), new Vector3(0.12f, GarageDoorHeight, 3.6f), new Color32(0x3A, 0x3D, 0x44, 255), true).transform;
-            Cube("Garage door stripe", garageDoor, new Vector3(0f, -0.42f, 0f), new Vector3(1.2f, 0.06f, 1f), new Color32(0xE2, 0xA2, 0x1B, 255), false);
-            Usable("Garage door", GarageDoorPoint + new Vector3(0f, 1.2f, 0f), new Vector3(1.6f, 2.4f, 3.8f), MarsTaskTarget.Kind.Garage);
+            garageDoor = Cube("Garage door", root, GarageDoorPoint + new Vector3(0f, GarageDoorHeight / 2f, 0f), new Vector3(0.12f, GarageDoorHeight, GarageDoorWidth), new Color32(0x3A, 0x3D, 0x44, 255), true).transform;
+            for (int i = 1; i < 9; i++)   // slat seams; they squeeze together as the door rolls up
+                Cube("Garage door slat", garageDoor, new Vector3(0f, -0.5f + i / 9f, 0f), new Vector3(1.15f, 0.012f, 1f), new Color32(0x22, 0x24, 0x29, 255), false);
+            Cube("Garage door stripe", garageDoor, new Vector3(0f, -0.45f, 0f), new Vector3(1.2f, 0.05f, 1f), new Color32(0xE2, 0xA2, 0x1B, 255), false);
+            Usable("Garage door", GarageDoorPoint + new Vector3(0f, 1.5f, 0f), new Vector3(1.6f, 3f, GarageDoorWidth + 0.2f), MarsTaskTarget.Kind.Garage);
 
             // The water pump against the resources wing's south wall, facing into the room; E fills you up.
             GameObject pump = new GameObject("Water pump");
             pump.transform.SetParent(root, false);
             pump.transform.localPosition = PumpPoint;
-            Model("WaterPump", pump.transform).localRotation = Quaternion.identity;   // faces +z, into the room
-            Usable("Water pump", PumpPoint + new Vector3(0f, 1f, 0.2f), new Vector3(2.2f, 2f, 1.2f), MarsTaskTarget.Kind.Water);
+            Transform pumpModel = Model("WaterPump", pump.transform);
+            pumpModel.localRotation = Quaternion.identity;   // faces +z, into the room
+            pumpModel.localScale = Vector3.one * StationScale;
+            Usable("Water pump", PumpPoint + new Vector3(0f, 1.2f, 0.4f), new Vector3(2.9f, 2.4f, 1.4f), MarsTaskTarget.Kind.Water);
+            // The rest of the resources wing: reserve tanks, supply rack, crates, console, floor marks and the sleep pod.
+            GameObject decor = new GameObject("Resources decor");
+            decor.transform.SetParent(root, false);
+            decor.transform.localPosition = new Vector3(-11.75f, 0f, 0f);
+            Model("ResourcesDecor", decor.transform);
 
             // The oxygen spirit tree in the middle of the hub; its round planter stops you.
             GameObject tree = new GameObject("Oxygen tree");
@@ -145,15 +156,15 @@ namespace MarsSurvival.Gameplay
             Model("OxygenTree", tree.transform);
             CapsuleCollider planter = tree.AddComponent<CapsuleCollider>();
             planter.radius = 1.95f; planter.height = 4f; planter.center = new Vector3(0f, 0.3f, 0f);
-            Usable("Bunk", new Vector3(-8.9f, 0.6f, -3.25f), new Vector3(2f, 0.4f, 0.9f), MarsTaskTarget.Kind.Bunk);
+            Usable("Bunk", new Vector3(-14.8f, 0.7f, 3.35f), new Vector3(2.2f, 0.6f, 1.05f), MarsTaskTarget.Kind.Bunk);   // the sleep pod
             // The seed shop kiosk in storage.
             GameObject shop = new GameObject("Seed shop");
             shop.transform.SetParent(root, false);
             shop.transform.localPosition = ShopPoint;
-            Model("SeedKiosk", shop.transform);
+            Model("SeedKiosk", shop.transform).localScale = Vector3.one * StationScale;
             BoxCollider shopBox = shop.AddComponent<BoxCollider>();
-            shopBox.center = new Vector3(0f, 1.1f, 0f);
-            shopBox.size = new Vector3(1.9f, 2.2f, 0.9f);
+            shopBox.center = new Vector3(0f, 1.4f, 0f);
+            shopBox.size = new Vector3(2.5f, 2.8f, 1.2f);
             shop.AddComponent<MarsTaskTarget>().kind = MarsTaskTarget.Kind.Shop;
 
             // The tool shed at the greenhouse's far end, facing the aisle; E on it returns your tools.
@@ -208,7 +219,7 @@ namespace MarsSurvival.Gameplay
         /// A Garden model (kiosk or crop) under <paramref name="parent"/>, its materials rebuilt from their
         /// names ("Mat #RRGGBB", "Metal #RRGGBB", "Glow #RRGGBB"). Empty if the model is missing.
         /// </summary>
-        public Transform Model(string name, Transform parent)
+        public static Transform Model(string name, Transform parent)
         {
             GameObject prefab = Resources.Load<GameObject>(GardenFolder + "/" + name);
             if (prefab == null) { Transform none = new GameObject(name).transform; none.SetParent(parent, false); return none; }
@@ -231,13 +242,13 @@ namespace MarsSurvival.Gameplay
             return model;
         }
 
-        private readonly Dictionary<string, Material> named = new Dictionary<string, Material>();
+        private static readonly Dictionary<string, Material> named = new Dictionary<string, Material>();   // shared by every model, for the whole run
 
         /// <summary>
         /// A textured material the model brought (the spirit tree's bark and leaves) kept as imported;
         /// the leaves are cut out by their alpha, drawn on both sides and glow teal.
         /// </summary>
-        private Material Kept(Material imported)
+        private static Material Kept(Material imported)
         {
             Material m;
             if (!imported.name.StartsWith("Spirit leaves"))
@@ -260,7 +271,7 @@ namespace MarsSurvival.Gameplay
             return m;
         }
 
-        private Material Named(string imported)
+        private static Material Named(string imported)
         {
             int hash = imported.IndexOf('#');
             string key = hash < 0 || imported.Length < hash + 7 ? "Mat #808080" : imported.Substring(0, hash + 7);

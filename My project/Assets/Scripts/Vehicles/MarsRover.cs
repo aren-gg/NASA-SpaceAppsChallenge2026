@@ -116,6 +116,7 @@ namespace MarsSurvival.Vehicles
             Material[] materials = OutpostMaterials.Create();
             owned.AddRange(materials);
             parts = MarsRoverModel.Build(transform, materials, owned);
+            gameObject.AddComponent<MarsRoverTracks>().Init(parts.wheelPivots);
 
             BoxCollider box = gameObject.AddComponent<BoxCollider>();
             box.center = new Vector3(0f, 1.35f * S, 0f);

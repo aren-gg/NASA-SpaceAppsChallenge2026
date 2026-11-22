@@ -485,7 +485,7 @@ namespace MarsSurvival.Tools
                 pivot.SetParent(viewRoot, false);
                 CropItem crop = tool as CropItem;
                 GameObject model = crop != null
-                    ? (MarsWorldTasks.Instance == null ? null : MarsWorldTasks.Instance.Model(crop.Seed.name + "Item", pivot).gameObject)
+                    ? MarsWorldTasks.Model(crop.Seed.name + "Item", pivot).gameObject
                     : MarsLowPoly.LoadTool(tool.Id, pivot);
                 if (model == null)
                 {

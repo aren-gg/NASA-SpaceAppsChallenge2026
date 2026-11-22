@@ -71,6 +71,7 @@ RUBBER = mat("Int Rubber", "1A1B1F", 0.9)
 HAZARD = mat("Int Hazard", "E2A21B", 0.5)
 GLASS = mat("Shell Window", "0E141C", 0.05, 0.2, emit="FFC27A", strength=1.4)
 GREEN_GLASS = mat("Shell Greenhouse Glass", "9FD8B4", 0.05, 0.0, emit="CFF5D8", strength=0.4, alpha=0.4)
+DOME_GLASS = mat("Shell Dome Glass", "A8C8E0", 0.05, 0.0, emit="CFE6FF", strength=0.2, alpha=0.3)
 SOLAR = mat("Shell Solar", "1C2A55", 0.2, 0.4)
 CYAN = mat("Shell Light Cyan", "000000", 0.4, emit="3FE0FF", strength=14)
 AMBER = mat("Shell Light Amber", "000000", 0.4, emit="FFB547", strength=12)
@@ -411,11 +412,11 @@ def frame_for(rect, along_x):
 # ------------------------------------------------------------------ the plan
 SPRING, APEX = 2.45, 3.55
 DOOR_W, DOOR_H = 2.0, 2.4
-GARAGE_DOOR = (3.6, 2.8)      # the garage's outer door: the rover (3.45 m wide, 2.45 m tall) drives through
+GARAGE_DOOR = (5.0, 3.6)      # the hangar's outer door: the rover (3.45 m wide, 2.45 m tall) drives through
 # name: rect, along_x, doors at v0 / v1 (label shown inside above it), extra
 MODULES = {
     "Storage":    ((-16, -4, -7.5, 4), True, (None, "COMMAND-01"), "RESOURCES-02"),
-    "Utilities":  ((7.5, -4, 16, 4), True, ("COMMAND-01", "GARAGE DOOR"), "GARAGE-03"),
+    "Utilities":  ((7.5, -5.5, 21, 5.5), True, ("COMMAND-01", "GARAGE DOOR"), "GARAGE-03"),
     "Greenhouse": ((-3.5, -18, 3.5, -7), False, (None, "COMMAND-01"), "GREENHOUSE-04"),
     "Airlock":    ((-1.7, 13.25, 1.7, 16.75), False, ("COMMAND-01", "EXIT"), "AIRLOCK-05"),
 }
@@ -453,12 +454,64 @@ def garden():
         for z in (z0 + 0.3, z1 - 0.3):
             box("Grow bar hanger", STEEL, (0.02, 0.02, 1.2), (cx, z, 2.95))
 
+
+def slab(name, material, frame, quad, v0, v1):
+    """A flat prism from a (u, z) outline, between v0 and v1, in a module's frame (hazard stripes)."""
+    bm = bmesh.new()
+    a = [bm.verts.new((u, v0, z)) for u, z in quad]; b = [bm.verts.new((u, v1, z)) for u, z in quad]
+    bm.faces.new(a); bm.faces.new(list(reversed(b)))
+    for k in range(len(quad)):
+        bm.faces.new((a[k], a[(k + 1) % len(quad)], b[(k + 1) % len(quad)], b[k]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    o = mesh_obj(bm, name, [material]); o.matrix_world = frame
+    return o
+
+def hangar(f, w, L):
+    """The garage's grand door outside (a deep gunmetal portal with hazard-striped jambs, beacons, a
+    light bar and a big GARAGE-03 sign) and the hangar floor inside (parking bay, charging pylon). The roll-up door itself is the game's (MarsWorldTasks)."""
+    dw, dh = GARAGE_DOOR
+    vo = L + T_WALL                     # outer face of the end wall
+    jw, depth = 0.6, 0.7                # jamb width, how far the portal stands proud
+    hw = dw / 2
+    for side in (-1, 1):
+        u = side * (hw + jw / 2)
+        fbox("Hangar jamb", METAL, (jw, depth, dh + 0.9), f, (u, vo + depth / 2, (dh + 0.9) / 2), bevel=0.03)
+        for k in range(9):   # diagonal amber and black chevrons on the jamb's face
+            z = 0.15 + k * 0.42
+            quad = [(u - jw / 2 + 0.04, z), (u + jw / 2 - 0.04, z + 0.2), (u + jw / 2 - 0.04, z + 0.4), (u - jw / 2 + 0.04, z + 0.2)]
+            if side < 0: quad = [(2 * u - q[0], q[1]) for q in reversed(quad)]
+            slab("Hangar chevron", HAZARD, f, quad, vo + depth, vo + depth + 0.015)
+        fbox("Hangar beacon base", METAL, (0.3, 0.3, 0.12), f, (u, vo + depth / 2, dh + 0.96))
+        cylinder_f = fbox("Hangar beacon", AMBER, (0.18, 0.18, 0.22), f, (u, vo + depth / 2, dh + 1.13), bevel=0.06)
+        fbox("Hangar jamb light", CYAN, (0.03, 0.03, dh - 0.2), f, (side * (hw + 0.02), vo + depth - 0.05, dh / 2))
+    fbox("Hangar header", METAL, (dw + 2 * jw + 0.4, depth + 0.1, 0.9), f, (0, vo + (depth + 0.1) / 2, dh + 0.45), bevel=0.03)
+    fbox("Hangar light bar", CYAN, (dw, 0.04, 0.05), f, (0, vo + depth + 0.07, dh + 0.06))
+    fbox("Hangar sign plate", RUBBER, (3.6, 0.04, 0.6), f, (0, vo + depth + 0.07, dh + 0.47))
+    rot = f.to_euler(); rot.x += math.radians(90); rot.z += math.radians(180)
+    text("GARAGE-03", AMBER, 0.46, f @ Vector((0, vo + depth + 0.1, dh + 0.47)), rot)
+    for side in (-1, 1):   # amber guide lights out onto the apron
+        for k in range(4):
+            fbox("Apron light", AMBER, (0.25, 0.08, 0.02), f, (side * (hw - 0.2), vo + depth + 0.6 + k * 1.2, 0.01))
+    # Inside: a parking bay outline and a charging pylon.
+    bay_w, bay_l, bay_v = 4.2, 5.6, L * 0.55
+    for (du, dv, su, sv) in ((0, -bay_l / 2, bay_w, 0.08), (0, bay_l / 2, bay_w, 0.08), (-bay_w / 2, 0, 0.08, bay_l), (bay_w / 2, 0, 0.08, bay_l)):
+        fbox("Bay line", HAZARD, (su, sv, 0.006), f, (du, bay_v + dv, 0.006))
+    for k in range(6):
+        fbox("Bay chevron", HAZARD, (0.5, 0.1, 0.006), f, (0, bay_v - bay_l / 2 + 0.5 + k * 0.3, 0.006), rot=(0, 0, 0))
+    fbox("Charger", PANEL, (0.6, 0.5, 1.7), f, (w - 0.6, bay_v - 1.5, 0.85), bevel=0.04)
+    fbox("Charger screen", CYAN, (0.02, 0.36, 0.3), f, (w - 0.91, bay_v - 1.5, 1.35))
+    fbox("Charger light", AMBER, (0.02, 0.4, 0.03), f, (w - 0.91, bay_v - 1.5, 0.95))
+    fbox("Tool wall", PANEL, (0.06, 2.6, 1.5), f, (-w + 0.08, L * 0.3, 1.5))
+    for k in range(6):
+        fbox("Tool wall tool", METAL, (0.06, 0.12, 0.5 + 0.1 * (k % 3)), f, (-w + 0.13, L * 0.3 - 1.0 + k * 0.4, 1.5))
+
 def build_module(name, rect, along_x, labels, tag):
     piece(name)
     f, w, L = frame_for(rect, along_x)
     spring, apex = SPRING, APEX
     if name == "Airlock": spring, apex = 2.3, 3.0
     if name == "Greenhouse": apex = 3.9
+    if name == "Utilities": spring, apex = 3.6, 5.6   # the hangar: tall enough to feel like one
     shell, _ = vault(name + " shell", PRINT, f, w, L, spring, apex)
     shell.data.materials.append(PRINT_IN)
     # inner faces get the interior material: faces whose normal points to the axis
@@ -507,6 +560,8 @@ def build_module(name, rect, along_x, labels, tag):
             sweep("Glass arch", PRINT, f, [(-0.08, 0.0), (0.08, 0.0), (0.08, 0.14), (-0.08, 0.14)], path)
         fbox("Grow light", CYAN, (0.04, L - 0.4, 0.03), f, (0, L / 2, apex - 0.2))
         garden()
+    if name == "Utilities":
+        hangar(f, w, L)
     return shell
 
 for name, (rect, along_x, labels, tag) in MODULES.items():
@@ -606,6 +661,34 @@ for k in range(4):
     cut.append(c)
 bpy.context.view_layer.update()
 boolean(hub, cut)
+# A ring of 12 glass panels high in the dome, between the ribs, above the window ribbon.
+WIN_Z0, WIN_Z1, WIN_W, WIN_N = 6.35, 8.1, 1.3, 12
+cut = []
+for k in range(WIN_N):
+    a = k * 2 * math.pi / WIN_N
+    cut.append(box("cut", PRINT, (WIN_W, 3.4, WIN_Z1 - WIN_Z0), (math.cos(a) * 4.6, math.sin(a) * 4.6, (WIN_Z0 + WIN_Z1) / 2), rot=(0, 0, a + math.pi / 2)))
+bpy.context.view_layer.update()
+boolean(hub, cut)
+for k in range(WIN_N):
+    a = k * 2 * math.pi / WIN_N
+    bm = bmesh.new(); rows = []
+    for i in range(9):
+        z = WIN_Z0 - 0.1 + (WIN_Z1 - WIN_Z0 + 0.2) * i / 8
+        r = shell_radius(z) - 0.06; h = (WIN_W / 2 + 0.12) / r
+        rows.append([bm.verts.new((r * math.cos(a + h * j), r * math.sin(a + h * j), z)) for j in (-1, 0, 1)])
+    for i in range(8):
+        for j in range(2):
+            bm.faces.new((rows[i][j], rows[i][j + 1], rows[i + 1][j + 1], rows[i + 1][j]))
+    mesh_obj(bm, "Dome glass", [DOME_GLASS], smooth=True)
+    # Gunmetal border round each opening, outside and in, hugging the shell.
+    rad, tan = Vector((math.cos(a), math.sin(a), 0)), Vector((-math.sin(a), math.cos(a), 0))
+    for R, off in ((shell_radius, 0.04), (inner_radius, -0.04)):
+        at = lambda t, z: rad * ((R(z) + off) ** 2 - t * t) ** 0.5 + tan * t + Vector((0, 0, z))
+        e, hw = 0.07, WIN_W / 2 + 0.07
+        for t in (-hw, hw):
+            strip("Dome window frame", METAL, Matrix.Identity(4), [at(t, WIN_Z0 - e + (WIN_Z1 - WIN_Z0 + 2 * e) * i / 8) for i in range(9)], 0.14, 0.07)
+        for z in (WIN_Z0 - e, WIN_Z1 + e):
+            strip("Dome window frame", METAL, Matrix.Identity(4), [at(-hw - e + 2 * (hw + e) * i / 6, z) for i in range(7)], 0.14, 0.07)
 
 # Exterior kit kept from v1 (the part you liked): deck, window ribbon, light spines, halo, mast.
 def ringmesh(name, material, R, r, z, seg=128):
@@ -687,11 +770,6 @@ for side in (-1, 1):
         box("Seed shelf", PANEL, (1.6, 0.5, 1.9), (-14.6 + k * 2.3, side * 3.6, 0.95))
 box("Tool rack", PROP, (0.4, 2.4, 1.8), (-15.7, 0, 0.9))
 box("Bunk", PROP, (2.0, 0.9, 0.5), (-9.0, -3.4, 0.25))
-# Utilities: generator block and battery bank on one side, water extractor and tank on the other.
-box("Generator", PROP, (2.6, 1.2, 1.6), (11.5, -3.1, 0.8))
-box("Battery bank", PANEL, (1.6, 0.7, 1.8), (14.6, -3.3, 0.9))
-cylinder("Water tank", PANEL, 0.9, 2.2, (11.5, 2.9, 1.1), verts=32)
-box("Water extractor", PROP, (1.4, 1.0, 1.4), (14.4, 3.0, 0.7))
 # Text and curve to mesh (for FBX).
 bpy.ops.object.select_all(action="DESELECT")
 conv = [o for o in scene.objects if o.type in ("CURVE", "FONT")]
@@ -716,7 +794,7 @@ print("built", {k: len(v.all_objects) for k, v in pieces.items()})
 # ------------------------------------------------------------------ export
 # Each piece becomes two meshes: "<piece> solid" (printed shell, end walls, tunnel tube, fins,
 # berms, door frames: Unity gives it a mesh collider) and "<piece> trim" (everything else).
-SOLID_KEYS = (" shell", " end", "Tunnel tube", "Buttress", "Regolith berm", "Portal frame", "Oculus glass")
+SOLID_KEYS = (" shell", " end", "Tunnel tube", "Buttress", "Regolith berm", "Portal frame", "Oculus glass", "Dome glass", "Hangar jamb", "Hangar header")
 
 def export_all():
     os.makedirs(EXPORT, exist_ok=True)

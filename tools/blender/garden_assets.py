@@ -285,15 +285,17 @@ def oxygen_tree():
     obj("Planter", cyl(1.9, 0.6, (0, 0, 0.3), seg=64), WHITE, root)
     obj("Planter rim", cyl(1.95, 0.08, (0, 0, 0.62), seg=64), GUN, root)
     obj("Rim light", cyl(1.97, 0.03, (0, 0, 0.5), seg=64), CYAN, root)
-    obj("Soil", cyl(1.85, 0.04, (0, 0, 0.64), seg=64), SOIL, root)
+    obj("Soil", cyl(1.85, 0.03, (0, 0, 0.665), seg=64), SOIL, root)   # top 0.68, clear of the rim top (0.66): no z-fight
     for k in range(12):   # glowing veins in the soil, out from the trunk
         a = k * 2 * math.pi / 12 + rnd.uniform(-0.1, 0.1)
-        v = rbox((1.3, 0.035, 0.012), (0.9 * math.cos(a), 0.9 * math.sin(a), 0.665), 0)
-        bmesh.ops.rotate(v, matrix=Matrix.Rotation(a, 3, "Z"), verts=v.verts, cent=Vector((0.9 * math.cos(a), 0.9 * math.sin(a), 0.665)))
+        v = rbox((1.3, 0.035, 0.012), (0.9 * math.cos(a), 0.9 * math.sin(a), 0.69), 0)
+        bmesh.ops.rotate(v, matrix=Matrix.Rotation(a, 3, "Z"), verts=v.verts, cent=Vector((0.9 * math.cos(a), 0.9 * math.sin(a), 0.69)))
         obj("Root vein", v, VEIN, root)
     for k in range(6):
-        a = k * math.pi / 3 + math.pi / 6
-        obj("Vent", rbox((0.6, 0.06, 0.18), (1.92 * math.cos(a), 1.92 * math.sin(a), 0.3), 0.01), CYAN, root)
+        a = k * math.pi / 3   # 0, 60, 120...: clear of the OXYGEN lettering at 90 and 270
+        v = rbox((0.6, 0.06, 0.18), (1.92 * math.cos(a), 1.92 * math.sin(a), 0.3), 0.01)
+        bmesh.ops.rotate(v, matrix=Matrix.Rotation(a + math.pi / 2, 3, "Z"), verts=v.verts, cent=Vector((1.92 * math.cos(a), 1.92 * math.sin(a), 0.3)))
+        obj("Vent", v, CYAN, root)
         bpy.context.view_layer.update()
     # The tree, drawn up tall and slender to rise toward the skylight.
     before = set(bpy.data.objects)
@@ -359,6 +361,234 @@ def water_pump():
     return root
 
 
+def label(text, loc, size, m, parent, yaw=0.0):
+    bpy.ops.object.text_add(location=loc); t = bpy.context.object
+    t.data.body = text; t.data.align_x = "CENTER"; t.data.align_y = "CENTER"; t.data.size = size; t.data.extrude = 0.004
+    t.rotation_euler = (math.radians(90), 0, yaw); t.data.materials.append(m); t.parent = parent
+    bpy.ops.object.select_all(action="DESELECT"); t.select_set(True); bpy.context.view_layer.objects.active = t
+    bpy.ops.object.convert(target="MESH")
+    return t
+
+
+def resources_decor():
+    """Dressing for the resources wing around the (enlarged) seed kiosk and water pump: water reserve
+    tanks piped from the pump, a sleep pod (the bunk), a supply rack, crate stacks, a work console under
+    the far window and floor markings. Origin = the room's floor centre; X along the room (+X toward the
+    hub door), Y across it, walls at about Y = +-3.95, far wall at X = -4.25."""
+    import random
+    rnd = random.Random(5)
+    root = empty("ResourcesDecor")
+    GUN, WHITE, DARK = mat("Metal", "3A3D44", 0.35), mat("Mat", "E4E1DA", 0.5), mat("Mat", "2A2D34", 0.6)
+    WOOD, SACK, STEEL = mat("Mat", "A8835A"), mat("Mat", "8A6F4E", 0.9), mat("Metal", "8E949C", 0.3)
+    WATER, CYAN, AMBER, SCREEN = mat("Glow", "2E8FD6"), mat("Glow", "3FE0FF"), mat("Glow", "FFB547"), mat("Glow", "0F4C5C")
+    HAZ, RED = mat("Mat", "E2A21B", 0.5), mat("Mat", "B23A3A", 0.5)
+    # Water reserve: two tall tanks in the south-west corner, piped from the pump along the wall.
+    for k, x in enumerate((-3.55, -2.6)):
+        y = -3.35
+        obj("Reserve tank", cyl(0.42, 2.3, (x, y, 1.2), seg=32), WHITE, root)
+        obj("Reserve level", rbox((0.06, 0.02, 1.5 - 0.35 * k), (x, y + 0.42, 0.35 + (1.5 - 0.35 * k) / 2), 0), WATER, root)
+        for z in (0.1, 2.35):
+            obj("Reserve band", cyl(0.44, 0.08, (x, y, z), seg=32), GUN, root)
+    obj("Reserve pipe", cyl(0.06, 3.4, (-2.0, -3.75, 2.15), seg=12, rot=Matrix.Rotation(math.pi / 2, 3, "Y")), STEEL, root)
+    obj("Reserve pipe light", rbox((3.4, 0.01, 0.02), (-2.0, -3.68, 2.05), 0), CYAN, root)
+    label("WATER RESERVE", (-3.07, -2.92, 2.62), 0.16, CYAN, root)
+    # Sleep pod (the bunk) in the north-west corner: a padded bed under a rounded canopy.
+    obj("Pod base", rbox((2.2, 1.05, 0.5), (-3.05, 3.35, 0.25), 0.05), GUN, root)
+    obj("Pod mattress", rbox((2.05, 0.92, 0.16), (-3.05, 3.35, 0.56), 0.06), mat("Mat", "4A6A8A", 0.9), root)
+    obj("Pod pillow", rbox((0.38, 0.7, 0.12), (-3.9, 3.35, 0.68), 0.05), WHITE, root)
+    can = ellipsoid((1.15, 0.6, 0.75), (-3.05, 3.55, 0.6), seg=24)
+    bmesh.ops.delete(can, geom=[v for v in can.verts if v.co.z < 0.62 or v.co.y < 3.0], context="VERTS")
+    obj("Pod canopy", can, WHITE, root)
+    obj("Pod light", rbox((1.9, 0.02, 0.03), (-3.05, 2.83, 0.48), 0), AMBER, root)
+    label("REST", (-3.05, 2.8, 0.25), 0.12, AMBER, root)
+    # Supply rack against the south wall, east of the pump: three shelves of crates, sacks and canisters.
+    for x in (1.1, 3.6):
+        obj("Rack post", rbox((0.05, 0.05, 2.2), (x, -3.85, 1.1), 0.01), GUN, root)
+        obj("Rack post", rbox((0.05, 0.05, 2.2), (x, -3.25, 1.1), 0.01), GUN, root)
+    for z in (0.15, 0.85, 1.55):
+        obj("Rack shelf", rbox((2.55, 0.65, 0.04), (2.35, -3.55, z), 0.01), GUN, root)
+        x = 1.3
+        while x < 3.4:
+            kind = rnd.random()
+            if kind < 0.4:
+                obj("Crate", rbox((0.42, 0.45, 0.32), (x + 0.21, -3.55, z + 0.18), 0.02), WOOD, root); x += 0.5
+            elif kind < 0.7:
+                obj("Seed sack", ellipsoid((0.22, 0.2, 0.17), (x + 0.22, -3.55, z + 0.18)), SACK, root); x += 0.48
+            else:
+                for j in range(2):
+                    obj("Canister", cyl(0.09, 0.34, (x + 0.1 + j * 0.2, -3.5, z + 0.19), seg=14), WHITE if j else STEEL, root)
+                    obj("Canister cap", cyl(0.095, 0.04, (x + 0.1 + j * 0.2, -3.5, z + 0.37), seg=14), AMBER if j else CYAN, root)
+                x += 0.45
+    # Crate stacks by the hub door and under the kiosk's flank.
+    for (x, y, n) in ((3.55, 3.25, 3), (2.95, 3.35, 2), (-1.0, 3.4, 2)):
+        for j in range(n):
+            obj("Crate", rbox((0.55, 0.55, 0.42), (x, y, 0.21 + j * 0.43), 0.02), WOOD if j % 2 == 0 else GUN, root)
+            obj("Crate stripe", rbox((0.56, 0.56, 0.05), (x, y, 0.3 + j * 0.43), 0.0), HAZ, root)
+    # Work console under the far window: a desk with a screen showing the reserves.
+    obj("Console desk", rbox((0.7, 1.8, 0.9), (-3.85, -0.0, 0.45), 0.03), WHITE, root)
+    obj("Console top", rbox((0.78, 1.9, 0.05), (-3.85, 0, 0.92), 0.02), GUN, root)
+    scr = rbox((0.04, 0.9, 0.5), (0, 0, 0), 0.01)
+    bmesh.ops.rotate(scr, matrix=Matrix.Rotation(math.radians(-15), 3, "Y"), verts=scr.verts)
+    bmesh.ops.translate(scr, vec=Vector((-3.95, 0, 1.25)), verts=scr.verts)
+    obj("Console screen", scr, SCREEN, root)
+    obj("Console stool", cyl(0.2, 0.5, (-3.1, 0.3, 0.25), seg=16), GUN, root)
+    # Floor markings: an amber walkway from the hub door, a cyan pad at the pump, an amber pad at the kiosk.
+    for y in (-1.15, 1.15):
+        obj("Walkway line", rbox((7.6, 0.05, 0.006), (0.3, y, 0.003), 0), HAZ, root)
+    for (cx, cy, w, d, m) in ((-0.75, -1.95, 2.6, 0.9, CYAN), (1.15, 2.05, 2.2, 0.8, AMBER)):
+        for (dx, dy, sx, sy) in ((0, -d / 2, w, 0.06), (0, d / 2, w, 0.06), (-w / 2, 0, 0.06, d), (w / 2, 0, 0.06, d)):
+            obj("Floor pad", rbox((sx, sy, 0.006), (cx + dx, cy + dy, 0.004), 0), m, root)
+    for k in range(5):   # hazard chevrons on the floor by the reserve tanks
+        obj("Hazard", rbox((0.3, 0.08, 0.006), (-3.6 + k * 0.32, -2.65, 0.004), 0), HAZ, root)
+    return root
+
+
+def loft(sections, cap=True):
+    """Lofts closed rings (lists of (x, y, z) points, same count) into a solid, capping both ends."""
+    bm = bmesh.new()
+    rings = [[bm.verts.new(p) for p in r] for r in sections]
+    n = len(sections[0])
+    for a, b in zip(rings, rings[1:]):
+        for k in range(n):
+            bm.faces.new((a[k], a[(k + 1) % n], b[(k + 1) % n], b[k]))
+    if cap:
+        bm.faces.new(list(reversed(rings[0]))); bm.faces.new(rings[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return bm
+
+
+def section(y, hw, bottom, top, lc, uc, ins=0.0):
+    """A chamfered octagon across the rover at forward position y (Blender Y = game +Z forward)."""
+    hw -= ins; bottom += ins; top -= ins
+    return [(-hw + lc, y, bottom), (hw - lc, y, bottom), (hw, y, bottom + lc), (hw, y, top - uc),
+            (hw - uc, y, top), (-hw + uc, y, top), (-hw, y, top - uc), (-hw, y, bottom + lc)]
+
+
+def rover_body():
+    """The rover's body, everything but the wheels and their arms (the game builds those and springs
+    them): a low pearl-white wedge cabin with a wrap-around smoked canopy, angular wheel pods, cyan
+    light lines, a front light bar, a lidar dome and solar fins. Rover space: origin on the ground
+    between the wheels, +Y forward (game +Z), wheels at x +-1.45, y +-1.75, radius 0.62."""
+    root = empty("RoverBody")
+    PEARL, GUN, DARK = mat("Mat", "E8ECEF", 0.35), mat("Metal", "3A3D44", 0.35), mat("Mat", "1E2128", 0.6)
+    GLASS = mat("Metal", "0C1218", 0.05)
+    CYAN, AMBER, RED, WARM = mat("Glow", "3FE0FF"), mat("Glow", "FFB547"), mat("Glow", "FF3B3B"), mat("Glow", "FFF1DC")
+    SOLAR = mat("Metal", "1C2A55", 0.2)
+    # Skateboard chassis under everything.
+    obj("Chassis", rbox((1.7, 5.4, 0.42), (0, 0, 0.76), 0.06), GUN, root, smooth=False)
+    obj("Skid plate", rbox((1.4, 4.6, 0.06), (0, 0, 0.54), 0.02), DARK, root, smooth=False)
+    # Cabin: a wedge, tall at the back, raked down to a low nose.
+    body = [section(-3.05, 0.95, 1.0, 1.95, 0.25, 0.3), section(-2.6, 1.18, 0.92, 2.3, 0.3, 0.42),
+            section(0.3, 1.18, 0.92, 2.36, 0.3, 0.45), section(1.6, 1.14, 0.95, 1.95, 0.28, 0.4),
+            section(2.7, 1.0, 0.98, 1.45, 0.25, 0.2), section(3.15, 0.85, 1.02, 1.3, 0.18, 0.12)]
+    obj("Cabin", loft(body), PEARL, root, smooth=False)
+    # Smoked canopy wrapping the front of the cabin (a skin just proud of it).
+    can = [section(-0.4, 1.2, 1.55, 2.38, 0.3, 0.46), section(0.3, 1.2, 1.55, 2.38, 0.3, 0.46),
+           section(1.6, 1.16, 1.5, 1.97, 0.28, 0.41), section(2.45, 1.06, 1.45, 1.6, 0.26, 0.24)]
+    obj("Canopy", loft(can), GLASS, root, smooth=False)
+    for sx in (-1, 1):
+        obj("Canopy line", rbox((0.02, 2.7, 0.025), (sx * 1.21, 1.0, 1.52), 0), CYAN, root, smooth=False)
+    obj("Canopy rim", loft([section(-0.45, 1.205, 1.5, 2.385, 0.3, 0.46), section(-0.38, 1.205, 1.5, 2.385, 0.3, 0.46)]), GUN, root, smooth=False)
+    # Dark lower skirt along each side with a cyan light line above it, and a hatch outline.
+    for sx in (-1, 1):
+        obj("Skirt", rbox((0.05, 5.2, 0.32), (sx * 1.17, -0.15, 1.12), 0.01), DARK, root, smooth=False)
+        obj("Side light", rbox((0.02, 4.8, 0.03), (sx * 1.2, -0.2, 1.32), 0), CYAN, root, smooth=False)
+        obj("Hatch window", rbox((0.02, 0.9, 0.35), (sx * 1.19, -1.3, 1.95), 0.01), GLASS, root, smooth=False)
+        label("MR-01", (sx * 1.19, -2.3, 1.62), 0.14, AMBER, root, yaw=math.pi / 2 * sx)
+    # Angular wheel pods over each wheel, with a cyan lip and a dark underside.
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            x, y = sx * 1.45, sy * 1.75
+            arc = [(-0.92, 0.95), (-0.72, 1.3), (-0.35, 1.47), (0.35, 1.47), (0.72, 1.3), (0.92, 0.95)]   # (along, top)
+            ring = lambda dy, z: [(x - 0.37, y + dy, z - 0.13), (x + 0.37, y + dy, z - 0.13), (x + 0.37, y + dy, z), (x - 0.37, y + dy, z)]
+            obj("Wheel pod", loft([ring(dy, z) for dy, z in arc]), PEARL, root, smooth=False)
+            obj("Pod lip", rbox((0.03, 0.7, 0.03), (x + sx * 0.38, y, 1.4), 0), CYAN, root, smooth=False)
+            obj("Pod strut", rbox((0.3, 0.3, 0.4), (sx * 1.1, y, 1.2), 0.03), GUN, root, smooth=False)
+    # Front: a full-width light bar, two headlight slits and a bumper; back: red bar and a ladder.
+    obj("Light bar", rbox((1.5, 0.03, 0.05), (0, 3.16, 1.2), 0), WARM, root, smooth=False)
+    for sx in (-1, 1):
+        obj("Headlight", rbox((0.4, 0.03, 0.07), (sx * 0.5, 3.12, 1.1), 0), CYAN, root, smooth=False)
+    obj("Bumper", rbox((1.9, 0.3, 0.22), (0, 3.0, 0.82), 0.04), GUN, root, smooth=False)
+    obj("Tail bar", rbox((1.6, 0.03, 0.05), (0, -3.07, 1.6), 0), RED, root, smooth=False)
+    obj("Rear bumper", rbox((1.8, 0.3, 0.22), (0, -2.95, 0.82), 0.04), GUN, root, smooth=False)
+    obj("Rear door", rbox((1.0, 0.03, 0.75), (0, -3.07, 1.35), 0.01), DARK, root, smooth=False)
+    # Roof: lidar dome on a mast, two solar fins and amber marker lights.
+    obj("Lidar mast", cyl(0.07, 0.25, (0, 1.0, 2.45), seg=12), GUN, root)
+    obj("Lidar", ellipsoid((0.18, 0.18, 0.12), (0, 1.0, 2.6), seg=16), DARK, root)
+    obj("Lidar ring", cyl(0.185, 0.025, (0, 1.0, 2.58), seg=24), CYAN, root)
+    for sx in (-1, 1):
+        fin = rbox((0.55, 2.2, 0.03), (0, 0, 0), 0.01)
+        bmesh.ops.rotate(fin, matrix=Matrix.Rotation(sx * math.radians(12), 3, "Y"), verts=fin.verts)
+        bmesh.ops.translate(fin, vec=Vector((sx * 0.38, -1.35, 2.42)), verts=fin.verts)
+        obj("Solar fin", fin, SOLAR, root, smooth=False)
+        obj("Roof marker", rbox((0.08, 0.08, 0.04), (sx * 0.75, -2.55, 2.31), 0), AMBER, root, smooth=False)
+    obj("Antenna", cyl(0.012, 0.7, (-0.6, -2.7, 2.6), seg=6), GUN, root)
+    return root
+
+
+def lathe_x(profile, seg=48, closed=True):
+    """A solid of revolution about the X axis from an open (x, r) profile; caps the ends if closed."""
+    bm = bmesh.new()
+    rings = [[bm.verts.new((x, r * math.cos(2 * math.pi * i / seg), r * math.sin(2 * math.pi * i / seg))) for x, r in profile] for i in range(seg)]
+    for i in range(seg):
+        a, b = rings[i], rings[(i + 1) % seg]
+        for j in range(len(profile) - 1):
+            bm.faces.new((a[j], b[j], b[j + 1], a[j + 1]))
+    if closed:
+        for j in (0, len(profile) - 1):
+            if profile[j][1] > 0: bm.faces.new([rings[i][j] for i in range(seg)])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return bm
+
+
+def rover_wheel():
+    """One rover wheel (the game spins and springs it): an off-road tyre with rounded shoulders and
+    staggered chevron lugs, a gunmetal beadlock rim with six spokes and a bolted hub with a cyan ring.
+    Axle along X, centre at the origin, radius 0.62, 0.56 wide."""
+    root = empty("RoverWheel")
+    RUB, RUB2 = mat("Mat", "1A1B1F", 0.9), mat("Mat", "26272B", 0.85)
+    RIM, GUN, CYAN = mat("Metal", "8E949C", 0.3), mat("Metal", "3A3D44", 0.35), mat("Glow", "3FE0FF")
+    h = 0.26
+    prof = [(-h + 0.02, 0.36), (-h, 0.42), (-h - 0.01, 0.5), (-h + 0.01, 0.55), (-h + 0.05, 0.585),
+            (h - 0.05, 0.585), (h - 0.01, 0.55), (h + 0.01, 0.5), (h, 0.42), (h - 0.02, 0.36)]
+    obj("Tyre", lathe_x(prof, seg=64, closed=False), RUB, root)   # open: the rim fills the middle
+    n = 22
+    for k in range(n):   # chevron lugs, each half offset so they interlock round the tread
+        for side in (-1, 1):
+            a = 2 * math.pi * (k + (0.25 if side > 0 else 0)) / n
+            lug = rbox((0.2, 0.15, 0.05), (0, 0, 0), 0.012)
+            bmesh.ops.rotate(lug, matrix=Matrix.Rotation(side * math.radians(28), 3, "Z"), verts=lug.verts)
+            bmesh.ops.translate(lug, vec=Vector((side * 0.13, 0, 0.6)), verts=lug.verts)
+            bmesh.ops.rotate(lug, matrix=Matrix.Rotation(a, 3, "X"), verts=lug.verts)
+            obj("Lug", lug, RUB, root, smooth=False)
+            # shoulder block wrapping onto the sidewall
+            sh = rbox((0.05, 0.12, 0.09), (side * (h + 0.005), 0, 0.53), 0.01)
+            bmesh.ops.rotate(sh, matrix=Matrix.Rotation(a, 3, "X"), verts=sh.verts)
+            obj("Shoulder lug", sh, RUB2, root, smooth=False)
+    for side in (-1, 1):
+        x = side * (h - 0.05)
+        obj("Rim", lathe_x([(x, 0.37), (x + side * 0.03, 0.37), (x + side * 0.03, 0.3), (x - side * 0.02, 0.3), (x, 0.37)], seg=48, closed=False), RIM, root, smooth=False)
+        for k in range(12):   # beadlock bolts
+            a = 2 * math.pi * k / 12
+            obj("Bead bolt", cyl(0.014, 0.03, (x + side * 0.04, 0.335 * math.cos(a), 0.335 * math.sin(a)), seg=6, rot=Matrix.Rotation(math.pi / 2, 3, "Y")), GUN, root)
+    obj("Rim barrel", lathe_x([(-h + 0.05, 0.3), (h - 0.05, 0.3)], seg=48, closed=False), GUN, root)
+    for side in (-1, 1):   # a dished face and six spokes on both faces (the game mirrors left and right)
+        obj("Dish", lathe_x([(side * 0.12, 0.3), (side * 0.18, 0.12)], seg=48, closed=False), RIM, root)
+        for k in range(6):
+            a = 2 * math.pi * (k + 0.5 * (side > 0)) / 6
+            sp = rbox((0.06, 0.08, 0.2), (side * 0.19, 0, 0.21), 0.012)
+            bmesh.ops.rotate(sp, matrix=Matrix.Rotation(a, 3, "X"), verts=sp.verts)
+            obj("Spoke", sp, GUN, root, smooth=False)
+    for side in (-1, 1):
+        obj("Hub", cyl(0.12, 0.08, (side * 0.2, 0, 0), seg=20, rot=Matrix.Rotation(math.pi / 2, 3, "Y")), RIM, root)
+        obj("Hub ring", lathe_x([(side * 0.242, 0.1), (side * 0.242, 0.125)], seg=24, closed=False), CYAN, root)
+        obj("Hub cap", cyl(0.05, 0.05, (side * 0.25, 0, 0), seg=12, rot=Matrix.Rotation(math.pi / 2, 3, "Y")), GUN, root)
+        for k in range(6):
+            a = 2 * math.pi * k / 6
+            obj("Lug nut", cyl(0.016, 0.03, (side * 0.245, 0.085 * math.cos(a), 0.085 * math.sin(a)), seg=6, rot=Matrix.Rotation(math.pi / 2, 3, "Y")), GUN, root)
+    return root
+
+
 # ------------------------------------------------------------------ export and icons
 def flatten(root):
     """Joins each child group's meshes into one mesh named after the group, directly under the root.
@@ -375,6 +605,17 @@ def flatten(root):
         joined.name = joined.data.name = group.name.split(".")[0]
         for o in list(group.children_recursive): bpy.data.objects.remove(o, do_unlink=True)
         bpy.data.objects.remove(group, do_unlink=True)
+
+
+def join_all(root):
+    """Joins every mesh under the root into one multi-material mesh (one renderer in the game, not hundreds)."""
+    meshes = [o for o in root.children_recursive if o.type == "MESH"]
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in meshes: o.select_set(True)
+    bpy.context.view_layer.objects.active = meshes[0]
+    bpy.ops.object.join()
+    j = bpy.context.view_layer.objects.active; j.name = j.data.name = root.name + " mesh"
+    return j
 
 
 def export(root, name):
@@ -446,6 +687,10 @@ def build_all():
         piece = fn(); bpy.context.view_layer.update()
         export(piece, name)
         piece.location.x = x
+    for name, fn in (("ResourcesDecor", resources_decor), ("RoverBody", rover_body), ("RoverWheel", rover_wheel)):
+        piece = fn(); join_all(piece); bpy.context.view_layer.update()
+        export(piece, name)
+        piece.location.x = -8
     shed = toolshed(); bpy.context.view_layer.update()
     export(shed, "ToolShed")
     shed.location.x = 3.5

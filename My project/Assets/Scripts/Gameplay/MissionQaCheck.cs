@@ -84,6 +84,8 @@ namespace MarsSurvival.Gameplay
             GameObject spiritTree = GameObject.Find("Oxygen tree");
             Check(spiritTree != null && spiritTree.GetComponentsInChildren<Renderer>().Length > 10, "The oxygen spirit tree stands in the middle of the hub");
             Shot("hub_tree");
+            Place(Floor(0f, 4.6f), MarsWorldTasks.World(new Vector3(0f, 7.2f, -2f))); yield return Frames(3);
+            Shot("dome_glass");
             // The clock runs about 98x real time (one sol in about 15 minutes).
             double t0 = mission.Simulation.State.elapsedSeconds;
             yield return new WaitForSecondsRealtime(2f);
@@ -475,13 +477,24 @@ namespace MarsSurvival.Gameplay
             Check(rover != null && rover.IsReady && MarsOutpostBuilder.Utilities.Contains(roverLocal.x, roverLocal.z), "The rover is parked in the garage", roverLocal.ToString("F1"));
             Vector3 doorMid = MarsWorldTasks.World(MarsWorldTasks.GarageDoorPoint + Vector3.up * 0.6f);
             Check(Physics.CheckSphere(doorMid, 0.3f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore), "The closed garage door blocks the way out");
-            Place(Floor(14.6f, 2.6f), MarsWorldTasks.World(MarsWorldTasks.GarageDoorPoint + Vector3.up * 1.2f)); yield return Frames(3);
+            Place(Floor(19.4f, 2.6f), MarsWorldTasks.World(MarsWorldTasks.GarageDoorPoint + Vector3.up * 1.2f)); yield return Frames(3);
             MarsTaskTarget garage = mission.Tools.FindUse(player.AimTransform, s, out string garageLabel);
             Check(garage != null && garage.kind == MarsTaskTarget.Kind.Garage && garageLabel == "open the garage door", "Looking at the garage door offers E to open it", garageLabel ?? "nothing");
             MarsWorldTasks.Instance.ToggleGarage();
             yield return new WaitForSecondsRealtime(2.6f);
             Check(!Physics.CheckSphere(doorMid, 0.3f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore), "The garage door rolls up and clears the way out");
             Shot("garage_open");
+            // Tyre marks: roll the rover out through the open door onto the apron; its wheels mark the ground.
+            var tracks = rover.GetComponent<MarsSurvival.Vehicles.MarsRoverTracks>();
+            for (int k = 0; k <= 24; k++)
+            {
+                rover.RestoreMissionPose(Ground(outpost.transform.TransformPoint(new Vector3(17f + k * 0.5f, 0f, 0f))), outpost.transform.eulerAngles.y + 90f, 0);
+                yield return Frames(2);
+            }
+            Check(tracks != null && tracks.Marks > 8, "The rover's wheels leave tyre marks", tracks == null ? "no tracks" : tracks.Marks.ToString());
+            Place(Ground(outpost.transform.TransformPoint(new Vector3(33f, 0f, 6f))), MarsWorldTasks.World(MarsWorldTasks.GarageDoorPoint + Vector3.up * 1.5f)); yield return Frames(3);
+            Shot("hangar_tracks");
+            rover.RestoreMissionPose(MarsWorldTasks.World(MarsOutpostBuilder.RoverParking + Vector3.up * 0.05f), outpost.transform.eulerAngles.y + MarsOutpostBuilder.RoverParkingYaw, 0);
             MarsWorldTasks.Instance.ToggleGarage();
             credits = s.credits;
             mission.Execute("sell", "lettuce");
@@ -495,6 +508,8 @@ namespace MarsSurvival.Gameplay
             UseToolOn("regolith_shovel", Plot(7), "Shovel sows a new plot");
             Check(s.plots[7].seed != "", "A bought plot can be sown", s.plots[7].seed);
 
+            Place(Floor(-8.2f, -0.6f), Floor(-14f, 0.3f) + Vector3.up); yield return Frames(3);
+            Shot("resources_room");
             // Sleep runs time to the morning.
             Place(RoomCentre(MarsOutpostBuilder.Storage), RoomCentre(MarsOutpostBuilder.Storage) + Vector3.forward); yield return Frames(3);
             s.astronaut.food = s.astronaut.water = 100;
