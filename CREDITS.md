@@ -58,6 +58,11 @@ Made for the NASA Space Apps Challenge 2026.
   Used for: The astronaut's idle, walk, run, sprint and jump motion (subjects 16, 74 and 82), worn through a suit filter, retargeted onto the suit in Blender.  
   Source: <http://mocap.cs.cmu.edu/>
 
+- **Jacaranda Tree**  
+  Rico Cilliers (with Rob Tuytel), Poly Haven. CC0 1.0.  
+  Used for: The oxygen spirit tree in the middle of the hub, cut down for the game in Blender (tools/blender/assets/jacaranda_lite.glb).  
+  Source: <https://polyhaven.com/a/jacaranda_tree>
+
 ## Software and fonts
 
 - **Unity 2022.3, Universal Render Pipeline, TextMesh Pro, uGUI**  

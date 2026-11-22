@@ -86,7 +86,11 @@ namespace MarsSurvival.UI
                 new Entry("CMU Graphics Lab Motion Capture Database",
                     "Carnegie Mellon University (mocap.cs.cmu.edu), created with funding from NSF EIA-0196217; BVH conversion by Bruce Hahne. Free for research and commercial use.",
                     "The astronaut's idle, walk, run, sprint and jump motion (subjects 16, 74 and 82), worn through a suit filter, retargeted onto the suit in Blender.",
-                    "http://mocap.cs.cmu.edu/")),
+                    "http://mocap.cs.cmu.edu/"),
+                new Entry("Jacaranda Tree",
+                    "Rico Cilliers (with Rob Tuytel), Poly Haven. CC0 1.0.",
+                    "The oxygen spirit tree in the middle of the hub, cut down for the game in Blender.",
+                    "https://polyhaven.com/a/jacaranda_tree")),
 
             new Section("Software and fonts",
                 new Entry("Unity 2022.3, Universal Render Pipeline, TextMesh Pro, uGUI",

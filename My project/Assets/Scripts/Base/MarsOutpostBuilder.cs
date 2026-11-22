@@ -702,11 +702,7 @@ namespace MarsSurvival.Base
                 Lamp(0f, 4.6f, 0f, 14f, 1.6f);
             }
 
-            // Command table in the middle; the way between any two doors goes round it.
-            g.Prism(Charcoal, 0f, 0f, 0.85f, 0f, 0.8f);
-            g.Prism(Mauve, 0f, 0f, 1.15f, 0.8f, 0.88f);
-            g.Prism(GlowWarm, 0f, 0f, 0.8f, 0.88f, 0.9f);
-            AddCollider(-1.05f, 0f, -1.05f, 1.05f, 0.9f, 1.05f);
+            // The middle of the hub holds the oxygen spirit tree (MarsWorldTasks, OxygenTree).
             // Comms mast on the dome (the printed module has its own mast).
             if (!moduled)
             {
@@ -720,24 +716,18 @@ namespace MarsSurvival.Base
         private void BuildStorage()
         {
             FloorRect r = Storage;
-            BeginRoom("Storage", r, "The seed shop kiosk, food and the bunk.", "");
+            BeginRoom("Shop", r, "The seed shop kiosk, and the bunk.", "");
             Shell(r, 2.7f, White, DarkRed, 1.1f, null, new[] { Arch(0f) }, null, null);
-            // shortcut: plain blocks stand in for furniture until it is modelled.
-            Block(Olive, -15.6f, 2.9f, -13.6f, 3.6f, 1.75f);        // food locker
-            Block(PalePink, -9.9f, -3.7f, -7.9f, -2.8f, 0.5f);       // bunk
+            Block(PalePink, -9.9f, -3.7f, -7.9f, -2.8f, 0.5f);       // bunk (shortcut: a plain block until it is modelled)
             End();
         }
 
         private void BuildUtilities()
         {
             FloorRect r = Utilities;
-            BeginRoom("Utilities", r, "Power and water: the generator, the batteries and the water extractor.", "");
+            BeginRoom("Water", r, "The water pump: it draws melt water up from the ice below. Press E at it to fill up.", "");
             Shell(r, 2.7f, White, DarkRed, 1.1f, new[] { Arch(0f) }, null, null, null);
-            Block(Charcoal, 10.2f, -3.7f, 12.8f, -2.5f, 1.6f);       // generator
-            Block(Purple, 13.8f, -3.7f, 15.4f, -3f, 1.8f);           // battery bank
-            g.Prism(PalePink, 11.5f, 2.9f, 0.9f, 0f, 2.2f);          // water tank
-            AddCollider(10.6f, 0f, 2f, 12.4f, 2.2f, 3.8f);
-            Block(Mauve, 13.7f, 2.5f, 15.1f, 3.5f, 1.4f);            // water extractor and dispenser
+            AddCollider(10.65f, 0f, -3.75f, 12.85f, 2f, -2.65f);    // the pump (model: MarsWorldTasks, WaterPump)
             End();
         }
 

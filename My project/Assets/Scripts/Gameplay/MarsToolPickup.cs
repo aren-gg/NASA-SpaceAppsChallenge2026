@@ -156,10 +156,12 @@ namespace MarsSurvival.Gameplay
             switch (t.kind)
             {
                 case MarsTaskTarget.Kind.Food: return "eat a crop";
-                case MarsTaskTarget.Kind.Water: return "drink water";
+                case MarsTaskTarget.Kind.Water: return "pump water";
                 case MarsTaskTarget.Kind.Bunk: return "sleep until 07:00";
                 case MarsTaskTarget.Kind.Shop: return "open the seed shop";
-                case MarsTaskTarget.Kind.Shed: return state.carriedTools.Count > 0 ? "put your tools back on the shed" : null;
+                case MarsTaskTarget.Kind.Shed:
+                    string bayTool = MarsTool.Order[t.index];
+                    return MarsMissionController.Instance.Tools.Has(bayTool) ? "put the " + MarsBaseTool.NameOf(bayTool) + " back" : null;
                 case MarsTaskTarget.Kind.Plant:
                     var sim = MarsMissionController.Instance.Simulation;
                     PlotState plot = sim.Plot(t.index);
@@ -176,7 +178,7 @@ namespace MarsSurvival.Gameplay
                 case MarsTaskTarget.Kind.Water: mission.Execute("drink"); break;
                 case MarsTaskTarget.Kind.Bunk: mission.Sleep(); break;
                 case MarsTaskTarget.Kind.Shop: mission.SetShopOpen(true); break;
-                case MarsTaskTarget.Kind.Shed: mission.Notice = MarsMissionController.Instance.Tools.PutAllBack(); MarsSfx.Play(MarsSfx.Sound.Select); break;
+                case MarsTaskTarget.Kind.Shed: mission.Notice = mission.Tools.PutBack(MarsTool.Order[t.index]); MarsSfx.Play(MarsSfx.Sound.Select); break;
                 case MarsTaskTarget.Kind.Plant:
                     mission.Execute("pick", t.index.ToString(System.Globalization.CultureInfo.InvariantCulture));
                     if (MarsExpedition.Instance != null) MarsExpedition.Instance.Pop("+1 crop", t.transform.position + Vector3.up * 0.5f);
@@ -236,9 +238,16 @@ namespace MarsSurvival.Gameplay
             MarsToolBelt belt = MarsExpedition.Instance == null ? null : MarsExpedition.Instance.Belt;
             if (state == null || belt == null) return "";
             if (!belt.Equipped) return "Nothing in your hand.";
-            string id = belt.Current.Id;
+            return PutBack(belt.Current.Id);
+        }
+
+        /// <summary>Returns one tool to its bay on the shed.</summary>
+        public string PutBack(string id)
+        {
+            MissionState state = State;
+            if (state == null) return "";
             int removed = state.carriedTools.RemoveAll(key => key.Contains("/" + id + "#"));
-            if (removed == 0) return "That hotbar slot is empty.";
+            if (removed == 0) return "You aren't carrying the " + MarsBaseTool.NameOf(id) + ".";
             Sync(state);
             return "Put the " + MarsBaseTool.NameOf(id) + " back on the shed.";
         }

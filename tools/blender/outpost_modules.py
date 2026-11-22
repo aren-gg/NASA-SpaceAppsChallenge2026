@@ -413,8 +413,8 @@ SPRING, APEX = 2.45, 3.55
 DOOR_W, DOOR_H = 2.0, 2.4
 # name: rect, along_x, doors at v0 / v1 (label shown inside above it), extra
 MODULES = {
-    "Storage":    ((-16, -4, -7.5, 4), True, (None, "COMMAND-01"), "STORAGE-02"),
-    "Utilities":  ((7.5, -4, 16, 4), True, ("COMMAND-01", None), "UTILITIES-03"),
+    "Storage":    ((-16, -4, -7.5, 4), True, (None, "COMMAND-01"), "SHOP-02"),
+    "Utilities":  ((7.5, -4, 16, 4), True, ("COMMAND-01", None), "WATER-03"),
     "Greenhouse": ((-3.5, -18, 3.5, -7), False, (None, "COMMAND-01"), "GREENHOUSE-04"),
     "Airlock":    ((-1.7, 13.25, 1.7, 16.75), False, ("COMMAND-01", "EXIT"), "AIRLOCK-05"),
 }
@@ -667,14 +667,9 @@ for k in range(12):
     a = math.radians(k * 30 + 15)
     pts = [Vector((math.cos(a) * (inner_radius(z) - 0.02), math.sin(a) * (inner_radius(z) - 0.02), z)) for z in [0.0] + [IN_SPRING + (IN_TOP - 0.2 - IN_SPRING) * i / 24 for i in range(25)]]
     strip("Hub rib", METAL, Matrix.Identity(4), pts, 0.14, 0.1)
-ringmesh("Halo light ring", CYAN, 3.1, 0.05, 5.6)
-ringmesh("Halo frame", METAL, 3.1, 0.09, 5.66)
-for k in range(6):
-    a = math.radians(k * 60 + 15)
-    pts = [Vector((math.cos(a) * 3.1, math.sin(a) * 3.1, 5.66)), Vector((math.cos(a) * (inner_radius(7.2) - 0.05), math.sin(a) * (inner_radius(7.2) - 0.05), 7.2))]
-    strip("Halo hanger", STEEL, Matrix.Identity(4), pts, 0.03, 0.03)
+# (No hanging halo ring: the spirit tree fills the dome; see garden_assets.oxygen_tree.)
 cylinder("Oculus glow", WARM, IN_R_TOP - 0.1, 0.04, (0, 0, IN_TOP - 0.02), verts=64)
-DIRS = ["UTILITIES-03", "AIRLOCK-05 / EXIT", "STORAGE-02", "GREENHOUSE-04"]   # +x, +y(game +z), -x, -y
+DIRS = ["WATER-03", "AIRLOCK-05 / EXIT", "SHOP-02", "GREENHOUSE-04"]   # +x, +y(game +z), -x, -y
 for k in range(4):
     a = k * math.pi / 2
     fr = Matrix.Translation((math.cos(a) * HUB_R_IN, math.sin(a) * HUB_R_IN, 0)) @ Matrix.Rotation(a - math.pi / 2, 4, "Z")

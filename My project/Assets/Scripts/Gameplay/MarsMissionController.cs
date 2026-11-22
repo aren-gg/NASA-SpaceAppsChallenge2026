@@ -129,7 +129,7 @@ namespace MarsSurvival.Gameplay
             if (!Ready) { Notice = "Waiting for the astronaut and outpost."; return; }
             Simulation = new MissionSimulation(MissionSimulation.NewMission(2026));
             StartAtMorning();
-            player.RestoreMissionPose(outpost.transform.TransformPoint(new Vector3(0, 0.05f, 0)), outpost.transform.eulerAngles.y);
+            player.RestoreMissionPose(outpost.transform.TransformPoint(MarsWorldTasks.SpawnPoint), outpost.transform.eulerAngles.y + 180f);   // facing the tree
             pendingTime = 0; Paused = false; lastSaveSol = 0;
             SetShopOpen(false);
             Notice = "Sol 1, 07:00. Take the shovel and sprayer from the greenhouse, then sow your lettuce seeds.";

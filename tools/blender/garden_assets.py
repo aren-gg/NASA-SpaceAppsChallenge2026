@@ -271,6 +271,94 @@ def toolshed():
     return root
 
 
+# ------------------------------------------------------------------ hub centrepiece and water pump
+def oxygen_tree():
+    """The hub's centrepiece, a spirit tree that makes the base's oxygen: a real gnarled tree (Poly
+    Haven's "Jacaranda Tree", Rico Cilliers, CC0, cut down to tools/blender/assets/jacaranda_lite.glb)
+    drawn up to ~7.5 m under the skylight, with glowing teal leaves, glowing blossoms on the branch
+    tips, light motes rising and glowing veins in the planter's soil. Origin on the floor."""
+    import random
+    rnd = random.Random(11)
+    root = empty("OxygenTree")
+    GUN, WHITE, SOIL = mat("Metal", "3A3D44", 0.35), mat("Mat", "E4E1DA", 0.5), mat("Mat", "2B211C", 0.95)
+    CYAN, VEIN, MOTE = mat("Glow", "3FE0FF"), mat("Glow", "5FFFD0"), mat("Glow", "C8FFF0")
+    obj("Planter", cyl(1.9, 0.6, (0, 0, 0.3), seg=64), WHITE, root)
+    obj("Planter rim", cyl(1.95, 0.08, (0, 0, 0.62), seg=64), GUN, root)
+    obj("Rim light", cyl(1.97, 0.03, (0, 0, 0.5), seg=64), CYAN, root)
+    obj("Soil", cyl(1.85, 0.04, (0, 0, 0.64), seg=64), SOIL, root)
+    for k in range(12):   # glowing veins in the soil, out from the trunk
+        a = k * 2 * math.pi / 12 + rnd.uniform(-0.1, 0.1)
+        v = rbox((1.3, 0.035, 0.012), (0.9 * math.cos(a), 0.9 * math.sin(a), 0.665), 0)
+        bmesh.ops.rotate(v, matrix=Matrix.Rotation(a, 3, "Z"), verts=v.verts, cent=Vector((0.9 * math.cos(a), 0.9 * math.sin(a), 0.665)))
+        obj("Root vein", v, VEIN, root)
+    for k in range(6):
+        a = k * math.pi / 3 + math.pi / 6
+        obj("Vent", rbox((0.6, 0.06, 0.18), (1.92 * math.cos(a), 1.92 * math.sin(a), 0.3), 0.01), CYAN, root)
+        bpy.context.view_layer.update()
+    # The tree, drawn up tall and slender to rise toward the skylight.
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=os.path.join(ROOT, "tools/blender/assets/jacaranda_lite.glb"))
+    tree = []
+    for o in [o for o in bpy.data.objects if o not in before]:
+        if o.type != "MESH": bpy.data.objects.remove(o, do_unlink=True); continue
+        o.data.transform(Matrix.Translation((0, 0, 0.62)) @ Matrix.Diagonal((1.0, 1.0, 1.35, 1)))
+        o.parent = root; o.matrix_parent_inverse.identity(); o.location = (0, 0, 0); o.rotation_euler = (0, 0, 0)
+        tree.append(o)
+        if "leaves" in o.name.lower():
+            for m in o.data.materials:
+                m.name = "Spirit leaves"   # the game lights these teal (MarsWorldTasks.Model)
+                b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+                b.inputs["Emission Color"].default_value = (0.2, 1.0, 0.8, 1); b.inputs["Emission Strength"].default_value = 0.8
+    # Glowing blossoms nestled in the crown, on the branch tips.
+    crown = [v.co.copy() for o in tree if "branch" in o.name.lower() for v in o.data.vertices]
+    crown = [p for p in crown if p.z > 3.6]
+    rnd.shuffle(crown)
+    for p in crown[:90]:
+        obj("Blossom", ellipsoid((rnd.uniform(0.04, 0.08),) * 3, p, seg=8), MOTE, root)
+    for k in range(60):   # light motes drifting up through the crown
+        a = rnd.uniform(0, 2 * math.pi); r = rnd.uniform(0.4, 3.0)
+        obj("Light mote", ellipsoid((0.045,) * 3, (r * math.cos(a), r * math.sin(a), rnd.uniform(1.2, 8.0)), seg=6), MOTE, root)
+    for side in (-1, 1):   # OXYGEN on the planter, front and back
+        bpy.ops.object.text_add(location=(0, side * 1.91, 0.32)); t = bpy.context.object
+        t.data.body = "OXYGEN"; t.data.align_x = "CENTER"; t.data.align_y = "CENTER"; t.data.size = 0.22; t.data.extrude = 0.004
+        t.rotation_euler = (math.radians(90), 0, 0 if side < 0 else math.pi); t.data.materials.append(CYAN); t.parent = root
+        bpy.ops.object.select_all(action="DESELECT"); t.select_set(True); bpy.context.view_layer.objects.active = t
+        bpy.ops.object.convert(target="MESH")
+    return root
+
+
+def water_pump():
+    """The water station: a pump drawing melt water up from the ice below into a clear tank, with a
+    tap where you fill up. 2.2 m wide, facing -Y, origin on the floor."""
+    root = empty("WaterPump")
+    GUN, WHITE, DARK = mat("Metal", "3A3D44", 0.35), mat("Mat", "E4E1DA", 0.5), mat("Mat", "2A2D34", 0.6)
+    WATER, CYAN, AMBER = mat("Glow", "2E8FD6"), mat("Glow", "3FE0FF"), mat("Glow", "FFB547")
+    obj("Base", rbox((2.2, 1.0, 0.15), (0, 0, 0.075), 0.02), GUN, root)
+    obj("Wellhead", cyl(0.32, 0.5, (-0.65, 0.05, 0.4), seg=24), GUN, root)          # pipe down to the ice
+    obj("Wellhead ring", cyl(0.36, 0.06, (-0.65, 0.05, 0.6), seg=24), AMBER, root)
+    obj("Pump body", rbox((0.6, 0.6, 0.9), (-0.65, 0.05, 1.1), 0.04), WHITE, root)
+    obj("Motor", cyl(0.2, 0.5, (-0.65, -0.2, 1.3), seg=20, rot=Matrix.Rotation(math.pi / 2, 3, "X")), DARK, root)
+    obj("Pump light", rbox((0.5, 0.01, 0.04), (-0.65, -0.255, 0.8), 0), CYAN, root)
+    obj("Riser", cyl(0.06, 1.2, (-0.25, 0.25, 1.6), seg=12, rot=Matrix.Rotation(math.pi / 2, 3, "Y")), GUN, root)
+    obj("Tank", cyl(0.42, 1.6, (0.55, 0.1, 1.0), seg=32), WATER, root)            # the water itself, lit blue
+    for z in (0.6, 1.0, 1.4):
+        obj("Tank band", cyl(0.44, 0.05, (0.55, 0.1, z), seg=32), GUN, root)
+    obj("Tank cap", cyl(0.45, 0.08, (0.55, 0.1, 1.84), seg=32), GUN, root)
+    obj("Tank foot", cyl(0.45, 0.08, (0.55, 0.1, 0.2), seg=32), GUN, root)
+    obj("Tap", rbox((0.14, 0.24, 0.1), (0.55, -0.4, 1.0), 0.02), GUN, root)
+    obj("Tap spout", cyl(0.03, 0.12, (0.55, -0.5, 0.92), seg=10), GUN, root)
+    obj("Drip tray", rbox((0.4, 0.3, 0.04), (0.55, -0.5, 0.45), 0.01), DARK, root)
+    obj("Sign plate", rbox((1.0, 0.06, 0.28), (0, 0.42, 2.25), 0.02), DARK, root)
+    obj("Sign post", rbox((0.06, 0.06, 2.2), (-0.5, 0.42, 1.1), 0.01), GUN, root)
+    obj("Sign post", rbox((0.06, 0.06, 2.2), (0.5, 0.42, 1.1), 0.01), GUN, root)
+    bpy.ops.object.text_add(location=(0, 0.385, 2.25)); t = bpy.context.object
+    t.data.body = "WATER"; t.data.align_x = "CENTER"; t.data.align_y = "CENTER"; t.data.size = 0.18; t.data.extrude = 0.004
+    t.rotation_euler = (math.radians(90), 0, 0); t.data.materials.append(CYAN); t.parent = root
+    bpy.ops.object.select_all(action="DESELECT"); t.select_set(True); bpy.context.view_layer.objects.active = t
+    bpy.ops.object.convert(target="MESH")
+    return root
+
+
 # ------------------------------------------------------------------ export and icons
 def flatten(root):
     """Joins each child group's meshes into one mesh named after the group, directly under the root.
@@ -299,6 +387,7 @@ def export(root, name):
     walk(root)
     bpy.context.view_layer.objects.active = root
     bpy.ops.export_scene.fbx(filepath=os.path.join(OUT, name + ".fbx"), use_selection=True, object_types={"MESH", "EMPTY"},
+                             path_mode="COPY", embed_textures=True,   # the jacaranda keeps its own textures
                              apply_scale_options="FBX_SCALE_UNITS", axis_forward="-Z", axis_up="Y",
                              bake_space_transform=True, mesh_smooth_type="FACE", add_leaf_bones=False)
 
@@ -353,6 +442,10 @@ def build_all():
         item.location.x = 0; bpy.context.view_layer.update()
         export(item, name)
         item.location.x = 6 + len(name) * 0.1
+    for name, fn, x in (("OxygenTree", oxygen_tree, 10), ("WaterPump", water_pump, 16)):
+        piece = fn(); bpy.context.view_layer.update()
+        export(piece, name)
+        piece.location.x = x
     shed = toolshed(); bpy.context.view_layer.update()
     export(shed, "ToolShed")
     shed.location.x = 3.5

@@ -78,6 +78,12 @@ namespace MarsSurvival.Gameplay
             if (mission.Simulation == null) { Finish(); yield break; }
             double startHour = mission.Environment.localHour;
             Check(startHour > 6.5 && startHour < 7.5, "Sol 1 starts at 07:00", startHour.ToString("0.00"));
+            Vector3 spawnLocal = outpost.transform.InverseTransformPoint(player.transform.position);
+            Check(Mathf.Abs(spawnLocal.x) < 0.3f && Mathf.Abs(spawnLocal.z - MarsWorldTasks.SpawnPoint.z) < 0.3f,
+                "The astronaut starts in front of the oxygen tree, not on it", spawnLocal.ToString("F2"));
+            GameObject spiritTree = GameObject.Find("Oxygen tree");
+            Check(spiritTree != null && spiritTree.GetComponentsInChildren<Renderer>().Length > 10, "The oxygen spirit tree stands in the middle of the hub");
+            Shot("hub_tree");
             // The clock runs about 98x real time (one sol in about 15 minutes).
             double t0 = mission.Simulation.State.elapsedSeconds;
             yield return new WaitForSecondsRealtime(2f);
@@ -159,7 +165,7 @@ namespace MarsSurvival.Gameplay
             MarsOutpostDoor[] doors = FindObjectsOfType<MarsOutpostDoor>();
             // 4 hub doorways, storage, utilities, greenhouse, and the airlock's inner and outer doors.
             Check(doors.Length == 9, "Sliding doors in every doorway", doors.Length + " doors");
-            Vector3 hub = Floor(0, 0);
+            Vector3 hub = Floor(0, 3.6f);   // in front of the oxygen tree
             for (int i = 0; i < doors.Length; i++)
             {
                 MarsOutpostDoor d = doors[i];
@@ -289,11 +295,14 @@ namespace MarsSurvival.Gameplay
             hotbar.Select(0);
             Check(hotbar.CurrentCarried, "Pressing 1 once more takes it back in hand");
 
-            // The tool shed: E puts every carried tool back, and the hotbar empties.
-            Place(Floor(0f, -16.4f), MarsWorldTasks.World(MarsWorldTasks.ShedPoint + new Vector3(0f, 1.7f, 0f))); yield return Frames(3);
+            // The tool shed: E at a tool's bay returns just that tool.
+            Place(Floor(1f, -16.4f), MarsWorldTasks.World(MarsWorldTasks.ShedPoint + new Vector3(1f, 1.3f, 0f))); yield return Frames(3);
             MarsTaskTarget shedUse = belt.FindUse(player.AimTransform, mission.Simulation.State, out string shedLabel);
-            Check(shedUse != null && shedUse.kind == MarsTaskTarget.Kind.Shed, "Looking at the tool shed offers E to put tools back", shedLabel ?? "nothing");
-            mission.Notice = belt.PutAllBack();
+            Check(shedUse != null && shedUse.kind == MarsTaskTarget.Kind.Shed && shedUse.index == 1, "Looking at the sprayer's bay offers E to put it back", shedLabel ?? "nothing");
+            mission.Notice = belt.PutBack("hydro_sprayer");
+            Check(!belt.Has("hydro_sprayer") && belt.Has("regolith_shovel") && belt.Has("work_lamp"),
+                "Putting back the sprayer leaves the other tools in the hotbar", mission.Notice);
+            belt.PutBack("regolith_shovel"); belt.PutBack("work_lamp");
             yield return Frames(2);
             Check(mission.Simulation.State.carriedTools.Count == 0 && !hotbar.CurrentCarried && hotbar.HeldView == null,
                 "Tools go back on the shed; hands and hotbar empty", mission.Notice);
@@ -440,11 +449,8 @@ namespace MarsSurvival.Gameplay
 
             // Eat one, sell the rest, expand the greenhouse.
             s.astronaut.food = 40;
-            Place(Floor(-13f, 1.5f), MarsWorldTasks.World(new Vector3(-14.6f, 0.9f, 3.25f))); yield return Frames(3);
-            MarsTaskTarget locker = mission.Tools.FindUse(player.AimTransform, s, out string lockerLabel);
-            Check(locker != null && locker.kind == MarsTaskTarget.Kind.Food, "Storage: E on the food locker offers to eat", lockerLabel ?? "nothing");
             mission.Execute("eat");
-            Check(s.astronaut.food > 60 && s.basket[0] == basket + 2, "Eating a crop from the food locker refills food", mission.Notice);
+            Check(s.astronaut.food > 60 && s.basket[0] == basket + 2, "Eating a crop refills food", mission.Notice);
             // Hold a picked lettuce from the hotbar and eat it.
             int lettuceSlot = Array.FindIndex(hotbar.Tools, t => t.Id == "crop_lettuce");
             if (!(hotbar.Selected == lettuceSlot && hotbar.Equipped)) hotbar.Select(lettuceSlot);
@@ -457,8 +463,11 @@ namespace MarsSurvival.Gameplay
             yield return Frames(2);
             Shot("held_lettuce");
             basket = s.basket[0] - 2;   // the sell check below expects basket + 2
+            Place(MarsWorldTasks.World(MarsWorldTasks.PumpPoint + new Vector3(0f, 0.05f, 2.2f)), MarsWorldTasks.World(MarsWorldTasks.PumpPoint + new Vector3(0f, 1f, 0f))); yield return Frames(3);
+            MarsTaskTarget pump = mission.Tools.FindUse(player.AimTransform, s, out string pumpLabel);
+            Check(pump != null && pump.kind == MarsTaskTarget.Kind.Water && pumpLabel == "pump water", "Water wing: E at the pump offers to pump water", pumpLabel ?? "nothing");
             s.astronaut.water = 40; mission.Execute("drink");
-            Check(s.astronaut.water == 100, "Drinking at the water dispenser refills water", mission.Notice);
+            Check(s.astronaut.water == 100, "Pumping water refills the water bar", mission.Notice);
             credits = s.credits;
             mission.Execute("sell", "lettuce");
             Check(s.basket[0] == 0 && s.credits == credits + (basket + 2) * 15, "Sell lettuce for 15 credits each", mission.Notice);

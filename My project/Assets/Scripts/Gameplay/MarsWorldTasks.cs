@@ -43,6 +43,10 @@ namespace MarsSurvival.Gameplay
         public static readonly Vector3 ShopPoint = new Vector3(-10.6f, 0f, 3.2f);
         /// <summary>Crop and kiosk models (tools/blender/garden_assets.py), and their shop icons.</summary>
         public const string GardenFolder = "Garden";
+        /// <summary>Water pump against the water wing's back wall.</summary>
+        public static readonly Vector3 PumpPoint = new Vector3(11.75f, 0f, -3.2f);
+        /// <summary>Where a new mission starts: in the hub in front of the oxygen tree, facing it.</summary>
+        public static readonly Vector3 SpawnPoint = new Vector3(0f, 0.05f, 3.6f);
         /// <summary>Tool shed against the greenhouse's back wall.</summary>
         public static readonly Vector3 ShedPoint = new Vector3(0f, 0f, -17.75f);
 
@@ -105,9 +109,19 @@ namespace MarsSurvival.Gameplay
             }
 
             // Things used with E.
-            // Food and the bunk in storage, drinking water at the extractor in utilities (MarsOutpostBuilder).
-            Usable("Food locker", new Vector3(-14.6f, 0.9f, 3.25f), new Vector3(2f, 1.75f, 0.7f), MarsTaskTarget.Kind.Food);
-            Usable("Water dispenser", new Vector3(14.4f, 0.8f, 3f), new Vector3(1.4f, 1.4f, 1f), MarsTaskTarget.Kind.Water);
+            // The water pump against the water wing's back wall, facing into the room; E fills you up.
+            GameObject pump = new GameObject("Water pump");
+            pump.transform.SetParent(root, false);
+            pump.transform.localPosition = PumpPoint;
+            Model("WaterPump", pump.transform).localRotation = Quaternion.identity;   // faces +z, into the room
+            Usable("Water pump", PumpPoint + new Vector3(0f, 1f, 0.2f), new Vector3(2.2f, 2f, 1.2f), MarsTaskTarget.Kind.Water);
+
+            // The oxygen spirit tree in the middle of the hub; its round planter stops you.
+            GameObject tree = new GameObject("Oxygen tree");
+            tree.transform.SetParent(root, false);
+            Model("OxygenTree", tree.transform);
+            CapsuleCollider planter = tree.AddComponent<CapsuleCollider>();
+            planter.radius = 1.95f; planter.height = 4f; planter.center = new Vector3(0f, 0.3f, 0f);
             Usable("Bunk", new Vector3(-8.9f, 0.6f, -3.25f), new Vector3(2f, 0.4f, 0.9f), MarsTaskTarget.Kind.Bunk);
             // The seed shop kiosk in storage.
             GameObject shop = new GameObject("Seed shop");
@@ -124,7 +138,11 @@ namespace MarsSurvival.Gameplay
             shed.transform.SetParent(root, false);
             shed.transform.localPosition = ShedPoint;
             Model("ToolShed", shed.transform).localRotation = Quaternion.identity;   // faces +z, toward the door
-            Usable("Tool shed", ShedPoint + new Vector3(0f, 1.6f, 0.05f), new Vector3(3f, 1.2f, 0.4f), MarsTaskTarget.Kind.Shed);
+            // One target per bay (index = the tool's place in MarsTool.Order): E there returns just that tool.
+            // Seen from the aisle the bays are sprayer (+x), shovel (middle), lamp (-x).
+            float[] bayX = { 0f, 1f, -1f };   // shovel, sprayer, lamp
+            for (int i = 0; i < bayX.Length; i++)
+                Usable("Tool shed bay", ShedPoint + new Vector3(bayX[i], 1.3f, 0.1f), new Vector3(0.95f, 1.6f, 0.4f), MarsTaskTarget.Kind.Shed).index = i;
         }
 
         private PlantView BuildPlant(int index, Vector3 at)
@@ -183,13 +201,41 @@ namespace MarsSurvival.Gameplay
             foreach (Renderer r in model.GetComponentsInChildren<Renderer>(true))
             {
                 Material[] slots = r.sharedMaterials;
-                for (int i = 0; i < slots.Length; i++) slots[i] = Named(slots[i] == null ? "" : slots[i].name);
+                for (int i = 0; i < slots.Length; i++)
+                slots[i] = slots[i] != null && !slots[i].name.Contains("#") ? Kept(slots[i]) : Named(slots[i] == null ? "" : slots[i].name);
                 r.sharedMaterials = slots;
             }
             return model;
         }
 
         private readonly Dictionary<string, Material> named = new Dictionary<string, Material>();
+
+        /// <summary>
+        /// A textured material the model brought (the spirit tree's bark and leaves) kept as imported;
+        /// the leaves are cut out by their alpha, drawn on both sides and glow teal.
+        /// </summary>
+        private Material Kept(Material imported)
+        {
+            Material m;
+            if (!imported.name.StartsWith("Spirit leaves"))
+            {
+                // shortcut: the bark textures don't survive the FBX export (glTF-packed images), so the bark is
+                // a plain dark brown; embed them from tools/blender/assets if a closer look needs them.
+                bool bare = !imported.HasProperty("_BaseMap") || imported.GetTexture("_BaseMap") == null;
+                if (!bare) return imported;
+                if (!named.TryGetValue("Spirit bark", out m)) { m = MarsPalette.CreateMatteMaterial("Spirit bark", new Color32(0x4A, 0x36, 0x2A, 255)); named["Spirit bark"] = m; }
+                return m;
+            }
+            if (named.TryGetValue("Spirit leaves", out m)) return m;
+            m = new Material(imported) { name = "Spirit leaves" };
+            m.SetFloat("_AlphaClip", 1f); m.EnableKeyword("_ALPHATEST_ON"); m.SetFloat("_Cutoff", 0.4f);
+            m.SetFloat("_Cull", 0f); m.renderQueue = 2450;
+            m.EnableKeyword("_EMISSION");
+            if (m.HasProperty("_BaseMap")) m.SetTexture("_EmissionMap", m.GetTexture("_BaseMap"));
+            m.SetColor("_EmissionColor", new Color(0.25f, 1f, 0.8f) * 0.9f);
+            named["Spirit leaves"] = m;
+            return m;
+        }
 
         private Material Named(string imported)
         {
@@ -211,7 +257,7 @@ namespace MarsSurvival.Gameplay
             return m;
         }
 
-        private void Usable(string name, Vector3 centre, Vector3 size, MarsTaskTarget.Kind kind)
+        private MarsTaskTarget Usable(string name, Vector3 centre, Vector3 size, MarsTaskTarget.Kind kind)
         {
             GameObject go = new GameObject(name);
             go.transform.SetParent(root, false);
@@ -219,12 +265,9 @@ namespace MarsSurvival.Gameplay
             BoxCollider box = go.AddComponent<BoxCollider>();
             box.size = size;
             box.isTrigger = true; // aimed at with E, never pushes the astronaut
-            go.AddComponent<MarsTaskTarget>().kind = kind;
-        }
-
-        private static void Target(GameObject go, MarsTaskTarget.Kind kind)
-        {
-            go.AddComponent<MarsTaskTarget>().kind = kind;
+            MarsTaskTarget target = go.AddComponent<MarsTaskTarget>();
+            target.kind = kind;
+            return target;
         }
 
         private GameObject Cube(string name, Transform parent, Vector3 position, Vector3 scale, Color color, bool collider)
