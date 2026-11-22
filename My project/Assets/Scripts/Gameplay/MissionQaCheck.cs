@@ -405,7 +405,12 @@ namespace MarsSurvival.Gameplay
             mission.SetShopOpen(true);
             yield return Frames(2);
             Check(mission.ShopOpen && mission.InputBlocked && Cursor.visible, "The shop opens, frees the cursor and stops walking");
+            // A buy click shows "+1 LETTUCE SEED −10 CR" rising off the button (refunded after the shot).
+            var hud = FindObjectOfType<MarsSurvival.UI.MarsMissionHud>();
+            typeof(MarsSurvival.UI.MarsMissionHud).GetMethod("Trade", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).Invoke(hud, new object[] { "buy", "lettuce" });
+            yield return new WaitForSecondsRealtime(0.25f);
             yield return ScreenShot("screen_shop");
+            mission.Simulation.State.credits += 10; mission.Simulation.State.seeds[0]--;
             int credits = s.credits;
             mission.Execute("buy", "tomato");
             Check(s.credits == credits - 25 && s.seeds[1] == 1, "Buy tomato seeds for 25 credits", mission.Notice);
@@ -525,8 +530,10 @@ namespace MarsSurvival.Gameplay
             yield return new WaitForSecondsRealtime(1.5f);
             Check(rover.IsCharging && rover.BatteryPercent > charge0, "The rover charges while parked in the hangar", charge0.ToString("F0") + "% -> " + rover.BatteryPercent.ToString("F0") + "%");
             credits = s.credits;
+            mission.Execute("sellone", "lettuce");
+            Check(s.basket[0] == basket + 1 && s.credits == credits + 15, "Sell 1 sells just one lettuce", mission.Notice);
             mission.Execute("sell", "lettuce");
-            Check(s.basket[0] == 0 && s.credits == credits + (basket + 2) * 15, "Sell lettuce for 15 credits each", mission.Notice);
+            Check(s.basket[0] == 0 && s.credits == credits + (basket + 2) * 15, "Sell all sells the rest, 15 credits each", mission.Notice);
             s.credits += 200;
             credits = s.credits;
             mission.Execute("buy", "plots");

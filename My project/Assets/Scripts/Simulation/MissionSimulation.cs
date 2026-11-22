@@ -114,13 +114,17 @@ namespace MarsSurvival.Simulation
                     State.seeds[kind]++;
                     reason = "Bought " + SeedKind.All[kind].name.ToLowerInvariant() + " seeds.";
                     break;
-                case "sell":
+                case "sell":       // the whole basket of one crop
+                case "sellone":    // just one
+                {
                     if (kind < 0 || State.basket[kind] <= 0) return Fail("Nothing of that to sell.", out reason);
-                    int earned = State.basket[kind] * SeedKind.All[kind].sellPrice;
-                    reason = "Sold " + State.basket[kind] + " " + SeedKind.All[kind].name.ToLowerInvariant() + " for " + earned + " credits.";
+                    int count = action == "sellone" ? 1 : State.basket[kind];
+                    int earned = count * SeedKind.All[kind].sellPrice;
+                    reason = "Sold " + count + " " + SeedKind.All[kind].name.ToLowerInvariant() + " for " + earned + " credits.";
                     State.credits += earned;
-                    State.basket[kind] = 0;
+                    State.basket[kind] -= count;
                     break;
+                }
                 default: return Fail("Unknown action.", out reason);
             }
             LastResult = reason;

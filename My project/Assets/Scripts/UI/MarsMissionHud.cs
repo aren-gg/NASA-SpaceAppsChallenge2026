@@ -33,7 +33,7 @@ namespace MarsSurvival.UI
         private RectTransform shop;
         private TMP_Text shopCredits, expandRow, expandMeta;
         private TMP_Text[] owned, basketRows;
-        private Button[] buy, sell;
+        private Button[] buy, sell, sellAll;
         private Button expand;
         private GameObject gameplay;
         private RectTransform noticePlate;
@@ -201,7 +201,7 @@ namespace MarsSurvival.UI
 
             Section("Seeds");
             int n = SeedKind.All.Length;
-            owned = new TMP_Text[n]; basketRows = new TMP_Text[n]; buy = new Button[n]; sell = new Button[n];
+            owned = new TMP_Text[n]; basketRows = new TMP_Text[n]; buy = new Button[n]; sell = new Button[n]; sellAll = new Button[n];
             for (int i = 0; i < n; i++)
             {
                 SeedKind k = SeedKind.All[i];
@@ -213,14 +213,14 @@ namespace MarsSurvival.UI
                 Label(Region(card, 80, 24, 320, 22), "Ripe " + Duration(k.seconds) + " after watering · sells " + k.sellPrice, 15, muted, TextAlignmentOptions.MidlineLeft);
                 owned[i] = Label(Region(card, 80, 4, 300, 20), "", 13, UiTheme.Info, TextAlignmentOptions.MidlineLeft);
                 UiStyle.Caps(owned[i], 2f);
-                buy[i] = ShopButton(card, k.price + " CR", 116, 44, accent, () => mission.Execute("buy", id));
+                buy[i] = ShopButton(card, k.price + " CR", 116, 44, accent, () => Trade("buy", id));
             }
             Section("Greenhouse");
             RectTransform grow = Line(shop, 64, 0f);
             expandRow = Label(Region(grow, 0, 28, 380, 30), "", 22, paper, TextAlignmentOptions.MidlineLeft);
             UiStyle.Caps(expandRow, 2f);
             expandMeta = Label(Region(grow, 0, 6, 380, 22), "", 15, muted, TextAlignmentOptions.MidlineLeft);
-            expand = ShopButton(grow, "", 116, 44, accent, () => mission.Execute("buy", "plots"));
+            expand = ShopButton(grow, "", 116, 44, accent, () => Trade("buy", "plots"));
 
             Section("Harvest");
             for (int i = 0; i < n; i++)
@@ -228,12 +228,66 @@ namespace MarsSurvival.UI
                 string id = SeedKind.All[i].id;
                 RectTransform row = Line(shop, 56, 0f);
                 Icon(row, id, 0, 6, 44);
-                basketRows[i] = Label(Region(row, 60, 0, 340, 56), "", 19, paper, TextAlignmentOptions.MidlineLeft);
-                sell[i] = ShopButton(row, "Sell", 116, 40, Color.clear, () => mission.Execute("sell", id));
+                basketRows[i] = Label(Region(row, 60, 0, 272, 56), "", 18, paper, TextAlignmentOptions.MidlineLeft);
+                sellAll[i] = ShopButton(row, "All", 70, 40, Color.clear, () => Trade("sell", id));
+                sell[i] = ShopButton(row, "Sell 1", 92, 40, Color.clear, () => Trade("sellone", id));
+                sell[i].GetComponent<RectTransform>().anchoredPosition = new Vector2(-90, 0);
             }
             RectTransform foot = Line(shop, 56, 0f);
             ShopButton(foot, "<color=#" + ColorUtility.ToHtmlStringRGB(accent) + ">ESC</color>  Close", 150, 40, Color.clear, () => mission.SetShopOpen(false));
             shop.gameObject.SetActive(false);
+        }
+
+        // ------------------------------------------------------------------ trade feedback
+
+        private struct Pop { public TMP_Text text; public float born; public Vector2 from; }
+        private readonly System.Collections.Generic.List<Pop> pops = new System.Collections.Generic.List<Pop>();
+
+        /// <summary>
+        /// Runs a shop action and shows what changed as text that rises off the clicked button and fades:
+        /// "+1 LETTUCE SEED  −10 CR" on a buy, "+15 CR" on a sale; a refused click shows the reason in red.
+        /// </summary>
+        private void Trade(string action, string id)
+        {
+            MissionState s = mission.Simulation.State;
+            int credits = s.credits, seeds = Total(s.seeds), plots = s.unlockedPlots;
+            mission.Execute(action, id);
+            int spent = credits - s.credits;
+            SeedKind seed = SeedKind.Find(id);
+            string kind = seed == null ? "" : seed.name.ToUpperInvariant();
+            string info = "<color=#" + ColorUtility.ToHtmlStringRGB(UiTheme.Info) + ">", cr = "<color=#" + ColorUtility.ToHtmlStringRGB(UiTheme.Accent) + ">";
+            string text;
+            if (Total(s.seeds) > seeds) text = info + "+1 " + kind + " seed</color>   " + cr + "−" + spent + " CR</color>";
+            else if (s.unlockedPlots > plots) text = info + "+" + (s.unlockedPlots - plots) + " plots</color>   " + cr + "−" + spent + " CR</color>";
+            else if (spent < 0) text = cr + "+" + (-spent) + " CR</color>";
+            else text = "<color=#" + ColorUtility.ToHtmlStringRGB(danger) + ">" + mission.Notice + "</color>";
+            // Rises off the button that was clicked (the selected one), over everything in the shop.
+            GameObject clicked = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+            RectTransform button = clicked != null && clicked.transform.IsChildOf(shop) ? (RectTransform)clicked.transform : (RectTransform)buy[0].transform;
+            RectTransform holder = NewRect("Pop", shop);
+            holder.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;   // the shop is a vertical list
+            holder.sizeDelta = new Vector2(440, 30);
+            holder.position = button.position;
+            Vector2 from = holder.anchoredPosition + new Vector2(-150f, 30f);
+            TMP_Text pop = Label(holder, text, 18, paper, TextAlignmentOptions.Center);
+            UiStyle.Caps(pop, 2f);
+            UiStyle.Readable(pop);
+            pops.Add(new Pop { text = pop, born = Time.unscaledTime, from = from });
+            AnimatePops();
+        }
+
+        private static int Total(int[] counts) { int n = 0; foreach (int c in counts) n += c; return n; }
+
+        /// <summary>Each pop rises 40 px and fades out over 1.2 s.</summary>
+        private void AnimatePops()
+        {
+            for (int i = pops.Count - 1; i >= 0; i--)
+            {
+                float t = (Time.unscaledTime - pops[i].born) / 1.2f;
+                if (t >= 1f) { Destroy(pops[i].text.transform.parent.gameObject); pops.RemoveAt(i); continue; }
+                ((RectTransform)pops[i].text.transform.parent).anchoredPosition = pops[i].from + new Vector2(0, 40f * Mathf.Sqrt(t));
+                pops[i].text.alpha = 1f - t * t;
+            }
         }
 
         /// <summary>A dim tracked-capital section name with a hairline running to the right edge.</summary>
@@ -335,6 +389,7 @@ namespace MarsSurvival.UI
             if (noticePlate.gameObject.activeSelf != any) noticePlate.gameObject.SetActive(any);
             if (any) noticePlate.sizeDelta = new Vector2(Mathf.Min(1100f, notice.GetPreferredValues(notice.text).x + 44f), 46f);
 
+            AnimatePops();
             bool open = mission.ShopOpen;
             if (shop.gameObject.activeSelf != open) shop.gameObject.SetActive(open);
             if (open)
@@ -347,8 +402,9 @@ namespace MarsSurvival.UI
                     owned[i].text = s.seeds[i] > 0 ? "Owned " + s.seeds[i] : "None owned";
                     owned[i].color = s.seeds[i] > 0 ? UiTheme.Info : muted;
                     Enable(buy[i], s.credits >= k.price, UiTheme.Accent);
-                    basketRows[i].text = k.name.ToUpperInvariant() + " × " + s.basket[i] + "<pos=58%><color=#" + ColorUtility.ToHtmlStringRGB(muted) + "><size=80%>+" + k.sellPrice + " each</size></color>";
+                    basketRows[i].text = k.name.ToUpperInvariant() + " × " + s.basket[i] + "<pos=62%><color=#" + ColorUtility.ToHtmlStringRGB(muted) + "><size=80%>+" + k.sellPrice + " each</size></color>";
                     Enable(sell[i], s.basket[i] > 0, Color.clear);
+                    Enable(sellAll[i], s.basket[i] > 1, Color.clear);
                 }
                 expandRow.text = sim.CanExpand ? "Add " + MissionSettings.PlotsPerExpansion + " plots" : "Greenhouse full";
                 expandMeta.text = s.unlockedPlots + " of " + MissionSettings.MaxPlots + " plots in use";
