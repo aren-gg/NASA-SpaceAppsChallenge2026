@@ -903,20 +903,6 @@ namespace MarsSurvival.Base
             Lamp(0f, 2.2f, l.z1 + 0.5f, 9f, 0.8f);
             End();
 
-            // Solar array in front of the energy room, and a water tank behind life support.
-            for (int row = 0; row < 2; row++)
-            {
-                for (int i = 0; i < 3; i++) SolarPanel(8.5f + i * 3.6f, 7.5f + row * 4.2f);
-            }
-            Begin("Outdoor tanks");
-            g.Prism(White, 24f, -8f, 1.1f, PadTop - 0.1f, PadTop + 2.2f);
-            g.Prism(DarkRed, 24f, -8f, 1.14f, PadTop + 1.3f, PadTop + 1.6f);
-            g.Prism(DarkRed, 24f, -8f, 0.7f, PadTop + 2.2f, PadTop + 2.5f, 8, 0.4f);
-            g.Box(Charcoal, 23.9f, PadTop + 0.4f, -6.9f, 24.1f, PadTop + 0.6f, -6.0f);
-            AddCollider(22.9f, PadTop - 0.1f, -9.1f, 25.1f, PadTop + 2.2f, -6.9f);
-            // A pair of small dark red tanks beside storage.
-            SmallTanks(-17.6f, 4.45f, -1f);
-            End();
         }
 
         /// <summary>
@@ -981,20 +967,6 @@ namespace MarsSurvival.Base
             End();
         }
 
-        /// <summary>Two small tanks side by side, piped to the wall on the given z side (-1 or +1).</summary>
-        private void SmallTanks(float x, float z, float wallSide)
-        {
-            for (int i = 0; i < 2; i++)
-            {
-                float cx = x + i * 1.1f;
-                g.Prism(DarkRed, cx, z, 0.45f, PadTop - 0.05f, PadTop + 1.45f);
-                g.Prism(Charcoal, cx, z, 0.3f, PadTop + 1.45f, PadTop + 1.65f, 8, 0.2f);
-                g.Box(Charcoal, cx - 0.06f, PadTop + 1.0f, Mathf.Min(z, z + wallSide * 1.2f), cx + 0.06f, PadTop + 1.12f,
-                    Mathf.Max(z, z + wallSide * 1.2f));
-            }
-            AddCollider(x - 0.5f, PadTop - 0.05f, z - 0.5f, x + 1.6f, PadTop + 1.45f, z + 0.5f);
-        }
-
         /// <summary>
         /// A ramp along +Z from (z0, y0) down to (z1, y1), with a collider the astronaut walks on.
         /// </summary>
@@ -1023,31 +995,5 @@ namespace MarsSurvival.Base
             ramp.AddComponent<BoxCollider>().size = new Vector3(half * 2f, 0.5f, Mathf.Sqrt(run * run + drop * drop));
         }
 
-        private void SolarPanel(float x, float z)
-        {
-            if (panelMesh == null)
-            {
-                OutpostGeometry panel = new OutpostGeometry();
-                panel.Box(White, -1.55f, -0.04f, -0.95f, 1.55f, 0.02f, 0.95f);
-                panel.Box(SolarBlue, -1.5f, 0.02f, -0.9f, 1.5f, 0.05f, 0.9f);
-                for (int i = 1; i < 4; i++) panel.Box(White, -1.5f + i * 0.75f - 0.02f, 0.05f, -0.9f, -1.5f + i * 0.75f + 0.02f, 0.06f, 0.9f);
-                panel.Box(White, -1.5f, 0.05f, -0.02f, 1.5f, 0.06f, 0.02f);
-                panelMesh = panel.ToMesh("Solar Panel", materials, out panelMaterials);
-                owned.Add(panelMesh);
-            }
-            const float ground = PadTop;
-            Begin("Solar panel");
-            g.Prism(Charcoal, x, z, 0.09f, ground - 0.4f, ground + 1.15f);
-            g.Box(Charcoal, x - 0.35f, ground - 0.2f, z - 0.35f, x + 0.35f, ground + 0.08f, z + 0.35f);
-            AddCollider(x - 0.35f, ground - 0.4f, z - 0.35f, x + 0.35f, ground + 1.15f, z + 0.35f);
-            GameObject top = new GameObject("Panel");
-            top.transform.SetParent(current.transform, false);
-            top.transform.localPosition = new Vector3(x, ground + 1.2f, z);
-            top.transform.localRotation = Quaternion.Euler(-14f, 0f, 0f);
-            top.AddComponent<MeshFilter>().sharedMesh = panelMesh;
-            top.AddComponent<MeshRenderer>().sharedMaterials = panelMaterials;
-            top.AddComponent<BoxCollider>().size = new Vector3(3.1f, 0.1f, 1.9f);
-            End();
-        }
     }
 }
