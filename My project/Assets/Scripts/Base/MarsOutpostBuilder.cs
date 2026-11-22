@@ -921,43 +921,19 @@ namespace MarsSurvival.Base
 
         /// <summary>
         /// The pad on graded terrain: the ground is already flat at <see cref="PadTop"/>, so this adds
-        /// the walkable collider, sintered regolith paving where the rover parks and in front of the
-        /// airlock, a sintered path out over the shoulder, and tyre tracks leading off into the plain.
+        /// the walkable collider, a sintered path out over the shoulder (the rover lays its own fading tyre marks: MarsRoverTracks).
         /// </summary>
         private void BuildGradedGround()
         {
             Begin("Graded pad");
             AddCollider(Pad.x0, PadTop - padDepth, Pad.z0, Pad.x1, PadTop, Pad.z1);
 
-            // Sintered paving: microwave-fused regolith tiles with narrow joints.
-            Pavers(22.2f, -3.5f, 29.5f, 3.5f, 1.5f);   // apron outside the hangar door
-            Pavers(-3f, 18.5f, 3f, 24f, 1.5f);   // apron at the foot of the entry ramp
-
             // Sintered path from the apron straight out across the shoulder.
             var path = new List<Vector2>();
             for (float z = 24f; z <= Pad.z1 + 14f; z += 1f) path.Add(new Vector2(0f, z));
             Strip(Sintered, path, 1.2f, 0.035f);
 
-            // Tyre tracks: out of the garage door and off across the plain; a second pair loops back in.
-            TyreTracks(new Vector2(22.5f, 0.4f), new Vector2(32f, 0.4f), new Vector2(40f, 14f), new Vector2(58f, 34f));
-            TyreTracks(new Vector2(22.5f, -0.6f), new Vector2(33f, -2f), new Vector2(44f, -10f), new Vector2(62f, -22f));
             End();
-        }
-
-        /// <summary>Square sintered tiles filling a rectangle on the pad, with joints between them.</summary>
-        private void Pavers(float x0, float z0, float x1, float z1, float tile)
-        {
-            const float joint = 0.06f;
-            for (float x = x0; x < x1 - 0.01f; x += tile)
-            {
-                for (float z = z0; z < z1 - 0.01f; z += tile)
-                {
-                    // Slight height jitter so the paving reads as fused blocks, not a painted floor.
-                    float h = 0.025f + 0.012f * Mathf.Repeat(Mathf.Sin(x * 12.9898f + z * 78.233f) * 43758.55f, 1f);
-                    g.Box(Sintered, x + joint, PadTop - 0.05f, z + joint, Mathf.Min(x + tile, x1) - joint, PadTop + h,
-                        Mathf.Min(z + tile, z1) - joint);
-                }
-            }
         }
 
         /// <summary>A flat ribbon laid on the ground along a polyline (outpost-local x, z).</summary>
@@ -979,25 +955,6 @@ namespace MarsSurvival.Base
         {
             float y = Pad.Contains(xz.x, xz.y) ? PadTop : groundAt(xz.x, xz.y);
             return new Vector3(xz.x, y + lift, xz.y);
-        }
-
-        /// <summary>Two wheel ruts along a cubic Bezier, 1.7 m apart.</summary>
-        private void TyreTracks(Vector2 p0, Vector2 p1, Vector2 p2, Vector2 p3)
-        {
-            var left = new List<Vector2>();
-            var right = new List<Vector2>();
-            const int steps = 60;
-            for (int i = 0; i <= steps; i++)
-            {
-                float t = i / (float)steps, u = 1f - t;
-                Vector2 p = u * u * u * p0 + 3f * u * u * t * p1 + 3f * u * t * t * p2 + t * t * t * p3;
-                Vector2 d = 3f * u * u * (p1 - p0) + 6f * u * t * (p2 - p1) + 3f * t * t * (p3 - p2);
-                Vector2 side = new Vector2(-d.y, d.x).normalized * 0.85f;
-                left.Add(p - side);
-                right.Add(p + side);
-            }
-            Strip(Rut, left, 0.13f, 0.012f);
-            Strip(Rut, right, 0.13f, 0.012f);
         }
 
         /// <summary>The block pad used where the terrain cannot be graded: flat top, sloping sides.</summary>

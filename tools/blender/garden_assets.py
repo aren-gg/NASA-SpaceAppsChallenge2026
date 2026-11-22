@@ -494,7 +494,7 @@ def rover_body():
         obj("Skirt", rbox((0.05, 5.2, 0.32), (sx * 1.17, -0.15, 1.12), 0.01), DARK, root, smooth=False)
         obj("Side light", rbox((0.02, 4.8, 0.03), (sx * 1.2, -0.2, 1.32), 0), CYAN, root, smooth=False)
         obj("Hatch window", rbox((0.02, 0.9, 0.35), (sx * 1.19, -1.3, 1.95), 0.01), GLASS, root, smooth=False)
-        label("MR-01", (sx * 1.19, -2.3, 1.62), 0.14, AMBER, root, yaw=math.pi / 2 * sx)
+        label("MR-01", (sx * 1.19, -1.3, 1.6), 0.12, AMBER, root, yaw=math.pi / 2 * sx)   # under the hatch window, clear of the wheel pod
     # Angular wheel pods over each wheel, with a cyan lip and a dark underside.
     for sx in (-1, 1):
         for sy in (-1, 1):
@@ -509,9 +509,9 @@ def rover_body():
     for sx in (-1, 1):
         obj("Headlight", rbox((0.4, 0.03, 0.07), (sx * 0.5, 3.12, 1.1), 0), CYAN, root, smooth=False)
     obj("Bumper", rbox((1.9, 0.3, 0.22), (0, 3.0, 0.82), 0.04), GUN, root, smooth=False)
-    obj("Tail bar", rbox((1.6, 0.03, 0.05), (0, -3.07, 1.6), 0), RED, root, smooth=False)
+    obj("Tail bar", rbox((1.6, 0.03, 0.05), (0, -3.09, 1.68), 0), RED, root, smooth=False)   # above the door, not through it
     obj("Rear bumper", rbox((1.8, 0.3, 0.22), (0, -2.95, 0.82), 0.04), GUN, root, smooth=False)
-    obj("Rear door", rbox((1.0, 0.03, 0.75), (0, -3.07, 1.35), 0.01), DARK, root, smooth=False)
+    obj("Rear door", rbox((1.0, 0.03, 0.55), (0, -3.07, 1.3), 0.01), DARK, root, smooth=False)
     # Roof: lidar dome on a mast, two solar fins and amber marker lights.
     obj("Lidar mast", cyl(0.07, 0.25, (0, 1.0, 2.45), seg=12), GUN, root)
     obj("Lidar", ellipsoid((0.18, 0.18, 0.12), (0, 1.0, 2.6), seg=16), DARK, root)

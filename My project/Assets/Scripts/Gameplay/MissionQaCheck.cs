@@ -84,6 +84,10 @@ namespace MarsSurvival.Gameplay
             GameObject spiritTree = GameObject.Find("Oxygen tree");
             Check(spiritTree != null && spiritTree.GetComponentsInChildren<Renderer>().Length > 10, "The oxygen spirit tree stands in the middle of the hub");
             Shot("hub_tree");
+            Transform orb = spiritTree == null ? null : System.Array.Find(spiritTree.GetComponentsInChildren<Transform>(), t => t.name == "Light mote");
+            Vector3 orbFrom = orb == null ? Vector3.zero : orb.position;
+            yield return new WaitForSecondsRealtime(1f);
+            Check(orb != null && Vector3.Distance(orb.position, orbFrom) > 0.05f, "The tree's light orbs float around the dome", orb == null ? "no orb" : Vector3.Distance(orb.position, orbFrom).ToString("F2"));
             Place(Floor(0f, 4.6f), MarsWorldTasks.World(new Vector3(0f, 7.2f, -2f))); yield return Frames(3);
             Shot("dome_glass");
             // The clock runs about 98x real time (one sol in about 15 minutes).
@@ -492,6 +496,15 @@ namespace MarsSurvival.Gameplay
                 yield return Frames(2);
             }
             Check(tracks != null && tracks.Marks > 8, "The rover's wheels leave tyre marks", tracks == null ? "no tracks" : tracks.Marks.ToString());
+            int onPad = tracks == null ? 0 : tracks.Marks;
+            for (int k = 0; k <= 24; k++)   // and out on the open plain, past the graded pad
+            {
+                rover.RestoreMissionPose(Ground(outpost.transform.TransformPoint(new Vector3(42f + k * 0.5f, 0f, 18f))), outpost.transform.eulerAngles.y + 90f, 0);
+                yield return Frames(2);
+            }
+            Check(tracks != null && tracks.Marks > onPad + 8, "Tyre marks are laid on the open terrain too", tracks == null ? "no tracks" : (tracks.Marks - onPad).ToString());
+            Place(Ground(outpost.transform.TransformPoint(new Vector3(50f, 0f, 24f))), Ground(outpost.transform.TransformPoint(new Vector3(46f, 0f, 18f)))); yield return Frames(3);
+            Shot("terrain_tracks");
             Place(Ground(outpost.transform.TransformPoint(new Vector3(33f, 0f, 6f))), MarsWorldTasks.World(MarsWorldTasks.GarageDoorPoint + Vector3.up * 1.5f)); yield return Frames(3);
             Shot("hangar_tracks");
             rover.RestoreMissionPose(MarsWorldTasks.World(MarsOutpostBuilder.RoverParking + Vector3.up * 0.05f), outpost.transform.eulerAngles.y + MarsOutpostBuilder.RoverParkingYaw, 0);

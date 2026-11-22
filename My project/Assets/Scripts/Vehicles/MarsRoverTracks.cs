@@ -13,10 +13,11 @@ namespace MarsSurvival.Vehicles
         private const int Capacity = 800;         // marks kept at once (all wheels)
         private const float Step = 0.35f;         // metres of rolling per mark
         private const float Darkness = 0.65f;     // alpha of a fresh mark
-        private static readonly Color Ground = new Color(0.16f, 0.08f, 0.05f);
+        private static readonly Color Ground = new Color(0.1f, 0.06f, 0.05f).linear;   // vertex colours are linear: 0.09 linear read as light tan
 
         private Transform[] wheels;
         private Transform rover;
+        private MarsSurvival.World.MarsTerrain terrain;
         private Vector3?[] last;
         private Mesh mesh;
         private Material material;
@@ -49,7 +50,7 @@ namespace MarsSurvival.Vehicles
             mesh.MarkDynamic();
             mesh.vertices = verts; mesh.colors = colors; mesh.triangles = tris;
             mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 100000f);   // world-space marks anywhere
-            material = new Material(Shader.Find("Sprites/Default")) { name = "Rover tracks" };   // unlit, vertex colour alpha
+            material = new Material(Shader.Find("Mars/TyreMarks")) { name = "Rover tracks" };   // Resources/Shaders: vertex colour and alpha
             marks = new GameObject("Rover tracks");   // not under the rover: marks stay where they were laid
             marks.AddComponent<MeshFilter>().sharedMesh = mesh;
             marks.AddComponent<MeshRenderer>().sharedMaterial = material;
@@ -65,6 +66,7 @@ namespace MarsSurvival.Vehicles
                 if (last[w] == null) { last[w] = point; continue; }
                 Vector3 from = last[w].Value;
                 if ((point - from).sqrMagnitude < Step * Step) continue;
+                if ((point - from).sqrMagnitude > 4f) { last[w] = point; continue; }   // moved, not rolled (loaded or placed): no streak
                 Lay(from, point, normal, 0.42f * wheels[w].lossyScale.x);
                 last[w] = point;
                 changed = true;
@@ -95,7 +97,15 @@ namespace MarsSurvival.Vehicles
                 point = hit.point; normal = hit.normal;
                 return true;
             }
-            return false;
+            // The open terrain has no colliders: stand on its height field instead.
+            if (terrain == null) terrain = FindObjectOfType<MarsSurvival.World.MarsTerrain>();
+            if (terrain == null) return false;
+            point = wheel.position; point.y = terrain.GetGroundY(point);
+            Vector3 ahead = wheel.position + rover.forward, side = wheel.position + rover.right;
+            ahead.y = terrain.GetGroundY(ahead); side.y = terrain.GetGroundY(side);
+            normal = Vector3.Cross(ahead - point, side - point).normalized;   // the slope, so marks lie flat on hills
+            if (normal.y < 0f) normal = -normal;
+            return wheel.position.y - point.y <= reach;
         }
 
         private void Lay(Vector3 from, Vector3 to, Vector3 normal, float width)

@@ -95,6 +95,7 @@ namespace MarsSurvival.Gameplay
             if (outpost == null) outpost = FindObjectOfType<MarsOutpost>();
             if (outpost == null || !outpost.IsPlaced) return;
             if (root == null) Build();
+            DriftMotes();
             MissionState state = mission == null || mission.Simulation == null ? null : mission.Simulation.State;
             if (state == null) return;
             UpdatePlants(mission.Simulation);
@@ -105,6 +106,22 @@ namespace MarsSurvival.Gameplay
                 float h = Mathf.Max(0.02f, GarageDoorHeight * (1f - garageOpen));
                 garageDoor.localScale = new Vector3(0.12f, h, GarageDoorWidth);
                 garageDoor.localPosition = GarageDoorPoint + new Vector3(0f, GarageDoorHeight - h / 2f, 0f);
+            }
+        }
+
+        private struct Mote { public Transform t; public Vector3 baked; public float angle, speed, radius, height, phase; }
+        private readonly List<Mote> motes = new List<Mote>();
+
+        /// <summary>Each orb circles the tree at its own speed, swaying in and out and bobbing up and down.</summary>
+        private void DriftMotes()
+        {
+            float time = Time.time;
+            foreach (Mote m in motes)
+            {
+                float a = (m.angle + m.speed * time) * Mathf.Deg2Rad;
+                float r = m.radius + 0.6f * Mathf.Sin(time * 0.12f + m.phase);
+                float y = m.height + 0.5f * Mathf.Sin(time * 0.18f + m.phase * 2f);
+                m.t.position = root.TransformPoint(new Vector3(Mathf.Cos(a) * r, y, Mathf.Sin(a) * r)) - m.baked;
             }
         }
 
@@ -153,7 +170,20 @@ namespace MarsSurvival.Gameplay
             // The oxygen spirit tree in the middle of the hub; its round planter stops you.
             GameObject tree = new GameObject("Oxygen tree");
             tree.transform.SetParent(root, false);
-            Model("OxygenTree", tree.transform);
+            Transform treeModel = Model("OxygenTree", tree.transform);
+            // Its light motes leave the crown and drift round the dome as floating orbs.
+            var rnd = new System.Random(7);
+            foreach (Transform part in treeModel)
+            {
+                if (part.name != "Light mote" || !part.TryGetComponent(out Renderer orb)) continue;
+                motes.Add(new Mote
+                {
+                    t = part, baked = orb.bounds.center - part.position,
+                    angle = (float)rnd.NextDouble() * 360f, speed = 2f + (float)rnd.NextDouble() * 3f,   // degrees a second: a slow drift
+                    radius = 2f + (float)rnd.NextDouble() * 1.6f, height = 1.2f + (float)rnd.NextDouble() * 5f,   // inside the dome as it narrows
+                    phase = (float)rnd.NextDouble() * 6.28f,
+                });
+            }
             CapsuleCollider planter = tree.AddComponent<CapsuleCollider>();
             planter.radius = 1.95f; planter.height = 4f; planter.center = new Vector3(0f, 0.3f, 0f);
             Usable("Bunk", new Vector3(-14.8f, 0.7f, 3.35f), new Vector3(2.2f, 0.6f, 1.05f), MarsTaskTarget.Kind.Bunk);   // the sleep pod

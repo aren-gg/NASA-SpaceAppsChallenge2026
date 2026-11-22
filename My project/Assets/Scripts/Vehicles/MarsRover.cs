@@ -43,8 +43,8 @@ namespace MarsSurvival.Vehicles
         [Tooltip("Slowing with no throttle, m/s2 at rest; it grows with speed.")]
         public float rollingResistance = 0.25f;
         [Tooltip("Sideways tyre grip in m/s2. Sets the tightest turn at speed.")]
-        public float lateralGrip = 3f;
-        public float maxSteerDegrees = 32f;
+        public float lateralGrip = 4.5f;
+        public float maxSteerDegrees = 45f;
         [Tooltip("Mars surface gravity, for slopes.")]
         public float gravity = 3.71f;
 
@@ -337,8 +337,8 @@ namespace MarsSurvival.Vehicles
 
             // Steering: the wheels turn less at speed, and the turn rate is capped by tyre grip.
             float fraction = Mathf.Clamp01(Mathf.Abs(speed) / top);
-            float steerLimit = Mathf.Lerp(maxSteerDegrees, 5f, Mathf.Sqrt(fraction));
-            steer = Mathf.MoveTowards(steer, steerInput * steerLimit, 70f * dt);
+            float steerLimit = Mathf.Lerp(maxSteerDegrees, 12f, Mathf.Sqrt(fraction));
+            steer = Mathf.MoveTowards(steer, steerInput * steerLimit, 120f * dt);
             float turnRate = speed / MarsRoverModel.WheelBase * Mathf.Tan(steer * Mathf.Deg2Rad); // rad/s
             float gripRate = lateralGrip / Mathf.Max(1.5f, Mathf.Abs(speed));
             turnRate = Mathf.Clamp(turnRate, -gripRate, gripRate);
