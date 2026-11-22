@@ -4,9 +4,8 @@ using UnityEngine.UI;
 namespace MarsTrainer.UI
 {
     /// <summary>
-    /// The shared panel shape (see <see cref="UiTheme"/>), NASA-punk: a flat semi-transparent
-    /// smoky plate with two cut corners and a hairline edge. Large panels carry a short amber
-    /// stencil bar along the top, like the tab on mission hardware. Flat polygons only.
+    /// The shared panel shape (see <see cref="UiTheme"/>): a flat dark plate with both top corners
+    /// cut, like the door portals, and a gunmetal hairline edge. Flat polygons only.
     /// </summary>
     public sealed class FacetedImage : Image
     {
@@ -29,16 +28,7 @@ namespace MarsTrainer.UI
 
             Vector2[] inner = Shape(Inset(rect, 1f), Mathf.Max(0f, cut - 0.4f));
             Fan(mesh, inner, fill);
-            Color edge = UiTheme.WithAlpha(UiTheme.Text, large ? 0.26f : 0.2f);
-            Strip(mesh, outer, inner, edge);
-
-            if (large && !screen)
-            {
-                // The amber stencil bar, just inside the top edge after the cut corner.
-                float length = Mathf.Min(44f, rect.width * 0.18f);
-                float x = rect.xMin + cut + 6f, y = rect.yMax - 1f;
-                Quad(mesh, new Vector2(x, y - 3f), new Vector2(x + length, y - 3f), new Vector2(x + length, y), new Vector2(x, y), UiTheme.Accent);
-            }
+            Strip(mesh, outer, inner, UiTheme.WithAlpha(UiTheme.Edge, fill.a < 0.5f ? 0.6f : 1f));
         }
 
         private static Rect Inset(Rect r, float by)
@@ -46,15 +36,15 @@ namespace MarsTrainer.UI
             return new Rect(r.x + by, r.y + by, Mathf.Max(0f, r.width - by * 2f), Mathf.Max(0f, r.height - by * 2f));
         }
 
-        /// <summary>The outline: six corners, with the top-left and bottom-right cut.</summary>
+        /// <summary>The outline: six corners, with both top corners cut like a door portal.</summary>
         private static Vector2[] Shape(Rect r, float cut)
         {
             return new[]
             {
                 new Vector2(r.xMin, r.yMin),
-                new Vector2(r.xMax - cut, r.yMin),
-                new Vector2(r.xMax, r.yMin + cut),
-                new Vector2(r.xMax, r.yMax),
+                new Vector2(r.xMax, r.yMin),
+                new Vector2(r.xMax, r.yMax - cut),
+                new Vector2(r.xMax - cut, r.yMax),
                 new Vector2(r.xMin + cut, r.yMax),
                 new Vector2(r.xMin, r.yMax - cut),
             };

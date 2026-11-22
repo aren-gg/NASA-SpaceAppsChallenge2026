@@ -3,37 +3,38 @@ using UnityEngine;
 namespace MarsTrainer.UI
 {
     /// <summary>
-    /// The game's one UI look, shared by every screen: NASA-punk mission hardware. Flat
-    /// semi-transparent smoky plates with cut corners, a hairline edge and an amber stencil bar;
-    /// hazard-stripe tabs on headers;
-    /// off-white text, amber readouts and red only for danger. Type rules live in
-    /// <see cref="UiStyle"/>: Barlow Condensed throughout, tracked capitals for labels and
-    /// SemiBold italic for numbers.
+    /// The game's one UI look, shared by every screen and taken from the base's own signage: dark
+    /// gunmetal plates with both top corners cut (like the door portals) and a hairline edge; cyan
+    /// for information and IDs (a cyan label with a cyan underline, as on the signs over the doors);
+    /// amber for guidance, keys and actions; red only for danger. Type rules live in
+    /// <see cref="UiStyle"/>: Chakra Petch throughout, tracked capitals for labels.
     /// </summary>
     public static class UiTheme
     {
         public static readonly Color Ink = Hex(0x15181C);      // deepest tone, text on amber
-        public static readonly Color Panel = Hex(0x2A2E33);    // smoky plate fill
-        public static readonly Color Raised = Hex(0x3A3F46);   // buttons and slots
-        public static readonly Color Hover = Hex(0x4C535B);
+        public static readonly Color Panel = Hex(0x16181D);    // plate fill
+        public static readonly Color Raised = Hex(0x2A2D34);   // buttons and slots
+        public static readonly Color Hover = Hex(0x3A3D44);
         public static readonly Color SteelLight = Hex(0xA9B0B7);  // frame bevel, lit edge
         public static readonly Color SteelMid = Hex(0x6B7179);
         public static readonly Color SteelDark = Hex(0x33383E);   // frame bevel, shadow edge
-        public static readonly Color Line = new Color(0.66f, 0.69f, 0.72f, 0.55f);  // dividers
-        public static readonly Color Text = Hex(0xECE6DA);
-        public static readonly Color Dim = Hex(0xB3AC9F);
-        public static readonly Color Accent = Hex(0xFFB547);   // amber CRT
+        public static readonly Color Line = new Color(0.66f, 0.69f, 0.72f, 0.35f);  // dividers
+        public static readonly Color Edge = Hex(0x3A3D44);     // plate hairline, the gunmetal of the signs
+        public static readonly Color Text = Hex(0xE9ECEF);
+        public static readonly Color Dim = Hex(0x9AA1A9);
+        public static readonly Color Accent = Hex(0xFFB547);   // amber: keys, actions, guidance
+        public static readonly Color Info = Hex(0x3FE0FF);     // cyan: IDs and information, as on the signs
         public static readonly Color Safe = Hex(0x8FD694);
         public static readonly Color Warn = Hex(0xFFD166);
         public static readonly Color Danger = Hex(0xFF5A4A);
         public static readonly Color Critical = Hex(0xFF3B3B);
 
         /// <summary>Plates are semi-transparent smoky glass.</summary>
-        public const float PanelAlpha = 0.66f;
+        public const float PanelAlpha = 0.84f;
         /// <summary>Full-screen menus a little denser, so long text stays easy to read.</summary>
         public const float ScreenAlpha = 0.9f;
         /// <summary>Corner cut of panels and slots, in reference pixels.</summary>
-        public const float Cut = 6f;
+        public const float Cut = 10f;
         /// <summary>Steel frame width on large panels (small ones get two thirds).</summary>
         public const float Frame = 4f;
         public const float Hairline = 1.5f;

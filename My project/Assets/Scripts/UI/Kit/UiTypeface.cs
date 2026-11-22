@@ -7,9 +7,10 @@ namespace MarsTrainer.UI
     public static class UiTypeface
     {
         public const string ResourcePath = "Fonts & Materials/CounterStrike UI SDF";
-        /// <summary>Barlow Condensed (SIL OFL 1.1, Jeremy Tribby), the UI text face: industrial signage, very legible. License: Assets/Fonts/BarlowCondensed-OFL.txt.</summary>
-        public const string SourceResource = "Fonts/BarlowCondensed-Medium";
-        public const string StrongResource = "Fonts/BarlowCondensed-SemiBold";
+        /// <summary>Chakra Petch (SIL OFL 1.1, Cadson Demak): squared letters with cut corners, like the base's door
+        /// frames and signs. License: Assets/Fonts/ChakraPetch-OFL.txt.</summary>
+        public const string SourceResource = "Fonts/ChakraPetch-Medium";
+        public const string StrongResource = "Fonts/ChakraPetch-SemiBold";
         /// <summary>VT323 (SIL OFL 1.1, Peter Hull), a retro CRT terminal face for readouts. License: Assets/Fonts/VT323-OFL.txt.</summary>
         public const string MonoResource = "Fonts/VT323-Regular";
         /// <summary>Readouts use the text face (see <see cref="UiStyle.Readout"/>), so they need no extra scaling.</summary>
@@ -17,7 +18,7 @@ namespace MarsTrainer.UI
         private static TMP_FontAsset font, strong, mono;
 
         /// <summary>
-        /// The UI text font: a dynamic TextMesh Pro asset made at runtime from the bundled Barlow Condensed TTF,
+        /// The UI text font: a dynamic TextMesh Pro asset made at runtime from the bundled Chakra Petch TTF,
         /// so glyphs are added as text needs them. Symbols it lacks fall back to VT323, then Liberation Sans.
         /// </summary>
         public static TMP_FontAsset Font
@@ -25,32 +26,32 @@ namespace MarsTrainer.UI
             get
             {
                 if (font != null) return font;
-                font = Make(SourceResource, "Barlow Condensed SDF");
+                font = Make(SourceResource, "Chakra Petch SDF");
                 if (font == null) font = Resources.Load<TMP_FontAsset>(ResourcePath);
                 if (font == null) font = TMP_Settings.defaultFontAsset;
                 return font;
             }
         }
 
-        /// <summary>Barlow Condensed SemiBold, for titles and labels.</summary>
+        /// <summary>Chakra Petch SemiBold, for titles and labels.</summary>
         public static TMP_FontAsset Strong
         {
             get
             {
-                if (strong == null) strong = Make(StrongResource, "Barlow Condensed SemiBold SDF");
+                if (strong == null) strong = Make(StrongResource, "Chakra Petch SemiBold SDF");
                 return strong != null ? strong : Font;
             }
         }
 
         /// <summary>
-        /// The readout face for numbers (clock, percentages, vitals): Barlow Condensed SemiBold,
+        /// The readout face for numbers (clock, percentages, vitals): Chakra Petch SemiBold,
         /// the same face as the slot and label text, so numbers match the rest of the UI. Wrap
         /// changing numbers in <see cref="Digits"/> so they keep a fixed width and do not jitter.
         /// </summary>
         public static TMP_FontAsset Mono => Strong;
 
         /// <summary>Gives digits a fixed advance (TMP mspace) so a changing readout does not shift.</summary>
-        public static string Digits(string text) => "<mspace=0.52em>" + text + "</mspace>";
+        public static string Digits(string text) => "<mspace=0.6em>" + text + "</mspace>";
 
         private static TMP_FontAsset Make(string resource, string assetName)
         {

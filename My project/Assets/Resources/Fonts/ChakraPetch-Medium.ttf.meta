@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: fb202055506894a0fa90cc5d552e67d5
+guid: 274680bc7f6e84bb8805b8624343057e
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,7 +9,7 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - Barlow Condensed
+  - Chakra Petch
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0

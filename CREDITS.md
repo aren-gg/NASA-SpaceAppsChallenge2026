@@ -70,10 +70,10 @@ Made for the NASA Space Apps Challenge 2026.
   Used for: Engine, rendering and interface.  
   Source: <https://unity.com/legal/licenses/unity-companion-license>
 
-- **Barlow Condensed**  
-  The Barlow Project Authors (Jeremy Tribby). SIL Open Font License 1.1.  
+- **Chakra Petch**  
+  The Chakra Petch Project Authors (Cadson Demak). SIL Open Font License 1.1.  
   Used for: All interface text and readouts.  
-  Source: <https://github.com/jpt/barlow>
+  Source: <https://github.com/m4rc1e/Chakra-Petch>
 
 - **VT323**  
   The VT323 Project Authors (Peter Hull). SIL Open Font License 1.1.  

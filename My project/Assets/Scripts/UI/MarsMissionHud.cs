@@ -14,8 +14,9 @@ using Ui = MarsTrainer.Sim.GameConstants;
 namespace MarsSurvival.UI
 {
     /// <summary>
-    /// The in-game screen: sol and time top left, the three vitals as flat bars bottom left
-    /// (with credits and plot count), the latest message, the seed shop, pause and end screens.
+    /// The in-game screen: sol and time top left, key hints top right, LIFE SUPPORT bottom left (the
+    /// three vitals as segmented bars, credits and plot count), the latest message, the seed shop,
+    /// pause and end screens.
     /// The mission starts as soon as the home screen closes.
     /// </summary>
     public sealed class MarsMissionHud : MonoBehaviour
@@ -24,12 +25,13 @@ namespace MarsSurvival.UI
         private MarsMissionController mission;
         private TMP_FontAsset font;
         private Color ink, paper, muted, danger;
-        private TMP_Text clock, money, plots, notice;
-        private readonly Image[] fills = new Image[3];
+        private TMP_Text sol, clock, money, plots, notice;
+        private const int Segments = 20;
+        private readonly Image[][] segments = new Image[3][];
         private readonly TMP_Text[] values = new TMP_Text[3];
         private readonly Color[] colors = new Color[3];
         private RectTransform shop;
-        private TMP_Text shopCredits, expandRow;
+        private TMP_Text shopCredits, expandRow, expandMeta;
         private TMP_Text[] owned, basketRows;
         private Button[] buy, sell;
         private Button expand;
@@ -77,7 +79,7 @@ namespace MarsSurvival.UI
             built = true;
             ink = StatBar.ColorOf(Ui.UiSurface);
             paper = StatBar.ColorOf(Ui.UiText);
-            muted = Color.Lerp(paper, ink, 0.35f);
+            muted = UiTheme.Dim;
             danger = StatBar.ColorOf(Ui.UiDanger);
             font = UiTypeface.Font;
             GameObject root = new GameObject("Mission Interface", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
@@ -95,37 +97,45 @@ namespace MarsSurvival.UI
             gameplay = StatBar.Frame(safe, "Mission HUD", 0, 0, 1, 1).gameObject;
             Transform hud = gameplay.transform;
 
-            // Top left: sol and local time. Top right: the keys.
-            RectTransform top = Plate(hud, "Clock", new Vector2(0, 1), new Vector2(16, -16), new Vector2(250, 44));
-            clock = Label(top, "", 22, paper, TextAlignmentOptions.Center);
-            RectTransform keys = Plate(hud, "Keys", new Vector2(1, 1), new Vector2(-16, -16), new Vector2(300, 44));
-            Label(keys, "Esc  Menu     F5  Save", 20, muted, TextAlignmentOptions.Center);
+            // Top left: sol (cyan, like a module ID) and local time. Top right: the keys.
+            RectTransform top = Plate(hud, "Clock", new Vector2(0, 1), new Vector2(24, -24), new Vector2(230, 58));
+            sol = Label(Region(top, 16, 0, 90, 58), "", 19, UiTheme.Info, TextAlignmentOptions.MidlineLeft);
+            UiStyle.Caps(sol, 3f);
+            clock = Label(Region(top, 96, 0, 120, 58), "", 30, paper, TextAlignmentOptions.MidlineLeft);
+            UiStyle.Readout(clock);
+            RectTransform keys = Plate(hud, "Keys", new Vector2(1, 1), new Vector2(-24, -24), new Vector2(340, 50));
+            string key = "<color=#" + ColorUtility.ToHtmlStringRGB(UiTheme.Accent) + ">";
+            TMP_Text hints = Label(keys, key + "ESC</color> MENU    " + key + "F5</color> SAVE    " + key + "P</color> PAUSE", 16, muted, TextAlignmentOptions.Center);
+            UiStyle.Caps(hints, 2f);
 
-            // Bottom left: credits and plots, then oxygen, water and food as straight bars.
-            RectTransform vitals = Plate(hud, "Vitals", Vector2.zero, new Vector2(16, 16), new Vector2(380, 168));
-            money = Label(Region(vitals, 16, 124, 348, 32), "", 22, paper, TextAlignmentOptions.MidlineLeft);
-            plots = Label(Region(vitals, 16, 124, 348, 32), "", 20, muted, TextAlignmentOptions.MidlineRight);
-            string[] names = { "Oxygen", "Water", "Food" };
-            ResourceSymbol[] symbols = { ResourceSymbol.Air, ResourceSymbol.Water, ResourceSymbol.Food };
+            // Bottom left: LIFE SUPPORT, with credits, then oxygen, water and food as segmented bars.
+            RectTransform vitals = Plate(hud, "Vitals", Vector2.zero, new Vector2(24, 24), new Vector2(420, 210));
+            UiStyle.Id(vitals, "Life support", 18, 18, 14);
+            money = Label(Region(vitals, 220, 166, 182, 34), "", 26, UiTheme.Accent, TextAlignmentOptions.MidlineRight);
+            UiStyle.Readout(money);
+            string[] names = { "O<sub>2</sub>", "WATER", "FOOD" };
+            Color[] tints = { UiTheme.Info, UiTheme.Hex(0x3F9BFF), UiTheme.Accent };
             for (int i = 0; i < 3; i++)
             {
-                RectTransform row = Region(vitals, 16, 84 - i * 36, 348, 30);
-                colors[i] = StatBar.ColorOf(ResourceGlyph.ColorFor(symbols[i]));
-                ResourceGlyph icon = ResourceGlyph.Create(row, symbols[i], 18);
-                icon.Plain = true;
-                icon.rectTransform.anchoredPosition = Vector2.zero;
-                Label(Region(row, 26, 0, 80, 30), names[i], 20, paper, TextAlignmentOptions.MidlineLeft);
-                RectTransform track = Region(row, 108, 12, 190, 6);
-                Fill(track, WithAlpha(paper, 0.15f));
-                RectTransform bar = Region(track, 0, 0, 0, 0);
-                bar.anchorMax = new Vector2(1, 1);
-                fills[i] = Fill(bar, colors[i]);
-                values[i] = Label(Region(row, 300, 0, 48, 30), "100", 20, paper, TextAlignmentOptions.MidlineRight);
+                RectTransform row = Region(vitals, 18, 112 - i * 34, 384, 28);
+                colors[i] = tints[i];
+                TMP_Text name = Label(Region(row, 0, 0, 70, 28), names[i], 15, muted, TextAlignmentOptions.MidlineLeft);
+                UiStyle.Caps(name, 2f);
+                segments[i] = new Image[Segments];
+                for (int k = 0; k < Segments; k++)
+                    segments[i][k] = Fill(Region(row, 76 + k * 12.5f, 8, 9.5f, 12), WithAlpha(paper, 0.1f));
+                values[i] = Label(Region(row, 330, 0, 54, 28), "100", 21, paper, TextAlignmentOptions.MidlineRight);
+                UiStyle.Readout(values[i]);
             }
+            TMP_Text house = Label(Region(vitals, 18, 10, 200, 26), "Greenhouse-04", 13, muted, TextAlignmentOptions.MidlineLeft);
+            UiStyle.Caps(house, 2.5f);
+            plots = Label(Region(vitals, 200, 10, 202, 26), "", 13, muted, TextAlignmentOptions.MidlineRight);
+            UiStyle.Caps(plots, 2.5f);
 
             // Bottom centre, above the tool hotbar: the latest message.
             RectTransform line = StatBar.Frame(hud, "Message", .25f, .215f, .75f, .25f);
-            notice = Label(line, "", 22, paper, TextAlignmentOptions.Center);
+            notice = Label(line, "", 20, paper, TextAlignmentOptions.Center);
+            UiStyle.Readable(notice);
 
             BuildShop(safe);
             pause = PauseMenu.Create(safe);
@@ -134,66 +144,89 @@ namespace MarsSurvival.UI
         }
 
         /// <summary>
-        /// The seed shop: a list of item cards, each with its crop icon, grow time, sell price, how many
-        /// you own and a price button; then the greenhouse expansion and the harvest to sell.
+        /// The seed shop, signed RESOURCES-02 like the wing it stands in: seeds (crop icon, grow time,
+        /// sell price, how many you own and an amber price button), the greenhouse expansion, then the
+        /// harvest to sell.
         /// </summary>
         private void BuildShop(Transform parent)
         {
             Color accent = UiTheme.Accent;
-            shop = Plate(parent, "Seed shop", new Vector2(1, .5f), new Vector2(-16, 0), new Vector2(620, 0));
+            shop = Plate(parent, "Seed shop", new Vector2(1, .5f), new Vector2(-24, 0), new Vector2(580, 0));
             shop.pivot = new Vector2(1, .5f);
-            shop.GetComponent<Image>().color = WithAlpha(ink, 0.94f);
             VerticalLayoutGroup list = shop.gameObject.AddComponent<VerticalLayoutGroup>();
-            list.padding = new RectOffset(22, 22, 18, 18);
-            list.spacing = 8;
+            list.padding = new RectOffset(26, 26, 22, 22);
+            list.spacing = 4;
             list.childControlHeight = list.childControlWidth = true;
             list.childForceExpandHeight = false;
             shop.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            RectTransform head = Line(shop, 56, 0f);
-            Label(head, "SEED SHOP", 32, paper, TextAlignmentOptions.MidlineLeft).fontStyle = FontStyles.Bold;
-            shopCredits = Label(head, "", 24, accent, TextAlignmentOptions.MidlineRight);
-            Fill(Line(shop, 2, 0f), WithAlpha(accent, 0.6f));
+            RectTransform head = Line(shop, 92, 0f);
+            UiStyle.Id(head, "Resources-02", 17, 0, 4);
+            shopCredits = Label(Region(head, 300, 54, 228, 38), "", 28, accent, TextAlignmentOptions.MidlineRight);
+            UiStyle.Readout(shopCredits);
+            shopCredits.rectTransform.anchorMin = shopCredits.rectTransform.anchorMax = new Vector2(1, 1);
+            shopCredits.rectTransform.pivot = new Vector2(1, 1);
+            shopCredits.rectTransform.anchoredPosition = Vector2.zero;
+            TMP_Text title = Label(Region(head, 0, 0, 400, 46), "Seed shop", 32, paper, TextAlignmentOptions.MidlineLeft);
+            UiStyle.Caps(title, 4f);
 
+            Section("Seeds");
             int n = SeedKind.All.Length;
             owned = new TMP_Text[n]; basketRows = new TMP_Text[n]; buy = new Button[n]; sell = new Button[n];
             for (int i = 0; i < n; i++)
             {
                 SeedKind k = SeedKind.All[i];
                 string id = k.id;
-                RectTransform card = Line(shop, 104, 0.06f);
-                Icon(card, id, 12, 8, 88);
-                RectTransform name = Region(card, 116, 56, 300, 36);
-                Label(name, k.name, 27, paper, TextAlignmentOptions.MidlineLeft).fontStyle = FontStyles.Bold;
-                Label(Region(card, 116, 30, 320, 26), "Ripe " + Duration(k.seconds) + " after watering  ·  sells " + k.sellPrice, 18, muted, TextAlignmentOptions.MidlineLeft);
-                owned[i] = Label(Region(card, 116, 6, 300, 24), "", 18, WithAlpha(accent, 0.9f), TextAlignmentOptions.MidlineLeft);
-                buy[i] = ShopButton(card, k.price + " cr", 150, 56, accent, () => mission.Execute("buy", id));
+                RectTransform card = Line(shop, 84, 0f);
+                Icon(card, id, 0, 10, 64);
+                TMP_Text name = Label(Region(card, 80, 46, 300, 30), k.name, 22, paper, TextAlignmentOptions.MidlineLeft);
+                UiStyle.Caps(name, 2f);
+                Label(Region(card, 80, 24, 320, 22), "Ripe " + Duration(k.seconds) + " after watering · sells " + k.sellPrice, 15, muted, TextAlignmentOptions.MidlineLeft);
+                owned[i] = Label(Region(card, 80, 4, 300, 20), "", 13, UiTheme.Info, TextAlignmentOptions.MidlineLeft);
+                UiStyle.Caps(owned[i], 2f);
+                buy[i] = ShopButton(card, k.price + " CR", 116, 44, accent, () => mission.Execute("buy", id));
             }
-            RectTransform grow = Line(shop, 64, 0.06f);
-            expandRow = Label(Region(grow, 16, 0, 380, 64), "", 22, paper, TextAlignmentOptions.MidlineLeft);
-            expand = ShopButton(grow, "", 150, 48, accent, () => mission.Execute("buy", "plots"));
+            Section("Greenhouse");
+            RectTransform grow = Line(shop, 64, 0f);
+            expandRow = Label(Region(grow, 0, 28, 380, 30), "", 22, paper, TextAlignmentOptions.MidlineLeft);
+            UiStyle.Caps(expandRow, 2f);
+            expandMeta = Label(Region(grow, 0, 6, 380, 22), "", 15, muted, TextAlignmentOptions.MidlineLeft);
+            expand = ShopButton(grow, "", 116, 44, accent, () => mission.Execute("buy", "plots"));
 
-            RectTransform harvestHead = Line(shop, 40, 0f);
-            Label(harvestHead, "HARVEST", 22, muted, TextAlignmentOptions.BottomLeft);
+            Section("Harvest");
             for (int i = 0; i < n; i++)
             {
                 string id = SeedKind.All[i].id;
-                RectTransform row = Line(shop, 60, 0.04f);
-                Icon(row, id, 10, 6, 48);
-                basketRows[i] = Label(Region(row, 70, 0, 360, 60), "", 21, paper, TextAlignmentOptions.MidlineLeft);
-                sell[i] = ShopButton(row, "Sell", 120, 44, StatBar.ColorOf(Ui.UiButtonColor), () => mission.Execute("sell", id));
+                RectTransform row = Line(shop, 56, 0f);
+                Icon(row, id, 0, 6, 44);
+                basketRows[i] = Label(Region(row, 60, 0, 340, 56), "", 19, paper, TextAlignmentOptions.MidlineLeft);
+                sell[i] = ShopButton(row, "Sell", 116, 40, Color.clear, () => mission.Execute("sell", id));
             }
-            RectTransform foot = Line(shop, 52, 0f);
-            ShopButton(foot, "Close (Esc)", 180, 44, StatBar.ColorOf(Ui.UiButtonColor), () => mission.SetShopOpen(false));
+            RectTransform foot = Line(shop, 56, 0f);
+            ShopButton(foot, "<color=#" + ColorUtility.ToHtmlStringRGB(accent) + ">ESC</color>  Close", 150, 40, Color.clear, () => mission.SetShopOpen(false));
             shop.gameObject.SetActive(false);
+        }
+
+        /// <summary>A dim tracked-capital section name with a hairline running to the right edge.</summary>
+        private void Section(string name)
+        {
+            RectTransform row = Line(shop, 36, 0f);
+            TMP_Text label = Label(Region(row, 0, 4, 160, 26), name, 13, muted, TextAlignmentOptions.MidlineLeft);
+            UiStyle.Caps(label, 3.5f);
+            float width = label.GetPreferredValues(name.ToUpperInvariant()).x + 12f;
+            RectTransform rule = Region(row, width, 16, 0, 1);
+            rule.anchorMax = new Vector2(1, 0);
+            rule.sizeDelta = new Vector2(-width, 1);
+            Fill(rule, UiTheme.Edge);
         }
 
         /// <summary>Greys out a button you can't use (can't afford, nothing to sell), not by colour alone: it stops clicking too.</summary>
         private void Enable(Button button, bool on, Color fill)
         {
             button.interactable = on;
-            button.targetGraphic.color = on ? fill : WithAlpha(muted, 0.35f);
-            button.GetComponentInChildren<TMP_Text>().color = on ? (fill.grayscale > 0.5f ? ink : paper) : WithAlpha(paper, 0.5f);
+            bool ghost = fill.a == 0f;
+            button.targetGraphic.color = on ? (ghost ? WithAlpha(UiTheme.Accent, 0.12f) : fill) : WithAlpha(paper, 0.06f);
+            button.GetComponentInChildren<TMP_Text>().color = on ? (ghost ? UiTheme.Accent : ink) : WithAlpha(paper, 0.3f);
         }
 
         private static string Duration(double seconds) { return seconds < 60 ? seconds + " s" : (seconds / 60) + " min"; }
@@ -212,7 +245,7 @@ namespace MarsSurvival.UI
         private void Icon(RectTransform row, string id, float x, float y, float size)
         {
             RectTransform tile = Region(row, x, y, size, size);
-            Fill(tile, WithAlpha(ink, 0.8f));
+            Fill(tile, WithAlpha(paper, 0.04f));
             Image icon = NewRect("Icon", tile).gameObject.AddComponent<Image>();
             icon.rectTransform.anchorMin = Vector2.zero; icon.rectTransform.anchorMax = Vector2.one;
             icon.rectTransform.offsetMin = icon.rectTransform.offsetMax = Vector2.zero;
@@ -228,15 +261,17 @@ namespace MarsSurvival.UI
             rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(1, .5f);
             rect.anchoredPosition = new Vector2(-12, 0);
             rect.sizeDelta = new Vector2(width, height);
-            Image image = rect.gameObject.AddComponent<Image>();
-            image.color = fill;
+            FacetedImage image = rect.gameObject.AddComponent<FacetedImage>();
+            image.KeepAlpha = true;
+            image.color = fill.a == 0f ? WithAlpha(UiTheme.Accent, 0.12f) : fill;
             Button button = rect.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
             ColorBlock states = ColorBlock.defaultColorBlock;
             states.disabledColor = new Color(0.45f, 0.45f, 0.45f, 0.5f);
             button.colors = states;
             button.onClick.AddListener(() => { click(); MarsSfx.Play(MarsSfx.Sound.Click); });
-            Label(rect, label, 22, fill.grayscale > 0.5f ? ink : paper, TextAlignmentOptions.Center).fontStyle = FontStyles.Bold;
+            TMP_Text text = Label(rect, label, 17, fill.a == 0f ? UiTheme.Accent : ink, TextAlignmentOptions.Center);
+            UiStyle.Caps(text, 2.5f);
             return button;
         }
 
@@ -248,15 +283,16 @@ namespace MarsSurvival.UI
             AstronautState a = s.astronaut;
             int sol = (int)(s.elapsedSeconds / MissionSettings.SolSeconds) + 1;
             double hour = mission.Environment.localHour;
-            clock.text = "Sol " + sol + "  ·  " + ((int)hour).ToString("00") + ":" + ((int)(hour % 1 * 60)).ToString("00");
-            money.text = s.credits + " credits";
+            this.sol.text = "Sol " + sol.ToString("00");
+            clock.text = ((int)hour).ToString("00") + ":" + ((int)(hour % 1 * 60)).ToString("00");
+            money.text = s.credits + "<size=60%> CR</size>";
             plots.text = s.unlockedPlots + " / " + MissionSettings.MaxPlots + " plots";
             double[] v = { a.oxygen, a.water, a.food };
             for (int i = 0; i < 3; i++)
             {
-                float f = Mathf.Clamp01((float)v[i] / 100f);
-                fills[i].rectTransform.anchorMax = new Vector2(f, 1);
-                fills[i].color = v[i] < Low ? danger : colors[i];
+                int lit = Mathf.CeilToInt(Mathf.Clamp01((float)v[i] / 100f) * Segments);
+                Color on = v[i] < Low ? danger : colors[i], off = WithAlpha(paper, 0.1f);
+                for (int k = 0; k < Segments; k++) segments[i][k].color = k < lit ? on : off;
                 values[i].text = Mathf.CeilToInt((float)v[i]).ToString(CultureInfo.InvariantCulture);
                 values[i].color = v[i] < Low ? danger : paper;
             }
@@ -267,18 +303,20 @@ namespace MarsSurvival.UI
             if (open)
             {
                 MissionSimulation sim = mission.Simulation;
-                shopCredits.text = s.credits + " credits";
+                shopCredits.text = s.credits + "<size=60%> CR</size>";
                 for (int i = 0; i < SeedKind.All.Length; i++)
                 {
                     SeedKind k = SeedKind.All[i];
-                    owned[i].text = s.seeds[i] > 0 ? "Owned  ×" + s.seeds[i] : "None owned";
+                    owned[i].text = s.seeds[i] > 0 ? "Owned " + s.seeds[i] : "None owned";
+                    owned[i].color = s.seeds[i] > 0 ? UiTheme.Info : muted;
                     Enable(buy[i], s.credits >= k.price, UiTheme.Accent);
-                    basketRows[i].text = k.name + "  ×" + s.basket[i] + "<pos=55%><color=#" + ColorUtility.ToHtmlStringRGB(muted) + ">+" + k.sellPrice + " each</color>";
-                    Enable(sell[i], s.basket[i] > 0, StatBar.ColorOf(Ui.UiButtonColor));
+                    basketRows[i].text = k.name.ToUpperInvariant() + " × " + s.basket[i] + "<pos=58%><color=#" + ColorUtility.ToHtmlStringRGB(muted) + "><size=80%>+" + k.sellPrice + " each</size></color>";
+                    Enable(sell[i], s.basket[i] > 0, Color.clear);
                 }
-                expandRow.text = sim.CanExpand ? "Greenhouse  ·  add " + MissionSettings.PlotsPerExpansion + " plots" : "Greenhouse full";
+                expandRow.text = sim.CanExpand ? "Add " + MissionSettings.PlotsPerExpansion + " plots" : "Greenhouse full";
+                expandMeta.text = s.unlockedPlots + " of " + MissionSettings.MaxPlots + " plots in use";
                 Enable(expand, sim.CanExpand && s.credits >= sim.ExpansionPrice, UiTheme.Accent);
-                expand.GetComponentInChildren<TMP_Text>().text = sim.CanExpand ? sim.ExpansionPrice + " cr" : "—";
+                expand.GetComponentInChildren<TMP_Text>().text = sim.CanExpand ? sim.ExpansionPrice + " CR" : "—";
             }
 
             if (!mission.IsRunning && !ended)
@@ -297,7 +335,10 @@ namespace MarsSurvival.UI
             rect.anchorMin = rect.anchorMax = rect.pivot = anchor;
             rect.anchoredPosition = position;
             rect.sizeDelta = size;
-            Fill(rect, WithAlpha(ink, 0.72f));
+            FacetedImage plate = rect.gameObject.AddComponent<FacetedImage>();
+            plate.KeepAlpha = true;
+            plate.color = WithAlpha(UiTheme.Panel, UiTheme.PanelAlpha);
+            plate.raycastTarget = false;
             return rect;
         }
 

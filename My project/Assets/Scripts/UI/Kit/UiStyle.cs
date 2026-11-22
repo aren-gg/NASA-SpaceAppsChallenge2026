@@ -5,9 +5,9 @@ using UnityEngine.UI;
 namespace MarsTrainer.UI
 {
     /// <summary>
-    /// The NASA-punk type rules shared by every screen. Labels and titles are tracked capitals in
-    /// Barlow Condensed SemiBold; numbers are SemiBold italic so they lean with the slanted gauges;
-    /// body text stays Barlow Condensed Medium. Section headers carry an amber hazard-stripe tab.
+    /// The type rules shared by every screen. Labels and titles are tracked capitals in Chakra Petch
+    /// SemiBold; numbers are SemiBold; body text is Chakra Petch Medium. Section IDs are cyan with an
+    /// underline, like the signs over the base's doors.
     /// </summary>
     public static class UiStyle
     {
@@ -28,11 +28,11 @@ namespace MarsTrainer.UI
             text.characterSpacing = 0.5f;
         }
 
-        /// <summary>A number readout: SemiBold, italic, amber unless the caller recolours it.</summary>
+        /// <summary>A number readout: SemiBold, upright.</summary>
         public static void Readout(TMP_Text text)
         {
             text.font = UiTypeface.Strong;
-            text.fontStyle = (text.fontStyle | FontStyles.Italic) & ~FontStyles.UpperCase;
+            text.fontStyle &= ~(FontStyles.Italic | FontStyles.UpperCase);
         }
 
         /// <summary>A label or title: SemiBold tracked capitals.</summary>
@@ -44,41 +44,26 @@ namespace MarsTrainer.UI
         }
 
         /// <summary>
-        /// A section header across the top of <paramref name="parent"/>: hazard tab, amber title,
-        /// a dim sub-label after it and a hairline rule to the right edge. Returns the sub-label.
+        /// A cyan ID label with a cyan underline, like the signs over the doors (COMMAND-01, GARAGE-03),
+        /// anchored at the top left of <paramref name="parent"/> at (x, y) below its top edge.
         /// </summary>
-        public static TMP_Text Header(RectTransform parent, string title, string sub, float size, float y0, float y1)
+        public static TMP_Text Id(RectTransform parent, string value, float size, float x, float y)
         {
-            RectTransform row = Rect("Header", parent, 0f, y0, 1f, y1);
-
-            RectTransform tab = Rect("Hazard tab", row, 0f, 0.5f, 0f, 0.5f);
-            tab.pivot = new Vector2(0f, 0.5f);
-            tab.sizeDelta = new Vector2(size * 1.9f, size * 0.55f);
-            HazardTab stripes = tab.gameObject.AddComponent<HazardTab>();
-            stripes.color = UiTheme.Accent;
-            stripes.raycastTarget = false;
-
-            float x = size * 1.9f + size * 0.6f;
-            TMP_Text head = Text(row, title, size, UiTheme.Accent);
-            Caps(head, size * 0.25f);
-            float headWidth = head.GetPreferredValues(title.ToUpperInvariant()).x + 2f;
-            Span(head.rectTransform, x, headWidth);
-            x += headWidth + size * 0.5f;
-
-            TMP_Text tail = Text(row, sub, size * 0.9f, UiTheme.Dim);
-            Caps(tail, size * 0.12f);
-            tail.font = UiTypeface.Font;
-            float tailWidth = Mathf.Max(60f, tail.GetPreferredValues(sub.ToUpperInvariant()).x + 30f);
-            Span(tail.rectTransform, x, tailWidth);
-            x += tailWidth + size * 0.4f;
-
-            RectTransform rule = Rect("Rule", row, 0f, 0.5f, 1f, 0.5f);
-            rule.offsetMin = new Vector2(x, -0.75f);
-            rule.offsetMax = new Vector2(0f, 0.75f);
+            TMP_Text text = Text(parent, value, size, UiTheme.Info);
+            Caps(text, size * 0.18f);
+            float width = text.GetPreferredValues(value.ToUpperInvariant()).x + 2f;
+            RectTransform r = text.rectTransform;
+            r.anchorMin = r.anchorMax = r.pivot = new Vector2(0f, 1f);
+            r.anchoredPosition = new Vector2(x, -y);
+            r.sizeDelta = new Vector2(width, size * 1.3f);
+            RectTransform rule = Rect("Underline", parent, 0f, 1f, 0f, 1f);
+            rule.pivot = new Vector2(0f, 1f);
+            rule.anchoredPosition = new Vector2(x, -y - size * 1.4f);
+            rule.sizeDelta = new Vector2(width, 2f);
             Image line = rule.gameObject.AddComponent<Image>();
-            line.color = UiTheme.WithAlpha(UiTheme.Text, 0.35f);
+            line.color = UiTheme.Info;
             line.raycastTarget = false;
-            return tail;
+            return text;
         }
 
         /// <summary>The dark outline that keeps floating HUD text readable over bright ground.</summary>
@@ -91,6 +76,7 @@ namespace MarsTrainer.UI
         private static TMP_Text Text(RectTransform parent, string value, float size, Color color)
         {
             TextMeshProUGUI text = Rect("Text", parent, 0f, 0f, 0f, 1f).gameObject.AddComponent<TextMeshProUGUI>();
+            text.font = UiTypeface.Strong;   // before Readable: its outline makes a material for this font's atlas
             text.text = value;
             text.fontSize = size;
             text.color = color;

@@ -1,0 +1,255 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Marsivity UI mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=block" rel="stylesheet">
+<style>
+/* Mockups of the game UI rehaul (not shipped): rendered to PNG with headless Chrome for approval.
+   Language taken from the base's own signage: gunmetal plates, cyan IDs with an underline,
+   amber for guidance and actions, Barlow Condensed tracked capitals. */
+@font-face { font-family: Barlow; src: url("../../My project/Assets/Resources/Fonts/BarlowCondensed-Medium.ttf"); font-weight: 500; }
+@font-face { font-family: Barlow; src: url("../../My project/Assets/Resources/Fonts/BarlowCondensed-SemiBold.ttf"); font-weight: 600; }
+:root {
+  --plate: rgba(22, 24, 29, 0.84);
+  --plate-solid: #16181d;
+  --edge: #3a3d44;
+  --steel: #8e949c;
+  --text: #e9ecef;
+  --dim: #9aa1a9;
+  --cyan: #3fe0ff;
+  --amber: #ffb547;
+  --danger: #ff5a4a;
+  --cut: 10px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { width: 1920px; height: 1080px; overflow: hidden; background: #000; font-family: var(--font, Barlow), sans-serif; font-weight: 500; color: var(--text); }
+.screen { position: absolute; inset: 0; display: none; }
+.screen.on { display: block; }
+.bg { position: absolute; inset: 0; background-size: cover; background-position: center; }
+
+/* A plate: chamfered top corners like the door portals, hairline edge. */
+.plate { position: absolute; background: var(--plate); clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, 0 100%, 0 var(--cut)); }
+.plate::before { content: ""; position: absolute; inset: 0; border: 1.5px solid var(--edge); clip-path: inherit; pointer-events: none; }
+/* Cyan ID label with its underline, as on the signs above the doors. */
+.id { font-weight: 600; font-size: 22px; letter-spacing: .16em; color: var(--cyan); text-transform: uppercase; padding-bottom: 6px; border-bottom: 2px solid var(--cyan); display: inline-block; }
+.idsm { font-weight: 600; font-size: 17px; letter-spacing: .16em; color: var(--cyan); text-transform: uppercase; }
+.cap { text-transform: uppercase; letter-spacing: .12em; }
+.dim { color: var(--dim); }
+.amber { color: var(--amber); }
+.num { font-weight: 600; font-variant-numeric: tabular-nums; }
+.key { display: inline-block; min-width: 30px; padding: 2px 8px; border: 1.5px solid var(--amber); color: var(--amber); font-weight: 600; font-size: 18px; text-align: center; letter-spacing: .06em; }
+
+/* ---------- HUD ---------- */
+.clock { left: 32px; top: 28px; padding: 12px 22px 12px 18px; display: flex; gap: 18px; align-items: baseline; }
+.clock .sol { font-size: 22px; font-weight: 600; letter-spacing: .16em; color: var(--cyan); }
+.clock .time { font-size: 34px; font-weight: 600; letter-spacing: .04em; }
+.clock .sub { font-size: 16px; letter-spacing: .14em; color: var(--dim); }
+.keys { right: 32px; top: 28px; padding: 12px 18px; display: flex; gap: 22px; font-size: 18px; align-items: center; }
+.keys span.k { color: var(--dim); letter-spacing: .12em; text-transform: uppercase; margin-left: 8px; }
+
+.life { left: 32px; bottom: 32px; width: 430px; padding: 18px 22px 20px; }
+.life .head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px; }
+.life .cr { font-size: 30px; color: var(--amber); font-weight: 600; letter-spacing: .04em; }
+.life .cr small { font-size: 17px; letter-spacing: .14em; margin-left: 4px; }
+.row { display: grid; grid-template-columns: 74px 1fr 48px; gap: 14px; align-items: center; margin-top: 11px; }
+.row .lab { font-size: 18px; letter-spacing: .14em; color: var(--dim); text-transform: uppercase; font-weight: 600; }
+.row .val { font-size: 24px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.seg { display: grid; grid-template-columns: repeat(20, 1fr); gap: 3px; height: 14px; }
+.seg i { background: rgba(255,255,255,.1); }
+.seg i.on { background: var(--c, var(--cyan)); }
+.plots { font-size: 16px; letter-spacing: .14em; color: var(--dim); margin-top: 16px; text-transform: uppercase; display: flex; justify-content: space-between; }
+
+.hotbar { position: absolute; left: 50%; bottom: 32px; transform: translateX(-50%); display: flex; gap: 12px; }
+.slot { position: relative; width: 96px; height: 96px; }
+.slot .plate { inset: 0; }
+.slot svg { position: absolute; inset: 22px; width: 52px; height: 52px; }
+.slot .n { position: absolute; left: 9px; top: 6px; font-size: 17px; font-weight: 600; color: var(--dim); z-index: 2; }
+.slot.sel .plate::before { border-color: var(--cyan); border-width: 2px; }
+.slot.sel .n { color: var(--cyan); }
+.slot.sel::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: -10px; height: 3px; background: var(--cyan); }
+.toolname { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); text-align: center; padding: 10px 20px 12px; white-space: nowrap; }
+.toolname .idsm { font-size: 22px; }
+.toolname .hint { margin-top: 8px; font-size: 19px; color: var(--dim); letter-spacing: .06em; }
+
+.prompt { left: 50%; top: 61%; transform: translateX(-50%); padding: 10px 18px; display: flex; gap: 12px; align-items: center; font-size: 22px; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; }
+.toast { left: 50%; top: 104px; transform: translateX(-50%); padding: 8px 20px; font-size: 18px; letter-spacing: .16em; text-transform: uppercase; color: var(--cyan); }
+.crosshair { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: var(--text); opacity: .8; }
+
+/* ---------- SHOP ---------- */
+.shop { right: 32px; top: 110px; width: 560px; padding: 24px 26px 26px; }
+.shop .top { display: flex; justify-content: space-between; align-items: flex-end; }
+.shop h1 { font-size: 40px; font-weight: 600; letter-spacing: .1em; margin-top: 14px; text-transform: uppercase; }
+.shop .bal { font-size: 34px; font-weight: 600; color: var(--amber); }
+.shop .bal small { font-size: 17px; letter-spacing: .14em; margin-left: 4px; }
+.sect { margin: 22px 0 10px; font-size: 16px; letter-spacing: .2em; color: var(--dim); text-transform: uppercase; display: flex; gap: 12px; align-items: center; }
+.sect::after { content: ""; flex: 1; height: 1px; background: var(--edge); }
+.item { display: grid; grid-template-columns: 64px 1fr 120px; gap: 16px; align-items: center; padding: 10px 0; border-top: 1px solid rgba(255,255,255,.06); }
+.item:first-of-type { border-top: 0; }
+.item img { width: 64px; height: 64px; background: rgba(255,255,255,.04); }
+.item .nm { font-size: 24px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.item .meta { font-size: 15px; color: var(--dim); letter-spacing: .04em; margin-top: 2px; }
+.item .own { font-size: 15px; color: var(--cyan); letter-spacing: .14em; margin-top: 3px; text-transform: uppercase; }
+.btn { height: 46px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+.btn.buy { background: var(--amber); color: #15181c; }
+.btn.off { background: rgba(255,255,255,.06); color: #6b7179; }
+.btn.ghost { border: 1.5px solid var(--amber); color: var(--amber); clip-path: none; }
+.foot { margin-top: 22px; display: flex; justify-content: space-between; align-items: center; font-size: 18px; color: var(--dim); letter-spacing: .1em; text-transform: uppercase; }
+
+/* ---------- PAUSE ---------- */
+.scrim { position: absolute; inset: 0; background: rgba(8, 9, 12, .62); }
+.pause { left: 50%; top: 50%; transform: translate(-50%, -50%); width: 1180px; padding: 34px 40px 36px; }
+.pause .top { display: flex; justify-content: space-between; align-items: flex-end; }
+.pause h1 { font-size: 64px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; margin-top: 16px; line-height: 1; }
+.pause .status { font-size: 18px; letter-spacing: .16em; color: var(--dim); text-transform: uppercase; text-align: right; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; margin-top: 30px; }
+.ctl { display: grid; grid-template-columns: 170px 1fr; row-gap: 12px; align-items: center; font-size: 21px; }
+.ctl .keys2 { display: flex; gap: 6px; }
+.ctl .key { font-size: 16px; min-width: 28px; }
+.set { display: grid; grid-template-columns: 1fr 230px; row-gap: 18px; align-items: center; font-size: 21px; }
+.set .lab { letter-spacing: .1em; text-transform: uppercase; }
+.stepper { display: grid; grid-template-columns: 40px 1fr 40px; height: 40px; align-items: center; text-align: center; background: rgba(255,255,255,.05); }
+.stepper b { color: var(--amber); font-size: 24px; font-weight: 600; }
+.stepper .num { font-size: 21px; }
+.track { height: 6px; background: rgba(255,255,255,.12); position: relative; }
+.track i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--cyan); }
+.track u { position: absolute; top: -7px; width: 4px; height: 20px; background: var(--text); }
+.actions { display: flex; gap: 14px; margin-top: 34px; }
+.actions .btn { flex: 1; height: 54px; font-size: 22px; }
+
+/* ---------- HOME ---------- */
+.home .shade { position: absolute; inset: 0; background: rgba(8,9,12,.35); }
+.title { position: absolute; left: 120px; top: 250px; }
+.title .tag { margin-bottom: 26px; }
+.title h1 { font-size: 118px; font-weight: 600; letter-spacing: .1em; line-height: .9; }
+.title h1 span { color: var(--amber); }
+.title p { margin-top: 20px; font-size: 26px; color: var(--dim); letter-spacing: .06em; max-width: 620px; }
+.menu { position: absolute; left: 120px; top: 610px; width: 440px; display: grid; gap: 14px; }
+.menu .btn { height: 62px; font-size: 24px; justify-content: space-between; padding: 0 24px; }
+.menu .btn.ghost { color: var(--text); border-color: var(--edge); background: rgba(22,24,29,.7); }
+.menu .btn em { font-style: normal; color: var(--dim); font-size: 18px; }
+.statusbar { position: absolute; left: 120px; right: 120px; bottom: 48px; display: flex; justify-content: space-between; font-size: 18px; letter-spacing: .18em; color: var(--dim); text-transform: uppercase; border-top: 1px solid var(--edge); padding-top: 16px; }
+.statusbar .ok { color: var(--cyan); }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="sprayer" viewBox="0 0 48 48"><g fill="none" stroke="#e9ecef" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><rect x="14" y="18" width="16" height="24" rx="3"/><path d="M18 18v-5h8v5M26 13h9l4 3M20 26h4"/><path d="M41 12l3-2M41 17h4M41 21l3 2" stroke="#3fe0ff"/></g></symbol>
+    <symbol id="shovel" viewBox="0 0 48 48"><g fill="none" stroke="#e9ecef" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M24 4v24"/><path d="M18 4h12"/><path d="M16 28h16v8c0 5-4 8-8 8s-8-3-8-8z"/></g></symbol>
+    <symbol id="lamp" viewBox="0 0 48 48"><g fill="none" stroke="#e9ecef" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><rect x="18" y="22" width="12" height="20" rx="2"/><path d="M14 22h20l-4-10H18z"/><path d="M24 4v4M12 8l3 3M36 8l-3 3" stroke="#ffb547"/></g></symbol>
+    <symbol id="lettuce" viewBox="0 0 48 48"><g fill="none" stroke="#7cc456" stroke-width="2.4" stroke-linecap="round"><path d="M24 40c-9 0-14-6-14-12 0-5 4-8 8-8 0-5 3-8 6-8s6 3 6 8c4 0 8 3 8 8 0 6-5 12-14 12z"/><path d="M24 40V22"/></g></symbol>
+  </defs>
+</svg>
+
+<!-- ============================== HUD ============================== -->
+<section class="screen" id="hud">
+  <div class="bg" style="background-image:url(bg/tool_shed.png)"></div>
+  <div class="crosshair"></div>
+  <div class="plate clock"><span class="sol">SOL 02</span><span class="time num">15:00</span></div>
+  <div class="plate keys"><div><span class="key">ESC</span><span class="k">Menu</span></div><div><span class="key">F5</span><span class="k">Save</span></div><div><span class="key">P</span><span class="k">Pause</span></div></div>
+  <div class="plate toast">Mission saved</div>
+
+  <div class="plate prompt"><span class="key">E</span>Put the sprayer back</div>
+
+  <img src="bg/og_hotbar.png" style="position:absolute;left:50%;bottom:28px;transform:translateX(-50%);width:420px;image-rendering:auto" alt="">
+
+  <div class="plate life">
+    <div class="head"><span class="id">Life support</span><span class="cr num">80<small>CR</small></span></div>
+    <div class="row"><span class="lab">O₂</span><div class="seg" id="o2"></div><span class="val">100</span></div>
+    <div class="row"><span class="lab">Water</span><div class="seg" id="h2o" style="--c:#3f9bff"></div><span class="val">55</span></div>
+    <div class="row"><span class="lab">Food</span><div class="seg" id="food" style="--c:#ffb547"></div><span class="val amber">27</span></div>
+    <div class="plots"><span>Greenhouse-04</span><span class="num">8 / 24 plots</span></div>
+  </div>
+</section>
+
+<!-- ============================== SHOP ============================== -->
+<section class="screen" id="shop">
+  <div class="bg" style="background-image:url(bg/resources_room.png)"></div>
+  <div class="plate clock"><span class="sol">SOL 01</span><span class="time num">07:05</span></div>
+  <div class="plate shop">
+    <div class="top"><span class="id">Resources-02</span><span class="bal num">30<small>CR</small></span></div>
+    <h1>Seed shop</h1>
+    <div class="sect">Seeds</div>
+    <div class="item"><img src="../../My project/Assets/Resources/Garden/Icons/lettuce.png"><div><div class="nm">Lettuce</div><div class="meta">Ripe 30 s after watering · sells 15</div><div class="own">Owned 3</div></div><div class="btn buy num">10 CR</div></div>
+    <div class="item"><img src="../../My project/Assets/Resources/Garden/Icons/tomato.png"><div><div class="nm">Tomato</div><div class="meta">Ripe 1 min after watering · sells 45</div><div class="own" style="color:var(--dim)">None owned</div></div><div class="btn buy num">25 CR</div></div>
+    <div class="item"><img src="../../My project/Assets/Resources/Garden/Icons/watermelon.png"><div><div class="nm">Watermelon</div><div class="meta">Ripe 2 min after watering · sells 130</div><div class="own" style="color:var(--dim)">None owned</div></div><div class="btn off num">80 CR</div></div>
+    <div class="sect">Greenhouse</div>
+    <div class="item"><div style="width:64px;height:64px;display:grid;place-items:center;background:rgba(255,255,255,.04);font-size:30px;color:var(--cyan);font-weight:600">+2</div><div><div class="nm">Add 2 plots</div><div class="meta">8 of 24 plots in use</div></div><div class="btn off num">150 CR</div></div>
+    <div class="sect">Harvest</div>
+    <div class="item"><img src="../../My project/Assets/Resources/Garden/Icons/lettuce.png"><div><div class="nm">Lettuce × 2</div><div class="meta">+15 each</div></div><div class="btn ghost">Sell</div></div>
+    <div class="foot"><span>Tomato × 0 · Watermelon × 0</span><span><span class="key">ESC</span>&nbsp; Close</span></div>
+  </div>
+  <div class="plate life">
+    <div class="head"><span class="id">Life support</span><span class="cr num">30<small>CR</small></span></div>
+    <div class="row"><span class="lab">O₂</span><div class="seg" data-v="100"></div><span class="val">100</span></div>
+    <div class="row"><span class="lab">Water</span><div class="seg" data-v="100" style="--c:#3f9bff"></div><span class="val">100</span></div>
+    <div class="row"><span class="lab">Food</span><div class="seg" data-v="100" style="--c:#ffb547"></div><span class="val">100</span></div>
+    <div class="plots"><span>Greenhouse-04</span><span class="num">8 / 24 plots</span></div>
+  </div>
+</section>
+
+<!-- ============================== PAUSE ============================== -->
+<section class="screen" id="pause">
+  <div class="bg" style="background-image:url(bg/hub_tree.png)"></div>
+  <div class="scrim"></div>
+  <div class="plate pause">
+    <div class="top"><span class="id">Command-01</span><span class="status">Outpost paused<br><span class="amber num">Sol 02 · 15:00</span></span></div>
+    <h1>Paused</h1>
+    <div class="cols">
+      <div>
+        <div class="sect" style="margin-top:0">Controls</div>
+        <div class="ctl">
+          <div class="keys2"><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span></div><div>Walk · mouse to look</div>
+          <div class="keys2"><span class="key">SHIFT</span><span class="key">SPACE</span></div><div>Sprint · jump</div>
+          <div class="keys2"><span class="key">E</span></div><div>Pick up · use · harvest</div>
+          <div class="keys2"><span class="key">Q</span><span class="key">B</span></div><div>Put tool back · all back</div>
+          <div class="keys2"><span class="key">1</span><span class="key">–</span><span class="key">9</span></div><div>Choose from the hotbar</div>
+          <div class="keys2"><span class="key">LMB</span><span class="key">R</span></div><div>Use tool · next seed</div>
+          <div class="keys2"><span class="key">F5</span><span class="key">F9</span></div><div>Save · load</div>
+        </div>
+      </div>
+      <div>
+        <div class="sect" style="margin-top:0">Settings</div>
+        <div class="set">
+          <span class="lab">Volume</span><div class="stepper"><b>‹</b><span class="num">100%</span><b>›</b></div>
+          <span class="lab">Camera sensitivity</span><div class="stepper"><b>−</b><span class="num">2.5</span><b>+</b></div>
+          <span class="lab">HUD size</span><div class="stepper"><b>−</b><span class="num">100%</span><b>+</b></div>
+          <span class="lab">Text size</span><div class="stepper"><b>‹</b><span>STANDARD</span><b>›</b></div>
+          <span class="lab">Shift lock (Ctrl)</span><div class="stepper"><b>‹</b><span class="amber">ON</span><b>›</b></div>
+        </div>
+      </div>
+    </div>
+    <div class="actions"><div class="btn buy">Back to Mars &nbsp;<span style="opacity:.6">[ESC]</span></div></div>
+  </div>
+</section>
+
+<!-- ============================== HOME ============================== -->
+<section class="screen home" id="home">
+  <div class="bg" style="background-image:url(bg/hangar_tracks.png); filter: saturate(1.05)"></div>
+  <div class="shade"></div>
+  <div class="title" style="top:150px">
+    <h1>MARS<span>IVITY</span></h1>
+  </div>
+  <div class="menu" style="top:330px;width:340px">
+    <div class="btn buy">Start mission</div>
+    <div class="btn ghost">How to play</div>
+    <div class="btn ghost">Credits</div>
+  </div>
+</section>
+
+<script>
+  for (const el of document.querySelectorAll('.seg')) {
+    const map = { o2: 100, h2o: 55, food: 27 };
+    const v = map[el.id] ?? +el.dataset.v;
+    for (let i = 0; i < 20; i++) { const s = document.createElement('i'); if (i < Math.round(v / 5)) s.className = 'on'; el.appendChild(s); }
+  }
+  const q = new URLSearchParams(location.search);
+  const fonts = { chakra: "'Chakra Petch'", rajdhani: "Rajdhani", sharetech: "'Share Tech Mono'" };
+  if (fonts[q.get('font')]) document.documentElement.style.setProperty('--font', fonts[q.get('font')]);
+  document.getElementById(location.hash.slice(1) || 'hud').classList.add('on');
+</script>
+</body>
+</html>
