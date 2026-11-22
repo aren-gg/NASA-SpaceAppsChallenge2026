@@ -1,7 +1,7 @@
 """
 Real motion capture for the astronaut: CMU Graphics Lab Motion Capture Database
 (mocap.cs.cmu.edu; "free for use in research and commercial projects"), BVH conversion by
-Bruce Hahne (github.com/meshula/cmu-mocap): a "stiff walk" (subject 74), a jog, run and jump
+Bruce Hahne (github.com/meshula/cmu-mocap): a walk, jog, run and jump
 (subject 16) and standing still (subject 82). Every clip then goes through a suit filter (arms held
 out and stiff, back upright), so it reads as an astronaut in a pressurised suit rather than a
 person in street clothes.
@@ -34,7 +34,7 @@ for _s, _S in (("l", "Left"), ("r", "Right")):
 # "hold": a stretch [a, b] looped by blending its end into its start; "pingpong": [a, b] there and back.
 CLIPS = {
     "Idle":   ("82_08", "hold", (100, 700)),
-    "Walk":   ("74_01", "cycle", 200),   # "stiff walk": short, deliberate steps with a side-to-side sway, as in a suit
+    "Walk":   ("16_15", "cycle", 120),   # a plain, relaxed walk (the "stiff walk" 74_01 read as goofy)
     "Run":    ("16_35", "cycle", 60),
     "Sprint": ("16_55", "cycle", 70),
     "Fall":   ("16_01", "air", None),
@@ -49,6 +49,15 @@ SUIT_ARM = {"upperarm": Vector((0.36, -0.12, -0.92)), "lowerarm": Vector((0.2, -
 SPINE = ("spine_01", "spine_02", "spine_03", "neck_01")
 
 
+# Per-clip suit settings: (arm swing kept, held arm directions); clips not listed use SUIT_ARM_KEEP / SUIT_ARM.
+# The walk keeps more of its natural swing; in the air the arms spread wide for balance.
+CLIP_ARMS = {
+    "Walk": (0.6, SUIT_ARM),
+    "Fall": (0.15, {"upperarm": Vector((0.86, -0.1, -0.5)), "lowerarm": Vector((0.8, -0.35, -0.2))}),
+}
+ARMS = (SUIT_ARM_KEEP, SUIT_ARM)   # set per clip in make_clip
+
+
 def suit(name, rot, rest_rot):
     """The performer's bone rotation as worn in a pressurised suit (see SUIT_*)."""
     if name in SPINE:
@@ -56,11 +65,12 @@ def suit(name, rot, rest_rot):
         if q.dot(r) < 0: r.negate()
         return q.slerp(r, SUIT_UPRIGHT).to_matrix()
     part = name.split("_")[0]
-    if part in SUIT_ARM:
+    if part in ARMS[1]:
         side = 1 if name.endswith("_l") else -1
-        held = SUIT_ARM[part].copy(); held.x *= side
+        keep, arms = ARMS
+        held = arms[part].copy(); held.x *= side
         d = rot.col[1].normalized()
-        want = held.normalized().lerp(d, SUIT_ARM_KEEP).normalized()
+        want = held.normalized().lerp(d, keep).normalized()
         return d.rotation_difference(want).to_matrix() @ rot
     return rot
 
@@ -240,6 +250,8 @@ def use(arm, action):
 
 
 def make_clip(tgt, name):
+    global ARMS
+    ARMS = CLIP_ARMS.get(name, (SUIT_ARM_KEEP, SUIT_ARM))
     take, kind, hint = CLIPS[name]
     src = load(take)
     O = offsets(src, tgt)

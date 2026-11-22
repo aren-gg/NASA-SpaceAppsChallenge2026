@@ -249,9 +249,17 @@ def add_neck_seal_and_helmet(head_parts):
         hc.z = max(hc.z, NECK.z + R * 0.78)
     else:       # no head: the helmet at the size the game shipped with
         R = 0.255; hc = Vector((0, NECK.y, 1.74))
+    SHAPE = Vector((0.95, 1.07, 0.97))   # a touch narrow and long, so it reads as a helmet, not a ball
     def sphere_bm(r):
         b = bmesh.new(); bmesh.ops.create_uvsphere(b, u_segments=48, v_segments=24, radius=r)
+        bmesh.ops.scale(b, vec=SHAPE, verts=b.verts)
         bmesh.ops.translate(b, vec=hc, verts=b.verts); return b
+    def band(name, r, keep, m, thick):
+        """A raised strip of the helmet surface: the faces of a slightly larger shell where keep(dir) holds."""
+        b = sphere_bm(r)
+        bmesh.ops.delete(b, geom=[f for f in b.faces if not keep((f.calc_center_median() - hc).normalized()) or f.calc_center_median().z < cut_z], context="FACES")
+        bmesh.ops.solidify(b, geom=list(b.faces), thickness=thick)
+        return obj(name, b, m)
     def front(f):
         d = (f.calc_center_median() - hc).normalized()
         return d.dot(F) > 0.2 and -0.45 < d.z < 0.62
@@ -264,10 +272,32 @@ def add_neck_seal_and_helmet(head_parts):
     bmesh.ops.delete(vb, geom=[f for f in vb.faces if not front(f) or f.calc_center_median().z < cut_z], context="FACES")
     bmesh.ops.solidify(vb, geom=list(vb.faces), thickness=0.005)
     helmet.append(obj("Visor", vb, VISOR))
+    # Details: a gunmetal frame round the visor, a ridge over the crown, ear modules with a cyan ring,
+    # lamps on the ear modules, a chin guard and a short antenna.
+    GLOW = mat("Helmet Glow", "000000", 0.4, emit="3FE0FF", strength=6)
+    helmet.append(band("Visor frame", R + 0.008, lambda d: 0.08 < d.dot(F) < 0.27 and -0.45 < d.z < 0.66, METAL, 0.012))
+    # crown ridge: a smooth rib over the top, from the visor frame down the back
+    arc = [hc + Vector((0, -R * SHAPE.y * 1.025 * math.cos(a), R * SHAPE.z * 1.025 * math.sin(a))) for a in [math.radians(52 + i * 4) for i in range(36)]]   # front (above the visor) over the top and down the back
+    rib = tube("Crown ridge", arc, 0.013, METAL)
+    bpy.ops.object.select_all(action="DESELECT"); rib.select_set(True); bpy.context.view_layer.objects.active = rib
+    bpy.ops.object.convert(target="MESH"); helmet.append(bpy.context.object)
+    helmet.append(band("Chin guard", R + 0.008, lambda d: d.dot(F) > 0.3 and -0.62 < d.z < -0.42, METAL, 0.012))
     for s in (-1, 1):
-        p = hc + Vector((s * R * 0.83, -R * 0.35, R * 0.45))
+        ear = hc + Vector((s * (R * SHAPE.x + 0.012), 0.02, -R * 0.05))
+        rot = Matrix.Rotation(math.pi / 2, 3, "Y")
+        b = bmesh.new(); bmesh.ops.create_cone(b, cap_ends=True, segments=28, radius1=0.075, radius2=0.065, depth=0.05)
+        bmesh.ops.rotate(b, matrix=rot if s > 0 else rot.inverted(), verts=b.verts); bmesh.ops.translate(b, vec=ear, verts=b.verts)
+        helmet.append(obj("Ear module", b, METAL))
+        ring = torus(0.05, 0.006, 28, 6); bmesh.ops.rotate(ring, matrix=rot, verts=ring.verts)
+        bmesh.ops.translate(ring, vec=ear + Vector((s * 0.026, 0, 0)), verts=ring.verts)
+        helmet.append(obj("Ear ring", ring, GLOW))
+        p = ear + Vector((s * 0.01, -0.07, 0.06))
         helmet.append(obj("Lamp housing", rbox((0.03, 0.06, 0.04), p, 0.01), METAL))
         helmet.append(obj("Lamp", rbox((0.024, 0.008, 0.028), p + Vector((0, -0.032, 0)), 0.004, 1), LAMP))
+    tip = hc + Vector((-R * 0.8, 0.07, R * 0.2))
+    b = bmesh.new(); bmesh.ops.create_cone(b, cap_ends=True, segments=8, radius1=0.006, radius2=0.004, depth=0.16)
+    bmesh.ops.translate(b, vec=tip + Vector((0, 0, 0.08)), verts=b.verts)
+    helmet.append(obj("Antenna", b, METAL))
     return parts, helmet
 
 # ---------------------------------------------------------------- rig + export

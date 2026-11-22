@@ -55,7 +55,7 @@ Made for the NASA Space Apps Challenge 2026.
 
 - **CMU Graphics Lab Motion Capture Database**  
   Carnegie Mellon University (<http://mocap.cs.cmu.edu/>), created with funding from NSF EIA-0196217; BVH conversion by Bruce Hahne (<https://github.com/meshula/cmu-mocap>). Free for research and commercial use.  
-  Used for: The astronaut's idle, walk, run, sprint and jump motion (subjects 16, 74 and 82), worn through a suit filter, retargeted onto the suit in Blender.  
+  Used for: The astronaut's idle, walk, run, sprint and jump motion (subjects 16 and 82), worn through a suit filter, retargeted onto the suit in Blender.  
   Source: <http://mocap.cs.cmu.edu/>
 
 - **Jacaranda Tree**  
