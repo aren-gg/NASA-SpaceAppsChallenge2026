@@ -411,10 +411,11 @@ def frame_for(rect, along_x):
 # ------------------------------------------------------------------ the plan
 SPRING, APEX = 2.45, 3.55
 DOOR_W, DOOR_H = 2.0, 2.4
+GARAGE_DOOR = (3.6, 2.8)      # the garage's outer door: the rover (3.45 m wide, 2.45 m tall) drives through
 # name: rect, along_x, doors at v0 / v1 (label shown inside above it), extra
 MODULES = {
-    "Storage":    ((-16, -4, -7.5, 4), True, (None, "COMMAND-01"), "SHOP-02"),
-    "Utilities":  ((7.5, -4, 16, 4), True, ("COMMAND-01", None), "WATER-03"),
+    "Storage":    ((-16, -4, -7.5, 4), True, (None, "COMMAND-01"), "RESOURCES-02"),
+    "Utilities":  ((7.5, -4, 16, 4), True, ("COMMAND-01", "GARAGE DOOR"), "GARAGE-03"),
     "Greenhouse": ((-3.5, -18, 3.5, -7), False, (None, "COMMAND-01"), "GREENHOUSE-04"),
     "Airlock":    ((-1.7, 13.25, 1.7, 16.75), False, ("COMMAND-01", "EXIT"), "AIRLOCK-05"),
 }
@@ -470,6 +471,7 @@ def build_module(name, rect, along_x, labels, tag):
     for which, (v0, v1) in enumerate(((-T_WALL, 0.0), (L, L + T_WALL))):
         lab = labels[which]
         door = (DOOR_W, DOOR_H) if lab else None
+        if name == "Utilities" and which == 1: door = GARAGE_DOOR   # wide enough for the rover
         window = None
         if door is None and name != "Greenhouse":   # the greenhouse's back wall holds the tool shed
             window = (0.0, 1.0, 2.0, 1.6)
@@ -477,7 +479,7 @@ def build_module(name, rect, along_x, labels, tag):
         if door:
             facing = -1 if which == 0 else 1
             vv = v0 if which == 0 else v1
-            portal(f, 0.0 if which == 0 else L, facing, width=DOOR_W, height=DOOR_H, label=lab)
+            portal(f, 0.0 if which == 0 else L, facing, width=door[0], height=door[1], label=lab)
         if window:
             vv = (v0 + v1) / 2
             fbox("Window glass", GLASS, (1.6, 0.04, 1.0), f, (0, vv, 1.5))
@@ -669,7 +671,7 @@ for k in range(12):
     strip("Hub rib", METAL, Matrix.Identity(4), pts, 0.14, 0.1)
 # (No hanging halo ring: the spirit tree fills the dome; see garden_assets.oxygen_tree.)
 cylinder("Oculus glow", WARM, IN_R_TOP - 0.1, 0.04, (0, 0, IN_TOP - 0.02), verts=64)
-DIRS = ["WATER-03", "AIRLOCK-05 / EXIT", "SHOP-02", "GREENHOUSE-04"]   # +x, +y(game +z), -x, -y
+DIRS = ["GARAGE-03", "AIRLOCK-05 / EXIT", "RESOURCES-02", "GREENHOUSE-04"]   # +x, +y(game +z), -x, -y
 for k in range(4):
     a = k * math.pi / 2
     fr = Matrix.Translation((math.cos(a) * HUB_R_IN, math.sin(a) * HUB_R_IN, 0)) @ Matrix.Rotation(a - math.pi / 2, 4, "Z")

@@ -78,10 +78,10 @@ namespace MarsSurvival.Base
         /// The levelled regolith pad the whole outpost stands on, including the solar array and
         /// the outdoor tank. Its top is <see cref="PadTop"/> below the floor.
         /// </summary>
-        public static readonly FloorRect Pad = new FloorRect(-30.5f, -24f, 25.5f, 27f);
+        public static readonly FloorRect Pad = new FloorRect(-19f, -21f, 25f, 24f);   // just round the base, plus the garage apron
         /// <summary>Where the rover is parked on the pad, and the way it faces (degrees about the vertical).</summary>
-        public static readonly Vector3 RoverParking = new Vector3(-9.5f, PadTop, 15f);
-        public const float RoverParkingYaw = 0f;
+        public static readonly Vector3 RoverParking = new Vector3(11.75f, 0f, 0f);   // in the garage
+        public const float RoverParkingYaw = 90f;                                    // nose to the garage door
         public const float PadTop = -0.25f;
 
         /// <summary>Tool id (file name in Resources/MarsTools) to the lowest point of its model, metres.</summary>
@@ -716,18 +716,18 @@ namespace MarsSurvival.Base
         private void BuildStorage()
         {
             FloorRect r = Storage;
-            BeginRoom("Shop", r, "The seed shop kiosk, and the bunk.", "");
+            BeginRoom("Resources", r, "Resources: the seed shop kiosk and the water pump (E to fill up), and the bunk.", "");
             Shell(r, 2.7f, White, DarkRed, 1.1f, null, new[] { Arch(0f) }, null, null);
             Block(PalePink, -9.9f, -3.7f, -7.9f, -2.8f, 0.5f);       // bunk (shortcut: a plain block until it is modelled)
+            AddCollider(-13.6f, 0f, -3.75f, -11.4f, 2f, -2.65f);    // the pump (model: MarsWorldTasks, WaterPump)
             End();
         }
 
         private void BuildUtilities()
         {
             FloorRect r = Utilities;
-            BeginRoom("Water", r, "The water pump: it draws melt water up from the ice below. Press E at it to fill up.", "");
+            BeginRoom("Garage", r, "The rover's garage: E at the big door rolls it up so you can drive out.", "");
             Shell(r, 2.7f, White, DarkRed, 1.1f, new[] { Arch(0f) }, null, null, null);
-            AddCollider(10.65f, 0f, -3.75f, 12.85f, 2f, -2.65f);    // the pump (model: MarsWorldTasks, WaterPump)
             End();
         }
 
@@ -923,7 +923,7 @@ namespace MarsSurvival.Base
             AddCollider(Pad.x0, PadTop - padDepth, Pad.z0, Pad.x1, PadTop, Pad.z1);
 
             // Sintered paving: microwave-fused regolith tiles with narrow joints.
-            Pavers(-14f, 10f, -5f, 21f, 1.5f);   // rover parking
+            Pavers(16.5f, -3f, 24f, 3f, 1.5f);   // apron outside the garage door
             Pavers(-3f, 18.5f, 3f, 24f, 1.5f);   // apron at the foot of the entry ramp
 
             // Sintered path from the apron straight out across the shoulder.
@@ -931,10 +931,9 @@ namespace MarsSurvival.Base
             for (float z = 24f; z <= Pad.z1 + 14f; z += 1f) path.Add(new Vector2(0f, z));
             Strip(Sintered, path, 1.2f, 0.035f);
 
-            // Tyre tracks: the rover leaves the parking bay, swings out of the pad's front left corner
-            // and heads off across the plain; a second, fainter pair loops back in.
-            TyreTracks(new Vector2(-9.5f, 19.5f), new Vector2(-9.5f, 32f), new Vector2(-24f, 40f), new Vector2(-46f, 58f));
-            TyreTracks(new Vector2(-8.6f, 20f), new Vector2(-12f, 36f), new Vector2(-30f, 38f), new Vector2(-58f, 44f));
+            // Tyre tracks: out of the garage door and off across the plain; a second pair loops back in.
+            TyreTracks(new Vector2(17f, 0.4f), new Vector2(30f, 0.4f), new Vector2(40f, 14f), new Vector2(58f, 34f));
+            TyreTracks(new Vector2(17f, -0.6f), new Vector2(32f, -2f), new Vector2(44f, -10f), new Vector2(62f, -22f));
             End();
         }
 

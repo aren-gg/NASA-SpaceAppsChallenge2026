@@ -468,6 +468,21 @@ namespace MarsSurvival.Gameplay
             Check(pump != null && pump.kind == MarsTaskTarget.Kind.Water && pumpLabel == "pump water", "Water wing: E at the pump offers to pump water", pumpLabel ?? "nothing");
             s.astronaut.water = 40; mission.Execute("drink");
             Check(s.astronaut.water == 100, "Pumping water refills the water bar", mission.Notice);
+
+            // The garage: the rover waits inside; E at the big door rolls it up so you can drive out.
+            var rover = FindObjectOfType<MarsSurvival.Vehicles.MarsRover>();
+            Vector3 roverLocal = rover == null ? Vector3.zero : outpost.transform.InverseTransformPoint(rover.transform.position);
+            Check(rover != null && rover.IsReady && MarsOutpostBuilder.Utilities.Contains(roverLocal.x, roverLocal.z), "The rover is parked in the garage", roverLocal.ToString("F1"));
+            Vector3 doorMid = MarsWorldTasks.World(MarsWorldTasks.GarageDoorPoint + Vector3.up * 0.6f);
+            Check(Physics.CheckSphere(doorMid, 0.3f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore), "The closed garage door blocks the way out");
+            Place(Floor(14.6f, 2.6f), MarsWorldTasks.World(MarsWorldTasks.GarageDoorPoint + Vector3.up * 1.2f)); yield return Frames(3);
+            MarsTaskTarget garage = mission.Tools.FindUse(player.AimTransform, s, out string garageLabel);
+            Check(garage != null && garage.kind == MarsTaskTarget.Kind.Garage && garageLabel == "open the garage door", "Looking at the garage door offers E to open it", garageLabel ?? "nothing");
+            MarsWorldTasks.Instance.ToggleGarage();
+            yield return new WaitForSecondsRealtime(2.6f);
+            Check(!Physics.CheckSphere(doorMid, 0.3f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore), "The garage door rolls up and clears the way out");
+            Shot("garage_open");
+            MarsWorldTasks.Instance.ToggleGarage();
             credits = s.credits;
             mission.Execute("sell", "lettuce");
             Check(s.basket[0] == 0 && s.credits == credits + (basket + 2) * 15, "Sell lettuce for 15 credits each", mission.Notice);

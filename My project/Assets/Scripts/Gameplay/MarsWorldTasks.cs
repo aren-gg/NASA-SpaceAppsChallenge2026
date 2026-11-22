@@ -12,7 +12,7 @@ namespace MarsSurvival.Gameplay
     /// <summary>A thing in the outpost that a tool works on, or that E uses.</summary>
     public sealed class MarsTaskTarget : MonoBehaviour
     {
-        public enum Kind { Plant, Food, Water, Bunk, Shop, Shed }
+        public enum Kind { Plant, Food, Water, Bunk, Shop, Shed, Garage }
 
         public Kind kind;
         /// <summary>Plot index for plants (bed * 12 + spot).</summary>
@@ -43,8 +43,18 @@ namespace MarsSurvival.Gameplay
         public static readonly Vector3 ShopPoint = new Vector3(-10.6f, 0f, 3.2f);
         /// <summary>Crop and kiosk models (tools/blender/garden_assets.py), and their shop icons.</summary>
         public const string GardenFolder = "Garden";
-        /// <summary>Water pump against the water wing's back wall.</summary>
-        public static readonly Vector3 PumpPoint = new Vector3(11.75f, 0f, -3.2f);
+        /// <summary>Water pump against the resources wing's south wall (the seed kiosk faces it).</summary>
+        public static readonly Vector3 PumpPoint = new Vector3(-12.5f, 0f, -3.2f);
+        /// <summary>The garage's roll-up door, in the east wing's outer end wall (3.6 m wide, 2.8 m tall).</summary>
+        public static readonly Vector3 GarageDoorPoint = new Vector3(16.19f, 0f, 0f);
+        private const float GarageDoorHeight = 2.8f;
+        private Transform garageDoor;
+        private float garageOpen;
+        /// <summary>True while the garage door is open (or opening).</summary>
+        public bool GarageOpen { get; private set; }
+
+        /// <summary>E at the garage door: rolls it up or down.</summary>
+        public void ToggleGarage() { GarageOpen = !GarageOpen; }
         /// <summary>Where a new mission starts: in the hub in front of the oxygen tree, facing it.</summary>
         public static readonly Vector3 SpawnPoint = new Vector3(0f, 0.05f, 3.6f);
         /// <summary>Tool shed against the greenhouse's back wall.</summary>
@@ -86,6 +96,14 @@ namespace MarsSurvival.Gameplay
             MissionState state = mission == null || mission.Simulation == null ? null : mission.Simulation.State;
             if (state == null) return;
             UpdatePlants(mission.Simulation);
+            // Roll the garage door up into its lintel, or down to the floor (about 2 s).
+            garageOpen = Mathf.MoveTowards(garageOpen, GarageOpen ? 1f : 0f, Time.deltaTime * 0.5f);
+            if (garageDoor != null)
+            {
+                float h = Mathf.Max(0.02f, GarageDoorHeight * (1f - garageOpen));
+                garageDoor.localScale = new Vector3(0.12f, h, 3.6f);
+                garageDoor.localPosition = GarageDoorPoint + new Vector3(0f, GarageDoorHeight - h / 2f, 0f);
+            }
         }
 
         // ------------------------------------------------------------------ build
@@ -109,7 +127,12 @@ namespace MarsSurvival.Gameplay
             }
 
             // Things used with E.
-            // The water pump against the water wing's back wall, facing into the room; E fills you up.
+            // The garage's roll-up door: E opens and closes it; open, the rover can drive out.
+            garageDoor = Cube("Garage door", root, GarageDoorPoint + new Vector3(0f, GarageDoorHeight / 2f, 0f), new Vector3(0.12f, GarageDoorHeight, 3.6f), new Color32(0x3A, 0x3D, 0x44, 255), true).transform;
+            Cube("Garage door stripe", garageDoor, new Vector3(0f, -0.42f, 0f), new Vector3(1.2f, 0.06f, 1f), new Color32(0xE2, 0xA2, 0x1B, 255), false);
+            Usable("Garage door", GarageDoorPoint + new Vector3(0f, 1.2f, 0f), new Vector3(1.6f, 2.4f, 3.8f), MarsTaskTarget.Kind.Garage);
+
+            // The water pump against the resources wing's south wall, facing into the room; E fills you up.
             GameObject pump = new GameObject("Water pump");
             pump.transform.SetParent(root, false);
             pump.transform.localPosition = PumpPoint;

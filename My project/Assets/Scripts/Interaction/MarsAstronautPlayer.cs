@@ -92,8 +92,11 @@ namespace MarsSurvival.Interaction
         /// </summary>
         public bool CameraLocked
         {
-            get { return cameraDistanceGoal < 0.5f || MarsTrainer.UI.CameraPrefs.ShiftLockActive; }
+            get { return (!driving && cameraDistanceGoal < 0.5f) || MarsTrainer.UI.CameraPrefs.ShiftLockActive; }
         }
+        /// <summary>True while in the rover (it owns the camera and the controls).</summary>
+        public bool IsDriving { get { return driving; } }
+        private bool driving;
 
         /// <summary>
         /// This frame's mouse turn in degrees (x right, y up), already scaled by the camera
@@ -595,6 +598,8 @@ namespace MarsSurvival.Interaction
                 float sensitivity = lookSensitivity * MarsTrainer.UI.CameraPrefs.Sensitivity;
                 LookDelta = new Vector2(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y")) * sensitivity;
             }
+            // In the rover the rover turns its own chase camera with LookDelta and zooms with the wheel.
+            if (driving) return;
             yaw += LookDelta.x;
             pitch = Mathf.Clamp(pitch - LookDelta.y, -80f, 80f);
             if (!cursorReleased) Zoom(Input.mouseScrollDelta.y);
@@ -776,10 +781,46 @@ namespace MarsSurvival.Interaction
         /// <summary>Puts the astronaut at a position and heading (mission start or load).</summary>
         public void RestoreMissionPose(Vector3 position, float heading)
         {
+            if (driving) LeaveVehicle(position, heading);
             transform.position = position;
             yaw = bodyYaw = heading; pitch = 0; velocity = Vector3.zero; grounded = true;
             transform.rotation = Quaternion.Euler(0f, bodyYaw, 0f);
             MountCamera();
+        }
+
+        /// <summary>
+        /// Boards a vehicle: the astronaut is hidden and stops responding to input, and the
+        /// camera is released for the vehicle to place. Returns false if that is not possible now.
+        /// </summary>
+        public bool BoardVehicle()
+        {
+            if (!IsReady || driving) return false;
+            if (flying) SetFlying(false);
+            driving = true;
+            velocity = Vector3.zero;
+            body.gameObject.SetActive(false);
+            if (capsule != null) capsule.enabled = false;
+            viewCamera.transform.SetParent(null, true);
+            return true;
+        }
+
+        /// <summary>Steps out of a vehicle at a world position, facing a heading in degrees.</summary>
+        public void LeaveVehicle(Vector3 position, float heading)
+        {
+            if (!driving) return;
+            driving = false;
+            position.y = GroundY(position);
+            transform.position = position;
+            yaw = bodyYaw = heading;
+            transform.rotation = Quaternion.Euler(0f, bodyYaw, 0f);
+            pitch = 0f;
+            velocity = Vector3.zero;
+            grounded = true;
+            body.gameObject.SetActive(true);
+            if (capsule != null) capsule.enabled = true;
+            MountCamera();
+            viewCamera.fieldOfView = fieldOfView;
+            LockCursor(true);
         }
 
         /// <summary>Turns the body and head to look at a world point (used by scripted checks and cut-ins).</summary>

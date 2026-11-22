@@ -157,6 +157,7 @@ namespace MarsSurvival.Gameplay
             {
                 case MarsTaskTarget.Kind.Food: return "eat a crop";
                 case MarsTaskTarget.Kind.Water: return "pump water";
+                case MarsTaskTarget.Kind.Garage: return MarsWorldTasks.Instance != null && MarsWorldTasks.Instance.GarageOpen ? "close the garage door" : "open the garage door";
                 case MarsTaskTarget.Kind.Bunk: return "sleep until 07:00";
                 case MarsTaskTarget.Kind.Shop: return "open the seed shop";
                 case MarsTaskTarget.Kind.Shed:
@@ -176,6 +177,7 @@ namespace MarsSurvival.Gameplay
             {
                 case MarsTaskTarget.Kind.Food: mission.Execute("eat"); break;
                 case MarsTaskTarget.Kind.Water: mission.Execute("drink"); break;
+                case MarsTaskTarget.Kind.Garage: MarsWorldTasks.Instance.ToggleGarage(); MarsSfx.Play(MarsSfx.Sound.Select); break;
                 case MarsTaskTarget.Kind.Bunk: mission.Sleep(); break;
                 case MarsTaskTarget.Kind.Shop: mission.SetShopOpen(true); break;
                 case MarsTaskTarget.Kind.Shed: mission.Notice = mission.Tools.PutBack(MarsTool.Order[t.index]); MarsSfx.Play(MarsSfx.Sound.Select); break;
