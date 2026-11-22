@@ -156,7 +156,7 @@ namespace MarsSurvival.Gameplay
             switch (t.kind)
             {
                 case MarsTaskTarget.Kind.Food: return "eat a crop";
-                case MarsTaskTarget.Kind.Water: return "pump water";
+                case MarsTaskTarget.Kind.Water: return "drink";
                 case MarsTaskTarget.Kind.Garage: return MarsWorldTasks.Instance != null && MarsWorldTasks.Instance.GarageOpen ? "close the garage door" : "open the garage door";
                 case MarsTaskTarget.Kind.Bunk: return "sleep until 07:00";
                 case MarsTaskTarget.Kind.Shop: return "open the seed shop";

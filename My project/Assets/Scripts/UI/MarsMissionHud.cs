@@ -36,6 +36,10 @@ namespace MarsSurvival.UI
         private Button[] buy, sell;
         private Button expand;
         private GameObject gameplay;
+        private MarsSurvival.Vehicles.MarsRover rover;
+        private RectTransform drive, driveKeys, ridePrompt;
+        private TMP_Text speed, batteryValue, rangeLabel, rangeValue, rideText;
+        private readonly Image[] battery = new Image[Segments];
         private PauseMenu pause;
         private EndScreen end;
         private bool built, ended;
@@ -131,6 +135,30 @@ namespace MarsSurvival.UI
             UiStyle.Caps(house, 2.5f);
             plots = Label(Region(vitals, 200, 10, 202, 26), "", 13, muted, TextAlignmentOptions.MidlineRight);
             UiStyle.Caps(plots, 2.5f);
+
+            // Bottom centre while driving (the hotbar hides): speed, battery and range, with the keys above.
+            drive = Plate(hud, "Rover", new Vector2(.5f, 0), new Vector2(0, 24), new Vector2(460, 108));
+            speed = Label(Region(drive, 22, 32, 120, 66), "0", 58, paper, TextAlignmentOptions.MidlineLeft);
+            UiStyle.Readout(speed);
+            speed.overflowMode = TextOverflowModes.Overflow;   // the big digits are taller than their line; never ellipsise
+            TMP_Text kmh = Label(Region(drive, 24, 10, 100, 22), "km/h", 13, muted, TextAlignmentOptions.MidlineLeft);
+            UiStyle.Caps(kmh, 3f);
+            TMP_Text batteryLabel = Label(Region(drive, 150, 70, 140, 24), "Battery", 13, muted, TextAlignmentOptions.MidlineLeft);
+            UiStyle.Caps(batteryLabel, 3f);
+            batteryValue = Label(Region(drive, 290, 68, 148, 28), "", 19, paper, TextAlignmentOptions.MidlineRight);
+            UiStyle.Readout(batteryValue);
+            for (int k = 0; k < Segments; k++) battery[k] = Fill(Region(drive, 150 + k * 14.4f, 50, 11.4f, 12), WithAlpha(paper, 0.1f));
+            rangeLabel = Label(Region(drive, 150, 14, 150, 24), "Range", 13, muted, TextAlignmentOptions.MidlineLeft);
+            UiStyle.Caps(rangeLabel, 3f);
+            rangeValue = Label(Region(drive, 290, 12, 148, 28), "", 17, paper, TextAlignmentOptions.MidlineRight);
+            UiStyle.Readout(rangeValue);
+            driveKeys = Plate(hud, "Rover keys", new Vector2(.5f, 0), new Vector2(0, 142), new Vector2(560, 40));
+            TMP_Text driveHints = Label(driveKeys, key + "W S</color>  drive    " + key + "A D</color>  steer    " + key + "Space</color>  brake    " + key + "E</color>  step out", 14, muted, TextAlignmentOptions.Center);
+            UiStyle.Caps(driveHints, 2f);
+            // Walking up to the rover: one prompt.
+            ridePrompt = Plate(hud, "Rover prompt", new Vector2(.5f, .5f), new Vector2(0, -150), new Vector2(380, 46));
+            rideText = Label(ridePrompt, "", 18, paper, TextAlignmentOptions.Center);
+            UiStyle.Caps(rideText, 2.5f);
 
             // Bottom centre, above the tool hotbar: the latest message.
             RectTransform line = StatBar.Frame(hud, "Message", .25f, .215f, .75f, .25f);
@@ -296,7 +324,12 @@ namespace MarsSurvival.UI
                 values[i].text = Mathf.CeilToInt((float)v[i]).ToString(CultureInfo.InvariantCulture);
                 values[i].color = v[i] < Low ? danger : paper;
             }
-            notice.text = mission.Simulation.Asleep ? "Sleeping until 07:00..." : mission.Notice;
+            // Water low: say where to drink (a marker on the pump shows the way, see MarsExpedition).
+            bool thirsty = a.water < MissionSettings.WaterLow;
+            notice.text = mission.Simulation.Asleep ? "Sleeping until 07:00..."
+                : !string.IsNullOrEmpty(mission.Notice) ? mission.Notice
+                : thirsty ? "<color=#" + ColorUtility.ToHtmlStringRGB(UiTheme.Accent) + ">Water low · drink at the pump in Resources-02</color>" : "";
+            RefreshRover();
 
             bool open = mission.ShopOpen;
             if (shop.gameObject.activeSelf != open) shop.gameObject.SetActive(open);
@@ -325,6 +358,30 @@ namespace MarsSurvival.UI
                 end.Show(s.endingReason, s.elapsedSeconds / MissionSettings.SolSeconds);
             }
             if (mission.IsRunning) ended = false;
+        }
+
+        /// <summary>The driving panel while at the wheel, the E prompt when standing by the rover.</summary>
+        private void RefreshRover()
+        {
+            if (rover == null) rover = FindObjectOfType<MarsSurvival.Vehicles.MarsRover>();
+            bool driving = rover != null && rover.IsDriven, near = rover != null && rover.PlayerNear;
+            if (drive.gameObject.activeSelf != driving) { drive.gameObject.SetActive(driving); driveKeys.gameObject.SetActive(driving); }
+            if (ridePrompt.gameObject.activeSelf != near) ridePrompt.gameObject.SetActive(near);
+            if (rover == null) return;
+            float pct = rover.BatteryPercent;
+            string key = "<color=#" + ColorUtility.ToHtmlStringRGB(UiTheme.Accent) + ">";
+            if (near) rideText.text = key + "E</color>  Drive rover  ·  " + pct.ToString("F0") + "%" + (rover.IsCharging ? "  ·  charging" : "");
+            if (!driving) return;
+            speed.text = Mathf.Abs(rover.SpeedKmh).ToString("F0");
+            batteryValue.text = pct.ToString("F0") + "%";
+            int lit = Mathf.CeilToInt(pct / 100f * Segments);
+            Color on = pct < Low ? danger : UiTheme.Info, off = WithAlpha(paper, 0.1f);
+            for (int k = 0; k < Segments; k++) battery[k].color = k < lit ? on : off;
+            rangeLabel.text = rover.IsCharging ? "Charging" : "Range";
+            rangeLabel.color = rover.IsCharging ? UiTheme.Info : muted;
+            rangeValue.text = rover.IsCharging ? "full in " + Mathf.CeilToInt((100f - pct) / rover.rechargePercentPerSecond) + " s" : rover.RangeLeftKm.ToString("F0") + " km";
+            string message = rover.Message;
+            if (!string.IsNullOrEmpty(message)) notice.text = message;
         }
 
         // ------------------------------------------------------------------ pieces

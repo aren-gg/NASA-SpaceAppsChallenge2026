@@ -62,8 +62,7 @@ namespace MarsSurvival.Simulation
                     break;
                 }
                 case "drink":
-                    if (State.astronaut.water > 95) return Fail("You are not thirsty.", out reason);
-                    State.astronaut.water = 100;
+                    State.astronaut.water = 100;   // the pump always fills you up
                     reason = "Drank water.";
                     break;
                 case "sleep":

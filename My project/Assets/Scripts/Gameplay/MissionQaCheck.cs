@@ -471,7 +471,7 @@ namespace MarsSurvival.Gameplay
             basket = s.basket[0] - 2;   // the sell check below expects basket + 2
             Place(MarsWorldTasks.World(MarsWorldTasks.PumpPoint + new Vector3(0f, 0.05f, 2.2f)), MarsWorldTasks.World(MarsWorldTasks.PumpPoint + new Vector3(0f, 1f, 0f))); yield return Frames(3);
             MarsTaskTarget pump = mission.Tools.FindUse(player.AimTransform, s, out string pumpLabel);
-            Check(pump != null && pump.kind == MarsTaskTarget.Kind.Water && pumpLabel == "pump water", "Water wing: E at the pump offers to pump water", pumpLabel ?? "nothing");
+            Check(pump != null && pump.kind == MarsTaskTarget.Kind.Water && pumpLabel == "drink", "Water wing: E at the pump offers a drink", pumpLabel ?? "nothing");
             s.astronaut.water = 40; mission.Execute("drink");
             Check(s.astronaut.water == 100, "Pumping water refills the water bar", mission.Notice);
 
@@ -515,9 +515,15 @@ namespace MarsSurvival.Gameplay
             rover.RestoreDriving();
             yield return new WaitForSecondsRealtime(2f);
             Check(rover.IsDriven && !Physics.CheckSphere(doorMid, 0.3f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore), "The garage door opens by itself as the rover drives up", rover.IsDriven ? "driving" : "not driving");
+            ShotWithUi("screen_rover");
             rover.RestoreMissionPose(MarsWorldTasks.World(MarsOutpostBuilder.RoverParking + Vector3.up * 0.05f), outpost.transform.eulerAngles.y + MarsOutpostBuilder.RoverParkingYaw, 0);
             yield return new WaitForSecondsRealtime(2f);
             Check(Physics.CheckSphere(doorMid, 0.3f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore), "It closes again once the rover is parked and left");
+            // Parked in the hangar, the rover charges.
+            rover.ApplyMissionBattery(rover.batteryCapacityKwh * 0.5f);
+            float charge0 = rover.BatteryPercent;
+            yield return new WaitForSecondsRealtime(1.5f);
+            Check(rover.IsCharging && rover.BatteryPercent > charge0, "The rover charges while parked in the hangar", charge0.ToString("F0") + "% -> " + rover.BatteryPercent.ToString("F0") + "%");
             credits = s.credits;
             mission.Execute("sell", "lettuce");
             Check(s.basket[0] == 0 && s.credits == credits + (basket + 2) * 15, "Sell lettuce for 15 credits each", mission.Notice);

@@ -149,6 +149,8 @@ namespace MarsSurvival.Tools
             if (outpost == null) outpost = FindObjectOfType<MarsOutpost>();
             if (Outdoors && outpost != null && outpost.IsPlaced)
                 Waypoints.Add(new Waypoint { position = outpost.DoorPosition + Vector3.up * Units(2.4f), label = "Airlock", paint = Paint.WarmOrange });
+            if (State != null && State.astronaut.water < MissionSettings.WaterLow && outpost != null && outpost.IsPlaced)
+                Waypoints.Add(new Waypoint { position = MarsWorldTasks.World(MarsWorldTasks.PumpPoint + Vector3.up * 2.6f), label = "Water pump", paint = Paint.PalePink });
             for (int i = Popups.Count - 1; i >= 0; i--)
                 if (Time.unscaledTime - Popups[i].time > 2f) Popups.RemoveAt(i);
         }

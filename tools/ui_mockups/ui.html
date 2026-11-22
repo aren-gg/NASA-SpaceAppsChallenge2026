@@ -118,6 +118,18 @@ body { width: 1920px; height: 1080px; overflow: hidden; background: #000; font-f
 .actions { display: flex; gap: 14px; margin-top: 34px; }
 .actions .btn { flex: 1; height: 54px; font-size: 22px; }
 
+
+/* ---------- ROVER ---------- */
+.drive { left: 50%; bottom: 32px; transform: translateX(-50%); width: 460px; padding: 16px 24px 18px; display: grid; grid-template-columns: auto 1fr; column-gap: 26px; align-items: end; }
+.drive .spd { font-size: 64px; font-weight: 600; line-height: .9; font-variant-numeric: tabular-nums; }
+.drive .spd small { display: block; font-size: 15px; letter-spacing: .2em; color: var(--dim); margin-top: 6px; }
+.drive .bat { padding-bottom: 4px; }
+.drive .bat .top { display: flex; justify-content: space-between; font-size: 15px; letter-spacing: .16em; color: var(--dim); text-transform: uppercase; margin-bottom: 8px; }
+.drive .bat .top b { color: var(--text); font-weight: 600; letter-spacing: .04em; font-size: 20px; }
+.hintline { left: 50%; bottom: 150px; transform: translateX(-50%); padding: 8px 16px; font-size: 15px; letter-spacing: .12em; color: var(--dim); text-transform: uppercase; display: flex; gap: 18px; }
+.hintline .key { font-size: 14px; min-width: 24px; padding: 1px 6px; margin-right: 6px; }
+.way { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 15px; letter-spacing: .16em; color: var(--cyan); text-transform: uppercase; font-weight: 600; }
+.way i { width: 16px; height: 16px; transform: rotate(45deg); border: 2px solid var(--cyan); }
 /* ---------- HOME ---------- */
 .home .shade { position: absolute; inset: 0; background: rgba(8,9,12,.35); }
 .title { position: absolute; left: 120px; top: 250px; }
@@ -223,6 +235,33 @@ body { width: 1920px; height: 1080px; overflow: hidden; background: #000; font-f
       </div>
     </div>
     <div class="actions"><div class="btn buy">Back to Mars &nbsp;<span style="opacity:.6">[ESC]</span></div></div>
+  </div>
+</section>
+
+
+<!-- ============================== ROVER ============================== -->
+<section class="screen" id="rover">
+  <div class="bg" style="background-image:url(bg/hangar_tracks.png)"></div>
+  <div class="plate clock"><span class="sol">SOL 02</span><span class="time num">21:40</span></div>
+  <div class="plate hintline"><span><span class="key">W</span><span class="key">S</span>drive</span><span><span class="key">A</span><span class="key">D</span>steer</span><span><span class="key">SPACE</span>brake</span><span><span class="key">E</span>step out</span></div>
+  <div class="plate drive">
+    <div class="spd num">32<small>KM/H</small></div>
+    <div class="bat"><div class="top"><span>Battery</span><b class="num">84%</b></div><div class="seg" data-v="84" style="--c:#3fe0ff"></div><div class="top" style="margin:8px 0 0"><span>Range</span><b class="num" style="font-size:17px">42 KM</b></div></div>
+  </div>
+</section>
+
+<!-- ============================== WATER LOW ============================== -->
+<section class="screen" id="water">
+  <div class="bg" style="background-image:url(bg/hub_tree.png)"></div>
+  <div class="plate clock"><span class="sol">SOL 02</span><span class="time num">15:00</span></div>
+  <div class="way" style="left:1610px; top:230px"><i></i>Water pump<span class="dim" style="font-weight:500">Resources-02 · 14 m</span></div>
+  <div class="plate toast" style="color:var(--amber)">Water low · drink at the pump</div>
+  <div class="plate life">
+    <div class="head"><span class="id">Life support</span><span class="cr num">80<small>CR</small></span></div>
+    <div class="row"><span class="lab">O₂</span><div class="seg" data-v="100"></div><span class="val">100</span></div>
+    <div class="row"><span class="lab amber">Water</span><div class="seg" data-v="20" style="--c:#ffb547"></div><span class="val amber">20</span></div>
+    <div class="row"><span class="lab">Food</span><div class="seg" data-v="70" style="--c:#ffb547"></div><span class="val">70</span></div>
+    <div class="plots"><span>Greenhouse-04</span><span class="num">8 / 24 plots</span></div>
   </div>
 </section>
 

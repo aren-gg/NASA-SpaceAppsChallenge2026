@@ -21,7 +21,7 @@ namespace MarsSurvival.Vehicles
     /// Battery: a fixed capacity in kWh and a fixed use in kWh per kilometre, so a full
     /// battery lasts exactly capacity / use kilometres however it is driven. It starts
     /// full. With an empty battery the motors give nothing and the rover rolls to a stop.
-    /// Parked on the outpost pad it recharges.
+    /// Parked in the hangar it recharges (the charger by the parking bay).
     ///
     /// All speeds and distances are real metres. The rover adds itself to a scene with a
     /// MarsTerrain and parks on the outpost pad.
@@ -54,7 +54,7 @@ namespace MarsSurvival.Vehicles
         public float batteryCapacityKwh = 60f;
         [Tooltip("Energy used per kilometre driven. Range on a full battery = capacity / this.")]
         public float consumptionKwhPerKm = 0.5f;
-        [Tooltip("Percent of the battery regained per second while parked on the outpost pad.")]
+        [Tooltip("Percent of the battery regained per second while parked in the hangar.")]
         public float rechargePercentPerSecond = 1.5f;
 
         [Header("Boarding and camera")]
@@ -63,7 +63,6 @@ namespace MarsSurvival.Vehicles
         public float cameraDistance = 14f;
         public float minCameraDistance = 7f;
         public float maxCameraDistance = 30f;
-        public bool showHud = true;
 
         /// <summary>Forward speed in km/h; negative in reverse.</summary>
         public float SpeedKmh { get { return speed * 3.6f; } }
@@ -75,6 +74,10 @@ namespace MarsSurvival.Vehicles
         public float OdometerKm { get; private set; }
         public bool IsDriven { get { return driven; } }
         public bool IsCharging { get; private set; }
+        /// <summary>The astronaut is close enough to climb in (E).</summary>
+        public bool PlayerNear { get { return playerNear; } }
+        /// <summary>The rover's latest short message ("Battery empty..."), or empty once it has shown.</summary>
+        public string Message { get { return Time.time < noticeUntil ? notice : ""; } }
         public bool IsReady { get { return placed; } }
 
         private const float S = MarsRoverModel.Scale;
@@ -100,7 +103,6 @@ namespace MarsSurvival.Vehicles
         private float noticeUntil;
         private readonly RaycastHit[] hits = new RaycastHit[8];
         private readonly Collider[] overlaps = new Collider[16];
-        private GUIStyle hudStyle;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AddToTerrainScene()
@@ -402,7 +404,7 @@ namespace MarsSurvival.Vehicles
             if (km > 0f)
             {
                 BatteryKwh = Mathf.Max(0f, BatteryKwh - km * consumptionKwhPerKm);
-                if (BatteryKwh <= 0f && powered) Notice("Battery empty");
+                if (BatteryKwh <= 0f && powered) Notice("Battery empty · park in the hangar to charge");
             }
 
             if (driven && player != null) player.transform.position = transform.position;
@@ -440,10 +442,9 @@ namespace MarsSurvival.Vehicles
         private void Recharge(float dt)
         {
             IsCharging = false;
-            if (MarsSurvival.Gameplay.MarsMissionController.Instance != null) return;
             if (outpost == null || Mathf.Abs(speed) > 0.1f || BatteryKwh >= batteryCapacityKwh) return;
             Vector3 local = outpost.transform.InverseTransformPoint(transform.position);
-            if (!MarsOutpostBuilder.Pad.Contains(local.x, local.z)) return;
+            if (!MarsOutpostBuilder.Utilities.Contains(local.x, local.z)) return;   // parked in the hangar
             IsCharging = true;
             BatteryKwh = Mathf.Min(batteryCapacityKwh, BatteryKwh + batteryCapacityKwh * rechargePercentPerSecond * 0.01f * dt);
         }
@@ -488,43 +489,6 @@ namespace MarsSurvival.Vehicles
             // A wider view at speed.
             float fraction = Mathf.Clamp01(Mathf.Abs(speed) / (maxSpeedKmh / 3.6f));
             cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, baseFieldOfView + 14f * fraction, 1f - Mathf.Exp(-4f * Time.deltaTime));
-        }
-
-        private void OnGUI()
-        {
-            if (!showHud || !placed) return;
-            string text;
-            if (driven)
-            {
-                text = "ROVER   " + Mathf.Abs(SpeedKmh).ToString("F0") + " km/h" + (speed < -0.1f ? "  (reverse)" : "") +
-                       "\nBattery " + BatteryPercent.ToString("F0") + "%   ·   " + RangeLeftKm.ToString("F1") + " km left of " +
-                       FullRangeKm.ToString("F0") + (IsCharging ? "   ·   charging" : "") +
-                       "\nDriven " + OdometerKm.ToString("F2") + " km" +
-                       "\nW / S drive and brake   ·   A / D steer   ·   Space handbrake   ·   E step out";
-                if (BatteryKwh <= 0f) text += "\nBattery empty: park on the outpost pad to recharge";
-            }
-            else if (playerNear)
-            {
-                text = "E   drive the rover\nBattery " + BatteryPercent.ToString("F0") + "%   ·   " +
-                       RangeLeftKm.ToString("F0") + " km" + (IsCharging ? "   ·   charging" : "");
-            }
-            else
-            {
-                return;
-            }
-            if (Time.time < noticeUntil) text += "\n" + notice;
-
-            if (hudStyle == null)
-            {
-                hudStyle = new GUIStyle(GUI.skin.box);
-                hudStyle.alignment = TextAnchor.UpperCenter;
-                hudStyle.fontSize = 15;
-                hudStyle.wordWrap = false;
-                hudStyle.padding = new RectOffset(14, 14, 8, 8);
-                hudStyle.normal.textColor = MarsPalette.PalePink;
-            }
-            Vector2 size = hudStyle.CalcSize(new GUIContent(text));
-            GUI.Box(new Rect((Screen.width - size.x) * 0.5f, Screen.height - size.y - 24f, size.x, size.y), text, hudStyle);
         }
     }
 }

@@ -190,9 +190,9 @@ namespace MarsSurvival.Tools
             Camera cam = Camera.main;
 
             // Tools work only while walking as the astronaut on a running mission (not on the home screen,
-            // in the F2 fly camera, in the shop or pause menu).
+            // in the F2 fly camera, in the shop or pause menu, or at the rover's wheel).
             var mission = MarsMissionController.Instance;
-            bool walking = !MarsHomeScreen.IsOpen && player != null && cam != null && cam.transform.IsChildOf(player.transform) &&
+            bool walking = !MarsHomeScreen.IsOpen && player != null && cam != null && cam.transform.IsChildOf(player.transform) && !player.IsDriving &&
                            mission != null && mission.IsRunning && !mission.InputBlocked;
             if (walking != Active || cam != ViewCamera) SetActive(walking, cam);
             if (!Active) return;

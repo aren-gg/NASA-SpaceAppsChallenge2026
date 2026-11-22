@@ -19,6 +19,8 @@ namespace MarsSurvival.Simulation
         public const int SpotsPerBed = 12, MaxPlots = 24, StartPlots = 6, PlotsPerExpansion = 2;
         /// <summary>Vital points lost per sol (oxygen only drains outdoors; indoors it refills).</summary>
         public const double FoodPerSol = 60, WaterPerSol = 80, OxygenPerHourOutside = 25, OxygenRefillPerHour = 200;
+        /// <summary>Below this the HUD says to drink and a marker points to the pump.</summary>
+        public const double WaterLow = 30;
         public const int StartCredits = 30;
     }
 
