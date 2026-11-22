@@ -165,7 +165,12 @@ namespace MarsSurvival.Interaction
         private void ApplyHead()
         {
             if (head != null) head.localScale = headVisible ? headScale : headScale * 0.001f;
+            // First person: the whole suit only casts its shadow, so the torso and pack never block the view.
+            var mode = headVisible ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
+            if (renderers == null) renderers = root.GetComponentsInChildren<Renderer>(true);
+            foreach (Renderer r in renderers) if (r != null) r.shadowCastingMode = mode;
         }
+        private Renderer[] renderers;
 
         // ------------------------------------------------------------------ holding things
 

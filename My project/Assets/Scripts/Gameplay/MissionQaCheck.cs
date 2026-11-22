@@ -569,6 +569,8 @@ namespace MarsSurvival.Gameplay
             Check(sim.Asleep && mission.InputBlocked, "The bunk puts the astronaut to sleep", mission.Notice);
             yield return new WaitForSecondsRealtime(1.1f);
             Shot("sleep_getting_in");
+            yield return new WaitForSecondsRealtime(0.8f);
+            Shot("sleep_on_edge");
             yield return new WaitForSecondsRealtime(1.4f);
             Shot("sleep_lying");
             Transform sleeper = player.Body.transform;

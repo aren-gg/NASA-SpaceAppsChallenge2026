@@ -244,8 +244,9 @@ namespace MarsSurvival.Interaction
                 : Mathf.Lerp(cameraDistance, cameraDistanceGoal, 1f - Mathf.Exp(-12f * dt));
             if (Mathf.Abs(cameraDistance - cameraDistanceGoal) < 0.01f) cameraDistance = cameraDistanceGoal;
 
-            // The rig sits at the neck and turns with the camera's own yaw and pitch.
-            rig.position = neck.position;
+            // The rig sits at the neck and turns with the camera's own yaw and pitch. Sitting or lying down, the
+            // body moves on its own, so the camera follows the body's neck instead of the standing one.
+            rig.position = seat > 0f || sleep > 0f ? body.transform.TransformPoint(neck.localPosition) : neck.position;
             rig.rotation = Quaternion.Euler(pitch, yaw, 0f);
 
             // Blend the third-person offsets in over the first two metres so zooming is smooth.
@@ -559,7 +560,7 @@ namespace MarsSurvival.Interaction
 #endif
                 if (seated && getUp && seat >= 1f) seated = false;
                 AnimateSeat(Time.deltaTime);
-                if (seated || seat > 0f) { velocity = Vector3.zero; return; }
+                if (seated || seat > 0f) { velocity = Vector3.zero; PlaceCamera(Time.deltaTime); return; }
             }
             if (mission != null && mission.Simulation != null && (mission.Simulation.Asleep || sleep > 0f))
             {
@@ -567,7 +568,7 @@ namespace MarsSurvival.Interaction
                 if (mission.Simulation.Asleep && Input.GetKeyDown(KeyCode.Space)) mission.Wake();   // jump out of bed
 #endif
                 AnimateSleep(mission.Simulation.Asleep, Time.deltaTime);
-                if (mission.Simulation.Asleep) { velocity = Vector3.zero; return; }
+                if (mission.Simulation.Asleep) { velocity = Vector3.zero; PlaceCamera(Time.deltaTime); return; }
             }
             if (mission != null && mission.InputBlocked)
             {
@@ -772,28 +773,35 @@ namespace MarsSurvival.Interaction
 
         // ------------------------------------------------------------------ sleeping
         private float sleep;   // 0 standing, 1 lying in the bunk
-        private const float SleepSeconds = 2.2f;
+        private const float SleepSeconds = 3f;
 
         /// <summary>
-        /// Getting into the crew bunk: the body steps to the bunk's edge (first half), then lifts in and lies
-        /// back on the mattress, head on the pillow (second half). Waking plays it backwards. Only the body
-        /// moves; the astronaut itself stays where it stood, so waking up puts you back there.
+        /// Getting into the crew bunk, in three beats: walk to the bunk's edge (first third), sit down on the
+        /// edge facing the room (second third), then swing the legs in and lie back with the head on the pillow
+        /// (last third). Waking plays it backwards. Only the body moves; the astronaut itself stays where it
+        /// stood, so waking up puts you back there.
         /// </summary>
         private void AnimateSleep(bool asleep, float dt)
         {
             sleep = Mathf.MoveTowards(sleep, asleep ? 1f : 0f, dt / SleepSeconds);
             Transform b = body.transform;
             if (sleep <= 0f) { b.localPosition = Vector3.zero; b.localRotation = Quaternion.identity; return; }
-            Vector3 feet = MarsSurvival.Gameplay.MarsWorldTasks.World(MarsSurvival.Gameplay.MarsWorldTasks.BedFeet);
-            Vector3 edge = MarsSurvival.Gameplay.MarsWorldTasks.World(MarsSurvival.Gameplay.MarsWorldTasks.BedFeet + new Vector3(-0.9f, -0.62f, -0.9f));
-            Quaternion facing = Quaternion.LookRotation(feet - edge - Vector3.up * (feet.y - edge.y), Vector3.up);
-            Vector3 headward = MarsSurvival.Gameplay.MarsWorldTasks.World(MarsSurvival.Gameplay.MarsWorldTasks.BedFeet + Vector3.left) - feet;   // toward the pillow
+            var W = MarsSurvival.Gameplay.MarsWorldTasks.BedFeet;
+            Vector3 feet = MarsSurvival.Gameplay.MarsWorldTasks.World(W);
+            Vector3 edge = MarsSurvival.Gameplay.MarsWorldTasks.World(W + new Vector3(-0.75f, -0.62f, -0.95f));     // standing at the edge
+            Vector3 perch = MarsSurvival.Gameplay.MarsWorldTasks.World(W + new Vector3(-0.75f, -0.4f, -0.45f));    // sitting on the edge
+            Vector3 roomward = MarsSurvival.Gameplay.MarsWorldTasks.World(W + Vector3.back) - feet;
+            Vector3 headward = MarsSurvival.Gameplay.MarsWorldTasks.World(W + Vector3.left) - feet;   // toward the pillow
+            Quaternion facingBed = Quaternion.LookRotation(-roomward, Vector3.up), facingRoom = Quaternion.LookRotation(roomward, Vector3.up);
             Quaternion lying = Quaternion.LookRotation(Vector3.up, headward);
-            float walk = Smooth(Mathf.Clamp01(sleep * 2f)), lie = Smooth(Mathf.Clamp01(sleep * 2f - 1f));
-            Vector3 from = transform.position;
-            b.position = Vector3.Lerp(Vector3.Lerp(from, edge, walk), feet, lie) + Vector3.up * Units(0.35f) * Mathf.Sin(lie * Mathf.PI);
-            b.rotation = Quaternion.Slerp(Quaternion.Slerp(transform.rotation, facing, walk), lying, lie);
-            body.Animate(phase, walk < 1f && lie <= 0f ? 0.6f : 0f, 0f, 0f, 0f, Time.time);   // a few steps, then still
+            float walk = Smooth(Mathf.Clamp01(sleep * 3f)), sit = Smooth(Mathf.Clamp01(sleep * 3f - 1f)), lie = Smooth(Mathf.Clamp01(sleep * 3f - 2f));
+            Vector3 at = Vector3.Lerp(transform.position, edge, walk);
+            at = Vector3.Lerp(at, perch, sit);
+            b.position = Vector3.Lerp(at, feet, lie);
+            Quaternion turn = Quaternion.Slerp(Quaternion.Slerp(transform.rotation, facingBed, walk), facingRoom, sit);
+            b.rotation = Quaternion.Slerp(turn, lying, lie);
+            body.Animate(phase, walk > 0f && walk < 1f ? 0.6f : 0f, 0f, 0f, 0f, Time.time);   // a few steps, then still
+            body.Sit(sit * (1f - lie));   // knees bend on the edge and straighten as you lie back
         }
 
         private static float Smooth(float t) { return t * t * (3f - 2f * t); }
