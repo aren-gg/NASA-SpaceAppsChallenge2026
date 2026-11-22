@@ -350,10 +350,10 @@ def water_pump():
     obj("Tap", rbox((0.14, 0.24, 0.1), (0.55, -0.4, 1.0), 0.02), GUN, root)
     obj("Tap spout", cyl(0.03, 0.12, (0.55, -0.5, 0.92), seg=10), GUN, root)
     obj("Drip tray", rbox((0.4, 0.3, 0.04), (0.55, -0.5, 0.45), 0.01), DARK, root)
-    obj("Sign plate", rbox((1.0, 0.06, 0.28), (0, 0.42, 2.25), 0.02), DARK, root)
-    obj("Sign post", rbox((0.06, 0.06, 2.2), (-0.5, 0.42, 1.1), 0.01), GUN, root)
-    obj("Sign post", rbox((0.06, 0.06, 2.2), (0.5, 0.42, 1.1), 0.01), GUN, root)
-    bpy.ops.object.text_add(location=(0, 0.385, 2.25)); t = bpy.context.object
+    obj("Sign plate", rbox((1.0, 0.06, 0.28), (0, 0.42, 1.98), 0.02), DARK, root)   # low enough to clear the vault at 1.3x
+    obj("Sign post", rbox((0.06, 0.06, 1.95), (-0.5, 0.42, 0.98), 0.01), GUN, root)
+    obj("Sign post", rbox((0.06, 0.06, 1.95), (0.5, 0.42, 0.98), 0.01), GUN, root)
+    bpy.ops.object.text_add(location=(0, 0.385, 1.98)); t = bpy.context.object
     t.data.body = "WATER"; t.data.align_x = "CENTER"; t.data.align_y = "CENTER"; t.data.size = 0.18; t.data.extrude = 0.004
     t.rotation_euler = (math.radians(90), 0, 0); t.data.materials.append(CYAN); t.parent = root
     bpy.ops.object.select_all(action="DESELECT"); t.select_set(True); bpy.context.view_layer.objects.active = t
@@ -391,16 +391,32 @@ def resources_decor():
             obj("Reserve band", cyl(0.44, 0.08, (x, y, z), seg=32), GUN, root)
     obj("Reserve pipe", cyl(0.06, 3.4, (-2.0, -3.75, 2.15), seg=12, rot=Matrix.Rotation(math.pi / 2, 3, "Y")), STEEL, root)
     obj("Reserve pipe light", rbox((3.4, 0.01, 0.02), (-2.0, -3.68, 2.05), 0), CYAN, root)
-    label("WATER RESERVE", (-3.07, -2.92, 2.62), 0.16, CYAN, root)
-    # Sleep pod (the bunk) in the north-west corner: a padded bed under a rounded canopy.
-    obj("Pod base", rbox((2.2, 1.05, 0.5), (-3.05, 3.35, 0.25), 0.05), GUN, root)
-    obj("Pod mattress", rbox((2.05, 0.92, 0.16), (-3.05, 3.35, 0.56), 0.06), mat("Mat", "4A6A8A", 0.9), root)
-    obj("Pod pillow", rbox((0.38, 0.7, 0.12), (-3.9, 3.35, 0.68), 0.05), WHITE, root)
-    can = ellipsoid((1.15, 0.6, 0.75), (-3.05, 3.55, 0.6), seg=24)
-    bmesh.ops.delete(can, geom=[v for v in can.verts if v.co.z < 0.62 or v.co.y < 3.0], context="VERTS")
-    obj("Pod canopy", can, WHITE, root)
-    obj("Pod light", rbox((1.9, 0.02, 0.03), (-3.05, 2.83, 0.48), 0), AMBER, root)
-    label("REST", (-3.05, 2.8, 0.25), 0.12, AMBER, root)
+    label("WATER RESERVE", (-3.07, -2.92, 2.62), 0.16, CYAN, root, yaw=math.pi)   # faces into the room
+    # Crew quarters (the bed) in the north-west corner: a capsule bunk open to the room, with a made
+    # bed, a warm reading strip, a wall screen, a half-drawn curtain and a step.
+    cx, cy = -3.05, 3.35
+    BLANKET, SHEET, CLOTH = mat("Mat", "2F4B6B", 0.9), mat("Mat", "C9CED6", 0.9), mat("Mat", "596B7A", 0.9)
+    WARM = mat("Glow", "FFE2B8")
+    obj("Pod plinth", rbox((2.3, 1.1, 0.32), (cx, cy, 0.16), 0.03), GUN, root)
+    obj("Pod back", rbox((2.3, 0.08, 1.3), (cx, cy + 0.51, 0.97), 0.03), WHITE, root)
+    obj("Pod roof", rbox((2.4, 1.16, 0.1), (cx, cy - 0.01, 1.62), 0.05), WHITE, root)
+    for sx in (-1, 1):
+        obj("Pod end", rbox((0.1, 1.16, 1.36), (cx + sx * 1.15, cy - 0.01, 0.98), 0.04), WHITE, root)
+    obj("Pod lip", rbox((2.4, 0.05, 0.06), (cx, cy - 0.6, 1.55), 0.01), GUN, root)
+    obj("Pod sill light", rbox((2.2, 0.02, 0.025), (cx, cy - 0.56, 0.31), 0), AMBER, root)
+    obj("Mattress", rbox((2.16, 0.98, 0.18), (cx, cy - 0.02, 0.41), 0.06), SHEET, root)
+    obj("Blanket", rbox((1.45, 1.0, 0.06), (cx + 0.33, cy - 0.02, 0.52), 0.03), BLANKET, root)
+    obj("Blanket fold", rbox((0.16, 1.0, 0.07), (cx - 0.36, cy - 0.02, 0.54), 0.03), SHEET, root)
+    obj("Pillow", rbox((0.42, 0.72, 0.12), (cx - 0.76, cy + 0.05, 0.56), 0.05), WHITE, root)
+    obj("Reading strip", rbox((1.9, 0.12, 0.02), (cx, cy + 0.1, 1.56), 0), WARM, root)
+    obj("Pod screen", rbox((0.42, 0.02, 0.26), (cx - 0.55, cy + 0.46, 1.0), 0.01), SCREEN, root)
+    obj("Pod screen line", rbox((0.3, 0.01, 0.02), (cx - 0.55, cy + 0.448, 0.93), 0), CYAN, root)
+    for k in range(4):   # a half-drawn curtain gathered at the foot end
+        obj("Curtain", rbox((0.1, 0.04, 1.12), (cx + 0.75 + k * 0.095, cy - 0.53 + (k % 2) * 0.04, 0.95), 0.02), CLOTH, root)
+    obj("Curtain rail", rbox((2.2, 0.03, 0.03), (cx, cy - 0.55, 1.52), 0), GUN, root)
+    obj("Pod step", rbox((0.7, 0.3, 0.12), (cx - 0.3, cy - 0.72, 0.06), 0.02), GUN, root)
+    label("CREW-01", (cx, cy - 0.635, 1.55), 0.09, CYAN, root)
+    label("REST", (cx - 0.3, cy - 0.875, 0.06), 0.07, AMBER, root)
     # Supply rack against the south wall, east of the pump: three shelves of crates, sacks and canisters.
     for x in (1.1, 3.6):
         obj("Rack post", rbox((0.05, 0.05, 2.2), (x, -3.85, 1.1), 0.01), GUN, root)

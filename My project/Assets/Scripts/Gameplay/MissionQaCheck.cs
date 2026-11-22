@@ -540,10 +540,24 @@ namespace MarsSurvival.Gameplay
             Shot("resources_room");
             // Sleep runs time to the morning.
             Place(RoomCentre(MarsOutpostBuilder.Storage), RoomCentre(MarsOutpostBuilder.Storage) + Vector3.forward); yield return Frames(3);
+            Place(Floor(-14.8f, 1.2f), MarsWorldTasks.World(new Vector3(-14.8f, 0.7f, 2.7f))); yield return Frames(3);
+            MarsTaskTarget bed = mission.Tools.FindUse(player.AimTransform, s, out string bedLabel);
+            Check(bed != null && bed.kind == MarsTaskTarget.Kind.Bunk, "Looking at the crew bunk offers E to sleep", bedLabel ?? "nothing");
+            ShotWithUi("screen_bunk");
             s.astronaut.food = s.astronaut.water = 100;
             yield return new WaitForSecondsRealtime(1.5f); // let the clock take a live step after the scripted ones
             mission.Sleep();
             Check(sim.Asleep && mission.InputBlocked, "The bunk puts the astronaut to sleep", mission.Notice);
+            yield return new WaitForSecondsRealtime(1.1f);
+            Shot("sleep_getting_in");
+            yield return new WaitForSecondsRealtime(1.4f);
+            Shot("sleep_lying");
+            Transform sleeper = player.Body.transform;
+            Check(Mathf.Abs(Vector3.Dot(sleeper.up, Vector3.up)) < 0.3f && MarsOutpostBuilder.Storage.Contains(outpost.transform.InverseTransformPoint(sleeper.position).x, outpost.transform.InverseTransformPoint(sleeper.position).z),
+                "Asleep, the astronaut lies in the crew bunk", sleeper.up.ToString("F2"));
+            mission.Wake();
+            Check(!sim.Asleep && !mission.InputBlocked, "Jumping gets you out of bed", mission.Notice);
+            mission.Sleep();
             float limit = Time.realtimeSinceStartup + 20;
             while (sim.Asleep && Time.realtimeSinceStartup < limit) yield return null;
             double hour = mission.Environment.localHour;

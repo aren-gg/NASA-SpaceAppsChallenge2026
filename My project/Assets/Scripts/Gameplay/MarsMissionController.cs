@@ -93,6 +93,7 @@ namespace MarsSurvival.Gameplay
             // One sol lasts about 15 real minutes; asleep, time runs fast until 07:00.
             bool asleep = Simulation.Asleep;
             // Asleep: run to just past the wake time (steps under 1 s are skipped, so overshoot by one).
+            if (asleep && Time.unscaledTime - sleptAt < SettleSeconds) return;   // still climbing in
             pendingTime = asleep ? s.sleepUntil - s.elapsedSeconds + 1 : pendingTime + Time.unscaledDeltaTime * ClockScale;
             int budget = asleep ? 1000 : 10;
             for (int i = 0; i < budget && IsRunning && pendingTime >= 1; i++)
@@ -149,7 +150,17 @@ namespace MarsSurvival.Gameplay
             Simulation.Command(action, target, Context, out reason); Notice = reason;
         }
         /// <summary>Sleep in a bunk: time runs fast to 07:00 next morning (needs keep ticking, plants keep growing).</summary>
-        public void Sleep() { Execute("sleep"); pendingTime = 0; }
+        public void Sleep() { Execute("sleep"); pendingTime = 0; sleptAt = Time.unscaledTime; }
+        private float sleptAt = -99f;
+        /// <summary>Gets out of bed now (Space while asleep): the night ends where it is.</summary>
+        public void Wake()
+        {
+            if (Simulation == null || !Simulation.Asleep) return;
+            Simulation.State.sleepUntil = 0; pendingTime = 0;
+            Notice = "Up already.";
+        }
+        /// <summary>Real seconds the night waits before running fast, so you see the astronaut get into the bunk and lie down.</summary>
+        public const float SettleSeconds = 4f;
         public void Restart() { NewMission(); }
         /// <summary>Moves the mission start so sol 1 begins at 07:00 local time at the outpost.</summary>
         private void StartAtMorning()

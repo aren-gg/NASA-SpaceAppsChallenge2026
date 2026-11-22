@@ -43,6 +43,8 @@ namespace MarsSurvival.Gameplay
         public static readonly Vector3 ShopPoint = new Vector3(-10.6f, 0f, 3.2f);
         /// <summary>Crop and kiosk models (tools/blender/garden_assets.py), and their shop icons.</summary>
         public const string GardenFolder = "Garden";
+        /// <summary>Where the astronaut lies in the crew bunk: feet end of the mattress, outpost-local; the head is toward -x (the pillow).</summary>
+        public static readonly Vector3 BedFeet = new Vector3(-13.95f, 0.62f, 3.33f);
         /// <summary>The seed kiosk and water pump are drawn this much larger than modelled.</summary>
         private const float StationScale = 1.3f;
         /// <summary>Water pump against the resources wing's south wall (the seed kiosk faces it).</summary>
@@ -192,7 +194,8 @@ namespace MarsSurvival.Gameplay
             }
             CapsuleCollider planter = tree.AddComponent<CapsuleCollider>();
             planter.radius = 1.95f; planter.height = 4f; planter.center = new Vector3(0f, 0.3f, 0f);
-            Usable("Bunk", new Vector3(-14.8f, 0.7f, 3.35f), new Vector3(2.2f, 0.6f, 1.05f), MarsTaskTarget.Kind.Bunk);   // the sleep pod
+            // The crew bunk: the E target sits at its open front edge, where you stand and look, not inside the pod.
+            Usable("Bunk", new Vector3(-14.8f, 0.7f, 2.7f), new Vector3(2.3f, 0.8f, 0.4f), MarsTaskTarget.Kind.Bunk);
             // The seed shop kiosk in storage.
             GameObject shop = new GameObject("Seed shop");
             shop.transform.SetParent(root, false);

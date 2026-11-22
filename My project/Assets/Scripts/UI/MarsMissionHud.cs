@@ -36,6 +36,7 @@ namespace MarsSurvival.UI
         private Button[] buy, sell;
         private Button expand;
         private GameObject gameplay;
+        private RectTransform noticePlate;
         private MarsSurvival.Vehicles.MarsRover rover;
         private RectTransform drive, driveKeys, ridePrompt;
         private TMP_Text speed, batteryValue, rangeLabel, rangeValue, rideText;
@@ -160,10 +161,10 @@ namespace MarsSurvival.UI
             rideText = Label(ridePrompt, "", 18, paper, TextAlignmentOptions.Center);
             UiStyle.Caps(rideText, 2.5f);
 
-            // Bottom centre, above the tool hotbar: the latest message.
-            RectTransform line = StatBar.Frame(hud, "Message", .25f, .215f, .75f, .25f);
-            notice = Label(line, "", 20, paper, TextAlignmentOptions.Center);
-            UiStyle.Readable(notice);
+            // Top centre: the latest message on its own plate, sized to the text and hidden when there is none.
+            noticePlate = Plate(hud, "Message", new Vector2(.5f, 1), new Vector2(0, -24), new Vector2(600, 46));
+            notice = Label(noticePlate, "", 18, paper, TextAlignmentOptions.Center);
+            notice.margin = new Vector4(20, 0, 20, 0);
 
             BuildShop(safe);
             pause = PauseMenu.Create(safe);
@@ -330,6 +331,9 @@ namespace MarsSurvival.UI
                 : !string.IsNullOrEmpty(mission.Notice) ? mission.Notice
                 : thirsty ? "<color=#" + ColorUtility.ToHtmlStringRGB(UiTheme.Accent) + ">Water low · drink at the pump in Resources-02</color>" : "";
             RefreshRover();
+            bool any = !string.IsNullOrEmpty(notice.text);
+            if (noticePlate.gameObject.activeSelf != any) noticePlate.gameObject.SetActive(any);
+            if (any) noticePlate.sizeDelta = new Vector2(Mathf.Min(1100f, notice.GetPreferredValues(notice.text).x + 44f), 46f);
 
             bool open = mission.ShopOpen;
             if (shop.gameObject.activeSelf != open) shop.gameObject.SetActive(open);
