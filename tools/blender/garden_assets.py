@@ -440,14 +440,69 @@ def resources_decor():
         for j in range(n):
             obj("Crate", rbox((0.55, 0.55, 0.42), (x, y, 0.21 + j * 0.43), 0.02), WOOD if j % 2 == 0 else GUN, root)
             obj("Crate stripe", rbox((0.56, 0.56, 0.05), (x, y, 0.3 + j * 0.43), 0.0), HAZ, root)
-    # Work console under the far window: a desk with a screen showing the reserves.
-    obj("Console desk", rbox((0.7, 1.8, 0.9), (-3.85, -0.0, 0.45), 0.03), WHITE, root)
-    obj("Console top", rbox((0.78, 1.9, 0.05), (-3.85, 0, 0.92), 0.02), GUN, root)
-    scr = rbox((0.04, 0.9, 0.5), (0, 0, 0), 0.01)
-    bmesh.ops.rotate(scr, matrix=Matrix.Rotation(math.radians(-15), 3, "Y"), verts=scr.verts)
-    bmesh.ops.translate(scr, vec=Vector((-3.95, 0, 1.25)), verts=scr.verts)
-    obj("Console screen", scr, SCREEN, root)
-    obj("Console stool", cyl(0.2, 0.5, (-3.1, 0.3, 0.25), seg=16), GUN, root)
+    # Work console under the far window: a floating desk on a gunmetal pedestal with a lit front edge,
+    # a wrap-around set of three thin screens (the middle one shows the water reserves as bars), a lit
+    # keyboard, a holo puck and a swivel chair. The operator sits at +X, facing the window (-X).
+    DX = -3.75
+    KEY, DIM, GLASS = mat("Glow", "1E7F8F"), mat("Glow", "0B2E36"), mat("Mat", "0E1A20", 0.1)
+    obj("Console pedestal", rbox((0.36, 1.2, 0.74), (DX - 0.08, 0, 0.37), 0.04), GUN, root)
+    obj("Console foot", rbox((0.6, 1.5, 0.06), (DX - 0.05, 0, 0.03), 0.02), GUN, root)
+    obj("Console top", rbox((0.82, 1.9, 0.07), (DX, 0, 0.78), 0.03), WHITE, root)
+    obj("Console edge light", rbox((0.02, 1.84, 0.02), (DX + 0.415, 0, 0.755), 0), CYAN, root)
+    obj("Console under light", rbox((0.6, 1.7, 0.01), (DX - 0.02, 0, 0.74), 0), DIM, root)
+    def screen(name, w, h, centre, yaw, tilt=-12):
+        rot = Matrix.Rotation(math.radians(yaw), 3, "Z") @ Matrix.Rotation(math.radians(tilt), 3, "Y")
+        for part, size, m, off in (("bezel", (0.03, w, h), GUN, 0.0), ("glass", (0.01, w - 0.05, h - 0.05), GLASS, 0.017)):
+            bm = rbox(size, (off, 0, 0), 0.01)
+            bmesh.ops.rotate(bm, matrix=rot, verts=bm.verts); bmesh.ops.translate(bm, vec=Vector(centre), verts=bm.verts)
+            obj(name + " " + part, bm, m, root, smooth=False)
+        return rot
+    mid = (DX - 0.28, 0, 1.18)
+    rot = screen("Main screen", 0.9, 0.5, mid, 0)
+    def on_screen(name, size, uv, m, r=None, c=None):   # a glowing mark on a screen at (across, up) from its centre
+        bm = rbox((0.006,) + size, (0.024, uv[0], uv[1]), 0)
+        bmesh.ops.rotate(bm, matrix=r or rot, verts=bm.verts); bmesh.ops.translate(bm, vec=Vector(c or mid), verts=bm.verts)
+        obj(name, bm, m, root, smooth=False)
+    on_screen("Screen header", (0.7, 0.012), (0, 0.18), CYAN)
+    for k, h in enumerate((0.22, 0.15, 0.27, 0.1)):   # reserve levels as bars
+        on_screen("Screen bar", (0.09, h), (-0.24 + k * 0.16, -0.18 + h / 2), WATER if k != 3 else AMBER)
+    for k in range(3):
+        on_screen("Screen line", (0.16 - k * 0.04, 0.008), (0.3, 0.1 - k * 0.04), KEY)
+    for sx in (-1, 1):
+        c = (DX - 0.18, sx * 0.68, 1.14)
+        r = screen("Side screen", 0.5, 0.4, c, sx * -28)
+        on_screen("Side header", (0.36, 0.01), (0, 0.13), CYAN, r, c)
+        for k in range(4):
+            on_screen("Side line", (0.3 - (k % 2) * 0.1, 0.008), (-0.03 - (k % 2) * 0.05, 0.06 - k * 0.05), KEY, r, c)
+        on_screen("Side dot", (0.05, 0.05), (0.14, -0.1), AMBER if sx > 0 else CYAN, r, c)
+    obj("Screen stand", rbox((0.05, 0.12, 0.32), (DX - 0.33, 0, 0.94), 0.01), GUN, root)
+    kb = rbox((0.22, 0.6, 0.02), (0, 0, 0), 0.008)
+    bmesh.ops.rotate(kb, matrix=Matrix.Rotation(math.radians(6), 3, "Y"), verts=kb.verts)
+    bmesh.ops.translate(kb, vec=Vector((DX + 0.2, 0, 0.83)), verts=kb.verts)
+    obj("Keyboard", kb, GUN, root, smooth=False)
+    for r in range(3):
+        for c in range(10):
+            obj("Key", rbox((0.04, 0.045, 0.006), (DX + 0.14 + r * 0.055, -0.25 + c * 0.055, 0.845 + r * 0.006), 0), KEY, root, smooth=False)
+    obj("Holo puck", cyl(0.07, 0.03, (DX + 0.2, 0.62, 0.83), seg=24), GUN, root)
+    obj("Holo ring", cyl(0.06, 0.006, (DX + 0.2, 0.62, 0.848), seg=24), CYAN, root)
+    obj("Holo ring", cyl(0.035, 0.004, (DX + 0.2, 0.62, 0.98), seg=24), CYAN, root)
+    # Swivel chair: star base, gas column, seat, curved back.
+    CX, CY = -2.95, 0.15
+    for k in range(5):
+        a_ = k * 2 * math.pi / 5
+        leg = rbox((0.3, 0.05, 0.04), (0.15, 0, 0), 0.015)
+        bmesh.ops.rotate(leg, matrix=Matrix.Rotation(a_, 3, "Z"), verts=leg.verts)
+        bmesh.ops.translate(leg, vec=Vector((CX, CY, 0.06)), verts=leg.verts)
+        obj("Chair leg", leg, GUN, root, smooth=False)
+        obj("Chair wheel", ellipsoid((0.03,) * 3, (CX + 0.29 * math.cos(a_), CY + 0.29 * math.sin(a_), 0.03), seg=8), DARK, root)
+    obj("Chair column", cyl(0.035, 0.38, (CX, CY, 0.27), seg=12), STEEL, root)
+    obj("Chair seat", rbox((0.48, 0.48, 0.09), (CX, CY, 0.49), 0.04), WHITE, root)
+    obj("Chair cushion", rbox((0.42, 0.42, 0.04), (CX, CY, 0.55), 0.02), mat("Mat", "2F4B6B", 0.9), root)
+    back = rbox((0.07, 0.44, 0.52), (0, 0, 0), 0.04)
+    bmesh.ops.rotate(back, matrix=Matrix.Rotation(math.radians(15), 3, "Y"), verts=back.verts)   # reclined: 105 degrees to the seat
+    bmesh.ops.translate(back, vec=Vector((CX + 0.3, CY, 0.82)), verts=back.verts)
+    obj("Chair back", back, WHITE, root)
+    obj("Chair back light", rbox((0.01, 0.3, 0.02), (CX + 0.38, CY, 1.02), 0), CYAN, root)
     # Floor markings: an amber walkway from the hub door, a cyan pad at the pump, an amber pad at the kiosk.
     for y in (-1.15, 1.15):
         obj("Walkway line", rbox((7.6, 0.05, 0.006), (0.3, y, 0.003), 0), HAZ, root)
