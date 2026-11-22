@@ -12,7 +12,7 @@ namespace MarsSurvival.Gameplay
     /// <summary>A thing in the outpost that a tool works on, or that E uses.</summary>
     public sealed class MarsTaskTarget : MonoBehaviour
     {
-        public enum Kind { Plant, Food, Water, Bunk, Shop, Shed, Garage }
+        public enum Kind { Plant, Food, Water, Bunk, Shop, Shed, Garage, Seat }
 
         public Kind kind;
         /// <summary>Plot index for plants (bed * 12 + spot).</summary>
@@ -45,6 +45,8 @@ namespace MarsSurvival.Gameplay
         public const string GardenFolder = "Garden";
         /// <summary>Where the astronaut lies in the crew bunk: feet end of the mattress, outpost-local; the head is toward -x (the pillow).</summary>
         public static readonly Vector3 BedFeet = new Vector3(-13.95f, 0.62f, 3.33f);
+        /// <summary>The console chair's seat (outpost-local, floor height); you sit facing the screens (-x).</summary>
+        public static readonly Vector3 SeatPoint = new Vector3(-14.7f, 0f, 0.15f);
         /// <summary>The seed kiosk and water pump are drawn this much larger than modelled.</summary>
         private const float StationScale = 1.3f;
         /// <summary>Water pump against the resources wing's south wall (the seed kiosk faces it).</summary>
@@ -194,6 +196,7 @@ namespace MarsSurvival.Gameplay
             }
             CapsuleCollider planter = tree.AddComponent<CapsuleCollider>();
             planter.radius = 1.95f; planter.height = 4f; planter.center = new Vector3(0f, 0.3f, 0f);
+            Usable("Console chair", SeatPoint + new Vector3(0f, 0.6f, 0f), new Vector3(0.6f, 0.5f, 0.6f), MarsTaskTarget.Kind.Seat);
             // The crew bunk: the E target sits at its open front edge, where you stand and look, not inside the pod.
             Usable("Bunk", new Vector3(-14.8f, 0.7f, 2.7f), new Vector3(2.3f, 0.8f, 0.4f), MarsTaskTarget.Kind.Bunk);
             // The seed shop kiosk in storage.

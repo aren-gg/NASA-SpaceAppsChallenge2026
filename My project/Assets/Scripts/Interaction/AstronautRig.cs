@@ -142,6 +142,21 @@ namespace MarsSurvival.Interaction
             ApplyHead();
         }
 
+        /// <summary>Bends the legs into a seat: thighs forward to level, shins back down (t 0 standing, 1 seated).
+        /// Call after <see cref="Animate"/>, which poses the rest of the body.</summary>
+        public void Sit(float t)
+        {
+            if (t <= 0f || animator == null) return;
+            Vector3 side = root.transform.right;
+            foreach (var (thigh, shin) in new[] { (HumanBodyBones.LeftUpperLeg, HumanBodyBones.LeftLowerLeg), (HumanBodyBones.RightUpperLeg, HumanBodyBones.RightLowerLeg) })
+            {
+                Transform a = Bone(thigh), b = Bone(shin);
+                if (a == null || b == null) continue;
+                a.rotation = Quaternion.AngleAxis(-88f * t, side) * a.rotation;
+                b.rotation = Quaternion.AngleAxis(88f * t, side) * b.rotation;
+            }
+        }
+
         // ------------------------------------------------------------------ head
 
         /// <summary>First person hides the head (and the helmet with it) by shrinking the head bone.</summary>

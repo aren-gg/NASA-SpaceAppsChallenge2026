@@ -551,6 +551,16 @@ namespace MarsSurvival.Interaction
             // Escape opens or closes the pause menu; either way, take the cursor again cleanly afterwards.
             if (Input.GetKeyDown(KeyCode.Escape)) relockFrames = 2;
 #endif
+            if (seated || seat > 0f)
+            {
+                bool getUp = false;
+#if ENABLE_LEGACY_INPUT_MANAGER
+                getUp = Input.GetKeyDown(KeyCode.Space) || Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.S);   // E is handled by Sit()
+#endif
+                if (seated && getUp && seat >= 1f) seated = false;
+                AnimateSeat(Time.deltaTime);
+                if (seated || seat > 0f) { velocity = Vector3.zero; return; }
+            }
             if (mission != null && mission.Simulation != null && (mission.Simulation.Asleep || sleep > 0f))
             {
 #if ENABLE_LEGACY_INPUT_MANAGER
@@ -787,6 +797,31 @@ namespace MarsSurvival.Interaction
         }
 
         private static float Smooth(float t) { return t * t * (3f - 2f * t); }
+
+        // ------------------------------------------------------------------ sitting
+        private bool seated;
+        private float seat;   // 0 standing, 1 seated in the console chair
+        /// <summary>True while sitting in the console chair.</summary>
+        public bool IsSeated { get { return seated; } }
+
+        /// <summary>E at the console chair: sit down facing the screens; E again, Space or a step gets you up.</summary>
+        public void Sit() { if (seated) { if (seat >= 1f) seated = false; } else if (!driving) seated = true; }
+
+        /// <summary>Turns to face the screens, lowers onto the seat and bends the legs (0.8 s); standing up plays it back.</summary>
+        private void AnimateSeat(float dt)
+        {
+            seat = Mathf.MoveTowards(seat, seated ? 1f : 0f, dt / 0.8f);
+            Transform b = body.transform;
+            if (seat <= 0f) { b.localPosition = Vector3.zero; b.localRotation = Quaternion.identity; return; }
+            float t = Smooth(seat);
+            Vector3 centre = MarsSurvival.Gameplay.MarsWorldTasks.World(MarsSurvival.Gameplay.MarsWorldTasks.SeatPoint);
+            Vector3 toDesk = MarsSurvival.Gameplay.MarsWorldTasks.World(MarsSurvival.Gameplay.MarsWorldTasks.SeatPoint + Vector3.left) - centre;
+            Vector3 sitAt = centre - Vector3.up * Units(0.36f);   // hips on the cushion, feet on the floor
+            b.position = Vector3.Lerp(transform.position, sitAt, t);
+            b.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(toDesk, Vector3.up), t);
+            body.Animate(phase, 0f, 0f, 0f, 0f, Time.time);
+            body.Sit(t);
+        }
 
         private void AnimateBody(float dt)
         {

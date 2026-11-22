@@ -564,6 +564,9 @@ namespace MarsSurvival.Interaction
         /// down), which moves the airborne pose from push-off through tuck to reaching
         /// for the ground.
         /// </summary>
+        /// <summary>Seated pose on top of the current animation (see AstronautRig.Sit).</summary>
+        public void Sit(float t) { if (rig != null) rig.Sit(t); }
+
         public void Animate(float phase, float move, float sprint, float air, float vertical, float time)
         {
             if (!built) return;

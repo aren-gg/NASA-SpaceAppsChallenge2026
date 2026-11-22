@@ -545,6 +545,18 @@ namespace MarsSurvival.Gameplay
 
             Place(Floor(-8.2f, -0.6f), Floor(-14f, 0.3f) + Vector3.up); yield return Frames(3);
             Shot("resources_room");
+            // The console chair: E sits you down facing the screens, E again stands you up.
+            Place(Floor(-13.6f, 1.1f), MarsWorldTasks.World(MarsWorldTasks.SeatPoint + Vector3.up * 0.6f)); yield return Frames(3);
+            MarsTaskTarget chair = mission.Tools.FindUse(player.AimTransform, s, out string chairLabel);
+            Check(chair != null && chair.kind == MarsTaskTarget.Kind.Seat && chairLabel == "sit down", "Looking at the console chair offers E to sit", chairLabel ?? "nothing");
+            player.Sit();
+            yield return new WaitForSecondsRealtime(1.2f);
+            Vector3 seatedAt = outpost.transform.InverseTransformPoint(player.Body.transform.position);
+            Check(player.IsSeated && seatedAt.y < -0.2f && Mathf.Abs(seatedAt.x - MarsWorldTasks.SeatPoint.x) < 0.2f, "Sitting lowers the astronaut onto the chair", seatedAt.ToString("F2"));
+            Shot("sitting");
+            player.Sit();
+            yield return new WaitForSecondsRealtime(1.2f);
+            Check(!player.IsSeated && player.Body.transform.localPosition.sqrMagnitude < 1e-4f, "E again stands you back up");
             // Sleep runs time to the morning.
             Place(RoomCentre(MarsOutpostBuilder.Storage), RoomCentre(MarsOutpostBuilder.Storage) + Vector3.forward); yield return Frames(3);
             Place(Floor(-14.8f, 1.2f), MarsWorldTasks.World(new Vector3(-14.8f, 0.7f, 2.7f))); yield return Frames(3);

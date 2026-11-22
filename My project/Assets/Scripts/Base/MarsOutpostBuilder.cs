@@ -724,7 +724,7 @@ namespace MarsSurvival.Base
             AddCollider(-16f, 0f, -3.9f, -13.9f, 2.4f, -2.9f);      // reserve tanks
             AddCollider(-10.65f, 0f, -3.9f, -8.1f, 2.2f, -3.2f);    // supply rack
             AddCollider(-16f, 0f, 2.85f, -13.6f, 1.7f, 3.95f);      // crew bunk
-            AddCollider(-16f, 0f, -0.95f, -15.25f, 0.95f, 0.95f);   // console under the window
+            AddCollider(-16f, 0f, -0.95f, -15.1f, 0.85f, 0.95f);    // console desk under the window (the chair is walk-through)
             AddCollider(-13.05f, 0f, 3.1f, -12.45f, 0.9f, 3.7f);    // crates by the kiosk
             AddCollider(-9.1f, 0f, 2.95f, -7.9f, 1.3f, 3.65f);      // crates by the door
             End();
