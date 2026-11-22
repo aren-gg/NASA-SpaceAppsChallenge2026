@@ -232,7 +232,7 @@ namespace MarsSurvival.Gameplay
             m.SetFloat("_Cull", 0f); m.renderQueue = 2450;
             m.EnableKeyword("_EMISSION");
             if (m.HasProperty("_BaseMap")) m.SetTexture("_EmissionMap", m.GetTexture("_BaseMap"));
-            m.SetColor("_EmissionColor", new Color(0.25f, 1f, 0.8f) * 0.9f);
+            m.SetColor("_EmissionColor", new Color(0.25f, 1f, 0.8f) * 0.45f);
             named["Spirit leaves"] = m;
             return m;
         }
@@ -251,7 +251,7 @@ namespace MarsSurvival.Gameplay
             if (key.StartsWith("Glow"))
             {
                 m.EnableKeyword("_EMISSION");
-                m.SetColor("_EmissionColor", color * 1.8f);
+                m.SetColor("_EmissionColor", color * 1.1f);
             }
             named[key] = m;
             return m;

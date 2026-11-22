@@ -90,8 +90,8 @@ namespace MarsSurvival.Base
                 case "Shell Window": m = Lit(key, Hex(0x0E141C), 0.95f, 0.2f, Hex(0xFFC27A) * 1.2f); break;
                 case "Shell Greenhouse Glass": m = Glass(key, new Color(0.62f, 0.85f, 0.70f, 0.38f), Hex(0xCFF5D8) * 0.25f); break;
                 case "Shell Solar": m = Lit(key, Hex(0x1C2A55), 0.8f, 0.4f); break;
-                case "Shell Light Cyan": m = Lit(key, Color.black, 0.6f, 0f, Hex(0x3FE0FF) * 1.7f); break;
-                case "Shell Light Amber": m = Lit(key, Color.black, 0.6f, 0f, Hex(0xFFB547) * 1.6f); break;
+                case "Shell Light Cyan": m = Lit(key, Color.black, 0.6f, 0f, Hex(0x3FE0FF) * 1.1f); break;
+                case "Shell Light Amber": m = Lit(key, Color.black, 0.6f, 0f, Hex(0xFFB547) * 1.0f); break;
                 case "Int Light Warm": m = Lit(key, Color.black, 0.6f, 0f, Hex(0xFFE9CF) * 1.5f); break;
                 case "Shell Signal Red": m = Lit(key, Hex(0x6E1E22), 0.5f, 0f); break;
                 case "Int Soil": m = Lit(key, Hex(0x3B2A22), 0.05f, 0f); break;
