@@ -31,6 +31,9 @@ namespace MarsSurvival.World
         private static readonly List<Vector3> Positions = new List<Vector3>(640);
         private static readonly List<Vector3> Normals = new List<Vector3>(640);
         private static readonly List<int> Indices = new List<int>(640);
+        private static readonly List<int> SolidIndices = new List<int>(640);
+        /// <summary>Rocks smaller than this (radius, metres) can be stepped over, so they get no collider.</summary>
+        private const float SolidRadiusMeters = 0.3f;
         private static readonly Vector3[] Shaped = new Vector3[12];
 
         /// <summary>The Blender rock shapes as triangle soups (about 1 m across, origin at the base), or null.</summary>
@@ -116,13 +119,16 @@ namespace MarsSurvival.World
             return new Vector3((p.x * cos - p.z * sin) * scale, p.y * scale * (0.6f + squash * 0.5f), (p.x * sin + p.z * cos) * scale);
         }
 
+        /// <param name="solid">Collision mesh of the rocks too big to step over (same vertices), or null when there are none.</param>
         public static Mesh Build(MarsHeightmap map, MarsTerrainConfig config, Vector2 chunkCorner,
-            float chunkSizeX, float chunkSizeZ, int chunkIndex, out int rockCount, List<Vector3> clearings = null,
+            float chunkSizeX, float chunkSizeZ, int chunkIndex, out int rockCount, out Mesh solid, List<Vector3> clearings = null,
             MarsTerrainInset inset = null)
         {
             Positions.Clear();
             Normals.Clear();
             Indices.Clear();
+            SolidIndices.Clear();
+            float solidRadius = config.ToUnits(SolidRadiusMeters);
             rockCount = 0;
 
             Rng rng = new Rng(unchecked((uint)(config.rockSeed * 73856093) ^ (uint)((chunkIndex + 1) * 19349663)));
@@ -169,6 +175,7 @@ namespace MarsSurvival.World
                         (p.x * sin + p.z * cos) * radius);
                 }
 
+                int firstIndex = Indices.Count;
                 Vector3[][] models = Shapes();
                 if (models != null)
                 {
@@ -188,6 +195,7 @@ namespace MarsSurvival.World
                         Indices.Add(first); Indices.Add(first + 1); Indices.Add(first + 2);
                     }
                     rockCount++;
+                    if (radius >= solidRadius) SolidIndices.AddRange(Indices.GetRange(firstIndex, Indices.Count - firstIndex));
                     continue;
                 }
 
@@ -217,6 +225,7 @@ namespace MarsSurvival.World
                     Indices.Add(first + 2);
                 }
                 rockCount++;
+                if (radius >= solidRadius) SolidIndices.AddRange(Indices.GetRange(firstIndex, Indices.Count - firstIndex));
             }
 
             Mesh mesh = new Mesh();
@@ -225,6 +234,14 @@ namespace MarsSurvival.World
             mesh.SetVertices(Positions);
             mesh.SetNormals(Normals);
             mesh.SetTriangles(Indices, 0, true);
+
+            solid = null;
+            if (SolidIndices.Count > 0)
+            {
+                solid = new Mesh { name = mesh.name + " solid", indexFormat = mesh.indexFormat };
+                solid.SetVertices(Positions);
+                solid.SetTriangles(SolidIndices, 0, true);
+            }
             return mesh;
         }
     }

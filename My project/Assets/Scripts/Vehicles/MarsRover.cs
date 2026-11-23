@@ -199,7 +199,7 @@ namespace MarsSurvival.Vehicles
         {
             if (other == null || other.isTrigger) return false;
             if (other.transform.IsChildOf(transform)) return false;
-            return terrain == null || !other.transform.IsChildOf(terrain.transform);
+            return terrain == null || !other.transform.IsChildOf(terrain.transform) || MarsTerrain.IsRock(other);
         }
 
         /// <summary>

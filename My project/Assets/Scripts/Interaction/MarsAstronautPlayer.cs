@@ -379,7 +379,7 @@ namespace MarsSurvival.Interaction
         {
             if (other == capsule || other.isTrigger) return false;
             // Terrain chunk colliders (optional) are handled by GetGroundY, not pushed against.
-            return terrain == null || !other.transform.IsChildOf(terrain.transform);
+            return terrain == null || !other.transform.IsChildOf(terrain.transform) || MarsTerrain.IsRock(other);
         }
 
         /// <summary>True when a building is just above the head (the astronaut is 1.8 m tall).</summary>

@@ -86,6 +86,7 @@ namespace MarsSurvival.World
             public Vector2 centre;
             public GameObject gameObject;
             public Mesh mesh;
+            public Mesh solid;
             public int rockCount;
         }
 
@@ -914,6 +915,12 @@ namespace MarsSurvival.World
             if (complete) lastRockPosition = viewerLocal;
         }
 
+        /// <summary>True for a rock tile's collider: terrain-owned, but solid like a building.</summary>
+        public static bool IsRock(Collider c)
+        {
+            return c is MeshCollider && c.name == "Rocks";
+        }
+
         private RockTile BuildRockTile(long key, int tx, int tz, float tileSize, Vector2 centre)
         {
             RockTile tile;
@@ -921,6 +928,7 @@ namespace MarsSurvival.World
             {
                 tile = rockPool.Pop();
                 SafeDestroy(tile.mesh);
+                SafeDestroy(tile.solid);
                 tile.gameObject.SetActive(true);
             }
             else
@@ -935,14 +943,17 @@ namespace MarsSurvival.World
                 renderer.sharedMaterial = rockMaterial;
                 renderer.lightProbeUsage = LightProbeUsage.Off;
                 renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
+                tile.gameObject.AddComponent<MeshCollider>();
             }
             tile.key = key;
             tile.centre = centre;
             Vector2 corner = new Vector2(tx * tileSize, tz * tileSize);
             tile.gameObject.transform.localPosition = new Vector3(corner.x, 0f, corner.y);
             int seed = unchecked(tx * 73856093 ^ tz * 19349663);
-            tile.mesh = MarsRockBuilder.Build(map, config, corner, tileSize, tileSize, seed, out tile.rockCount, rockClearings, inset);
+            tile.mesh = MarsRockBuilder.Build(map, config, corner, tileSize, tileSize, seed, out tile.rockCount, out tile.solid, rockClearings, inset);
             tile.mesh.hideFlags = HideFlags.DontSave;
+            if (tile.solid != null) tile.solid.hideFlags = HideFlags.DontSave;
+            tile.gameObject.GetComponent<MeshCollider>().sharedMesh = tile.solid;
             tile.gameObject.GetComponent<MeshFilter>().sharedMesh = tile.mesh;
 
             stats.rocks += tile.rockCount;
@@ -959,8 +970,11 @@ namespace MarsSurvival.World
             tile.rockCount = 0;
             // Free the rock mesh now; the object is kept for reuse.
             tile.gameObject.GetComponent<MeshFilter>().sharedMesh = null;
+            tile.gameObject.GetComponent<MeshCollider>().sharedMesh = null;
             SafeDestroy(tile.mesh);
+            SafeDestroy(tile.solid);
             tile.mesh = null;
+            tile.solid = null;
             tile.gameObject.SetActive(false);
             rockPool.Push(tile);
         }
@@ -974,6 +988,7 @@ namespace MarsSurvival.World
                 stats.rockMeshBytes -= (long)tile.rockCount * MarsRockBuilder.BytesPerRock;
             }
             SafeDestroy(tile.mesh);
+            SafeDestroy(tile.solid);
             SafeDestroy(tile.gameObject);
         }
 
